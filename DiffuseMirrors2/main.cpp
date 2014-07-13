@@ -10,7 +10,7 @@ Jaime Martin
 #include "render.h"
 #include "scene.h"
 #include "data_sim.h"
-#include "data_cap.h"
+#include "data_read.h"
 #include "shapes.h"
 #include "test.h"
 // http://eigen.tuxfamily.org/dox/group__QuickRefPage.html
@@ -27,24 +27,25 @@ int main(int argc, char** argv) {
 	//test();
 	//return 0;
 	
-	if (data_read() != 0) {
+	// Read data from file
+	if (data_read_main() != 0) {
 		system("pause");
 		return 0;
 	}
 
-	// sets all the object3D of the scene
+	// Set all the object3D of the scene
 	if (!scene_simple)
 		set_scene();
 	else
 		set_scene_simple();
 	
-	// gets all the data of the model
+	// Get all the data of the model
 	if (!scene_simple)
 		get_data_sim();
 	else
 		get_data_sim_simple();
 
-	// renders all the object3D of the scene
+	// Render all the object3D of the scene
 	render(argc, argv);
 
 	system("pause");

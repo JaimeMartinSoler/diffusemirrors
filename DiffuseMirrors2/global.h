@@ -3,7 +3,7 @@
 #define __GLOBAL_H
 
 #include "shapes.h"
-#include "data_cap.h"
+#include "data_read.h"
 
 // SPEED OF LIGHT IN AIR and PI
 const float C_LIGHT_AIR = 299705000.0f;	// (m/s)
@@ -48,8 +48,8 @@ const float L_E = 1.0f;	// Le(l) in the paper. Radiance from the light point in 
 const int OBJECT3D_SET_SIZE = 10;
 extern Object3D_Set OBJECT3D_SET;
 
-// DataCap Objects
-extern DataCap DATA_CAPTURED;
+// DataPMD Objects
+extern DataPMD data_readTURED;
 
 
 #endif

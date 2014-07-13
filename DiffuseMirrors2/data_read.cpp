@@ -3,7 +3,7 @@
 #include <stdlib.h>     // atof
 
 #include "global.h"
-#include "data_cap.h"
+#include "data_read.h"
 #include "data_sim.h"
 
 #include <opencv2/highgui/highgui.hpp>
@@ -11,7 +11,7 @@
 
 
 // Constructor
-DataCap::DataCap(char* file_data_name_, char* file_info_name_) {
+DataPMD::DataPMD(char* file_data_name_, char* file_info_name_) {
 	
 	file_data_name = file_data_name_;
 	file_info_name = file_info_name_;
@@ -110,7 +110,7 @@ DataCap::DataCap(char* file_data_name_, char* file_info_name_) {
 }
 
 // Constructor
-DataCap::DataCap(short int* data_, int data_size_, std::vector<float> & frequencies_, std::vector<float> & distances_, std::vector<float> & shutters_, std::vector<float> & phases_, int width_, int heigth_, int numtakes_, int bytes_per_value_, int error_code_, char* file_data_name_, char* file_info_name_, Source src_) {
+DataPMD::DataPMD(short int* data_, int data_size_, std::vector<float> & frequencies_, std::vector<float> & distances_, std::vector<float> & shutters_, std::vector<float> & phases_, int width_, int heigth_, int numtakes_, int bytes_per_value_, int error_code_, char* file_data_name_, char* file_info_name_, Source src_) {
 	data = data_;
 	data_size = data_size_;	
 	frequencies = frequencies_;
@@ -127,11 +127,11 @@ DataCap::DataCap(short int* data_, int data_size_, std::vector<float> & frequenc
 	src = src_;
 }
 // Constructor Default
-DataCap::DataCap() {
+DataPMD::DataPMD() {
 }
 
 // Returns the index in data[] corresponding to the parameter indices
-int DataCap::idx_in_data(int distances_idx, int frequencies_idx, int shutters_idx, int w, int h, int phases_idx) {
+int DataPMD::idx_in_data(int distances_idx, int frequencies_idx, int shutters_idx, int w, int h, int phases_idx) {
 	return frequencies.size() * phases.size() * shutters.size() * heigth * width * distances_idx   +
 	                            phases.size() * shutters.size() * heigth * width * frequencies_idx +
 	                                            shutters.size() * heigth * width * phases_idx      +
@@ -141,7 +141,7 @@ int DataCap::idx_in_data(int distances_idx, int frequencies_idx, int shutters_id
 }
 
 // Returns the value corresponding to the parameter indices = data[idx_in_data]
-short int DataCap::at(int distances_idx, int frequencies_idx, int shutters_idx, int w, int h, int phases_idx) {
+short int DataPMD::at(int distances_idx, int frequencies_idx, int shutters_idx, int w, int h, int phases_idx) {
 	return data[idx_in_data(distances_idx, frequencies_idx, shutters_idx, w, h, phases_idx)];
 }
 
@@ -149,33 +149,33 @@ short int DataCap::at(int distances_idx, int frequencies_idx, int shutters_idx, 
 
 
 // Constructor
-Frame::Frame(DataCap & DataCap_src_, int distance_idx_, int frequency_idx_, int shutter_idx_, int phase_idx_) {
+Frame::Frame(DataPMD & DataPMD_src_, int distance_idx_, int frequency_idx_, int shutter_idx_, int phase_idx_) {
 
-	DataCap_src = &DataCap_src_;
+	DataPMD_src = &DataPMD_src_;
 
 	distance_idx = distance_idx_;
 	frequency_idx = frequency_idx_;
 	shutter_idx = shutter_idx_;
 	phase_idx = phase_idx_;
 
-	distance = DataCap_src_.distances[distance_idx_];
-	frequency = DataCap_src_.frequencies[frequency_idx_];
-	shutter = DataCap_src_.shutters[shutter_idx_];
-	phase = DataCap_src_.phases[phase_idx_];
+	distance = DataPMD_src_.distances[distance_idx_];
+	frequency = DataPMD_src_.frequencies[frequency_idx_];
+	shutter = DataPMD_src_.shutters[shutter_idx_];
+	phase = DataPMD_src_.phases[phase_idx_];
 
-	width = DataCap_src_.width;
-	heigth = DataCap_src_.heigth;
-	numtakes = DataCap_src_.numtakes;
-	bytes_per_value = DataCap_src_.bytes_per_value;
+	width = DataPMD_src_.width;
+	heigth = DataPMD_src_.heigth;
+	numtakes = DataPMD_src_.numtakes;
+	bytes_per_value = DataPMD_src_.bytes_per_value;
 
-	src = DataCap_src_.src;
+	src = DataPMD_src_.src;
 
 	matrix = cv::Mat(heigth, width, cv::DataType<float>::type);
 	short int value;
 	for (int h = 0; h < heigth; h++) {
 		for (int w = 0; w < width; w++) {
 			// data is not stored properly. -32768 fixes it thanks to short int over-run
-			value = DataCap_src_.at(distance_idx_, frequency_idx_, shutter_idx_, w, h, phase_idx_) - 32768;
+			value = DataPMD_src_.at(distance_idx_, frequency_idx_, shutter_idx_, w, h, phase_idx_) - 32768;
 			// by default image is up-down-fliped so heigth_real = (heigth-1-h)
 			matrix.at<float>(heigth - 1 - h, w) = (float)(value);
 		}
@@ -185,7 +185,7 @@ Frame::Frame(DataCap & DataCap_src_, int distance_idx_, int frequency_idx_, int 
 // Constructor from vector (from simulation usually)
 Frame::Frame(std::vector<float> & matrix_vector, int heigth_, int width_, bool rows_up2down, float distance_, float frequency_, float shutter_, float phase_, Source src_) {
 	
-	DataCap_src = NULL;
+	DataPMD_src = NULL;
 
 	distance_idx = 0;
 	frequency_idx = 0;
@@ -222,7 +222,7 @@ Frame::Frame() {
 }
 
 // first_idx can be 0 (default) or 1, it is the first idx of the row and col we are considering
-float Frame::at(int row, int col, int first_idx) {	// (int first_idx = 0) by default in data_cap.h
+float Frame::at(int row, int col, int first_idx) {	// (int first_idx = 0) by default in data_read.h
 	if (first_idx == 0)
 		return matrix.at<float>(row, col);
 	else
@@ -264,8 +264,8 @@ void Frame::plot_frame() {
 
 
 
-// Reads data from a .dat and info.txt file setting the DATA_CAPTURE variable
-int data_read() {
+// Reads data from a .dat and info.txt file setting the data_readTURE variable
+int data_read_main() {
 
 	// Data and Info Files
 	char file_data_name[1024] = "f:\\tmp\\DiffuseMirrors\\test_jaime_data_003.dat";
@@ -273,14 +273,14 @@ int data_read() {
 	//char file_data_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors\\DiffuseMirrors\\test_jaime_data_001.dat";
 	//char file_info_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors\\DiffuseMirrors\\test_jaime_info_001.txt";
 
-	// Create instance and store in DATA_CAPTURED
-	DATA_CAPTURED = DataCap(file_data_name, file_info_name);
-	// We have to check if there were errors while creating DATA_CAPTURED
-	if (DATA_CAPTURED.error_code)
+	// Create instance and store in data_readTURED
+	data_readTURED = DataPMD(file_data_name, file_info_name);
+	// We have to check if there were errors while creating data_readTURED
+	if (data_readTURED.error_code)
 		return 1;	// error
 
 	// test
-	Frame frame(DATA_CAPTURED, 0, DATA_CAPTURED.frequencies.size() - 1, 0, 0);
+	Frame frame(data_readTURED, 0, data_readTURED.frequencies.size() - 1, 0, 0);
 	frame.plot_frame();
 
 	return 0;	// no errors

@@ -1,6 +1,6 @@
 
-#ifndef __DATA_CAP_H
-#define __DATA_CAP_H
+#ifndef __DATA_READ_H
+#define __DATA_READ_H
 
 #include <vector>
 
@@ -38,8 +38,8 @@
 // enum Source
 enum Source {DATA_FILE, DATA_REAL_TIME, SIMULATION};
 
-// DATA CAPTURED
-class DataCap {
+// DATA-PMD 
+class DataPMD {
 public:
 
 	// Parameters
@@ -63,17 +63,17 @@ public:
 	Source src;
 
 	// Constructor
-	DataCap::DataCap(char* file_data_name_, char* file_info_name_);
+	DataPMD::DataPMD(char* file_data_name_, char* file_info_name_);
 	// Constructor
-	DataCap::DataCap(short int* data_, int data_size_, std::vector<float> & frequencies_, std::vector<float> & distances_, std::vector<float> & shutters_, std::vector<float> & phases_, int width_, int heigth_, int numtakes_, int bytes_per_value_, int error_code_, char* file_data_name_, char* file_info_name_, Source src_);
+	DataPMD::DataPMD(short int* data_, int data_size_, std::vector<float> & frequencies_, std::vector<float> & distances_, std::vector<float> & shutters_, std::vector<float> & phases_, int width_, int heigth_, int numtakes_, int bytes_per_value_, int error_code_, char* file_data_name_, char* file_info_name_, Source src_);
 	// Constructor Default
-	DataCap::DataCap();
+	DataPMD::DataPMD();
 
 	// Functions
 	// Returns the index in data[], corresponding to the parameter indices
-	int DataCap::idx_in_data(int distances_idx, int frequencies_idx, int shutters_idx, int w, int h, int phases_idx);
+	int DataPMD::idx_in_data(int distances_idx, int frequencies_idx, int shutters_idx, int w, int h, int phases_idx);
 	// Returns the value corresponding to the parameter indices = data[idx_in_data]
-	short int DataCap::at(int distances_idx, int frequencies_idx, int shutters_idx, int w, int h, int phases_idx);
+	short int DataPMD::at(int distances_idx, int frequencies_idx, int shutters_idx, int w, int h, int phases_idx);
 };
 
 
@@ -86,7 +86,7 @@ public:
 	// Parameters
 	// matrix stores all cols, then next row and so on, from up to down
 	cv::Mat matrix;				// the opencv matrix with the values of the frame
-	DataCap* DataCap_src;		// The DataCap the Frame comes from
+	DataPMD* DataPMD_src;		// The DataPMD the Frame comes from
 
 	float distance;
 	float frequency;
@@ -105,8 +105,8 @@ public:
 
 	Source src;
 	
-	// Constructor from DataCap
-	Frame::Frame(DataCap & DataCap_src_, int distance_idx_, int frequency_idx_, int shutter_idx_, int phase_idx_);
+	// Constructor from DataPMD
+	Frame::Frame(DataPMD & DataPMD_src_, int distance_idx_, int frequency_idx_, int shutter_idx_, int phase_idx_);
 	// Constructor from vector (from simulation usually)
 	Frame::Frame(std::vector<float> & matrix_vector, int heigth_, int width_, bool rows_up2down = true, float distance_ = 0.0f, float frequency_ = 0.0f, float shutter_ = 0.0f, float phase_ = 0.0f, Source src_ = SIMULATION);
 	// Constructor Default
@@ -122,8 +122,8 @@ public:
 
 
 
-// Reads data from a .dat and info.txt file setting the DATA_CAPTURE variable
-int data_read();
+// Reads data from a .dat and info.txt file setting the data_readTURE variable
+int data_read_main();
 
 // sets a vector of floats form a char array from a given delimiter
 void char_array_to_float_vector_from_delimiter (char* char_array, std::vector<float> & float_vector, char delimiter);
