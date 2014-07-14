@@ -89,7 +89,7 @@ DataPMD::DataPMD(char* file_data_name_, char* file_info_name_) {
 	}
 
 	// allocate memory to contain the whole file
-	data = (short int*) malloc(sizeof(short int)*data_size);
+	data = (unsigned short int*) malloc(sizeof(unsigned short int)*data_size);
 	if (data == NULL) {
 		std::cout << "\n\nMemory Error while allocating \""<< file_data_name_ << "\"\n\n";
 		error_code = 2;
@@ -110,7 +110,7 @@ DataPMD::DataPMD(char* file_data_name_, char* file_info_name_) {
 }
 
 // Constructor
-DataPMD::DataPMD(short int* data_, int data_size_, std::vector<float> & frequencies_, std::vector<float> & distances_, std::vector<float> & shutters_, std::vector<float> & phases_, int width_, int heigth_, int numtakes_, int bytes_per_value_, int error_code_, char* file_data_name_, char* file_info_name_, Source src_) {
+DataPMD::DataPMD(unsigned short int* data_, int data_size_, std::vector<float> & frequencies_, std::vector<float> & distances_, std::vector<float> & shutters_, std::vector<float> & phases_, int width_, int heigth_, int numtakes_, int bytes_per_value_, int error_code_, char* file_data_name_, char* file_info_name_, Source src_) {
 	data = data_;
 	data_size = data_size_;	
 	frequencies = frequencies_;
@@ -141,7 +141,7 @@ int DataPMD::idx_in_data(int distances_idx, int frequencies_idx, int shutters_id
 }
 
 // Returns the value corresponding to the parameter indices = data[idx_in_data]
-short int DataPMD::at(int distances_idx, int frequencies_idx, int shutters_idx, int w, int h, int phases_idx) {
+unsigned short int DataPMD::at(int distances_idx, int frequencies_idx, int shutters_idx, int w, int h, int phases_idx) {
 	return data[idx_in_data(distances_idx, frequencies_idx, shutters_idx, w, h, phases_idx)];
 }
 
@@ -171,13 +171,13 @@ Frame::Frame(DataPMD & DataPMD_src_, int distance_idx_, int frequency_idx_, int 
 	src = DataPMD_src_.src;
 
 	matrix = cv::Mat(heigth, width, cv::DataType<float>::type);
-	short int value;
+	short int value_short;
+	float value_float;
 	for (int h = 0; h < heigth; h++) {
 		for (int w = 0; w < width; w++) {
 			// data is not stored properly. -32768 fixes it thanks to short int over-run
-			value = DataPMD_src_.at(distance_idx_, frequency_idx_, shutter_idx_, w, h, phase_idx_) - 32768;
 			// by default image is up-down-fliped so heigth_real = (heigth-1-h)
-			matrix.at<float>(heigth - 1 - h, w) = (float)(value);
+			matrix.at<float>(heigth - 1 - h, w) = (float)(DataPMD_src_.at(distance_idx_, frequency_idx_, shutter_idx_, w, h, phase_idx_) - 32768);
 		}
 	}
 }
@@ -274,14 +274,16 @@ int data_read_main() {
 	//char file_info_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors\\DiffuseMirrors\\test_jaime_info_001.txt";
 
 	// Create instance and store in data_readTURED
-	data_readTURED = DataPMD(file_data_name, file_info_name);
+	DATAPMD_READ = DataPMD(file_data_name, file_info_name);
 	// We have to check if there were errors while creating data_readTURED
-	if (data_readTURED.error_code)
+	if (DATAPMD_READ.error_code)
 		return 1;	// error
 
 	// test
-	Frame frame(data_readTURED, 0, data_readTURED.frequencies.size() - 1, 0, 0);
-	frame.plot_frame();
+	Frame frame_read (DATAPMD_READ, 0, 0, 0, 0);
+	frame_read.plot_frame();
+	Frame frame_captured (DATAPMD_CAPTURE, 0, 0, 0, 0);
+	frame_captured.plot_frame();
 
 	return 0;	// no errors
 }

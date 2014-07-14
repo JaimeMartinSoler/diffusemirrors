@@ -49,7 +49,8 @@ const int OBJECT3D_SET_SIZE = 10;
 extern Object3D_Set OBJECT3D_SET;
 
 // DataPMD Objects
-extern DataPMD data_readTURED;
+extern DataPMD DATAPMD_READ;
+extern DataPMD DATAPMD_CAPTURE;
 
 
 #endif

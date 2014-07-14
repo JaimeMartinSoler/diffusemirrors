@@ -13,6 +13,7 @@ Jaime Martin
 #include "data_read.h"
 #include "shapes.h"
 #include "test.h"
+#include "capturetoolDM2.h"
 // http://eigen.tuxfamily.org/dox/group__QuickRefPage.html
 #include <Eigen/Dense>
 using namespace Eigen;
@@ -20,6 +21,12 @@ using namespace Eigen;
 
 // MAIN
 int main(int argc, char** argv) {
+	
+	// ------------------------------------------------------------------------------------------------------------------------------
+	// EXECUTING:
+	// cd C:\Users\transient\Documents\Visual Studio 2012\Projects\DiffuseMirrors2\x64\Release
+	// DiffuseMirrors2.exe "80 90 100" "0 1 2 3" "1920" f:\tmp\pmdtest2 PMD_test_meas COM6 1
+	// ------------------------------------------------------------------------------------------------------------------------------
 
 	bool scene_simple = false;
 
@@ -27,6 +34,12 @@ int main(int argc, char** argv) {
 	//test();
 	//return 0;
 	
+	// capture data from PMD
+	if (capturetoolDM2_main(argc, argv) != 0) {
+		system("pause");
+		return 0;
+	}
+
 	// Read data from file
 	if (data_read_main() != 0) {
 		system("pause");

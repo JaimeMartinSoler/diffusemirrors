@@ -5,4 +5,6 @@
 extern Object3D_Set OBJECT3D_SET(OBJECT3D_SET_SIZE);
 
 // DataPMD Objects
-DataPMD data_readTURED;
+DataPMD DATAPMD_READ;
+DataPMD DATAPMD_CAPTURE;
+

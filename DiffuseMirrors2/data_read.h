@@ -43,7 +43,7 @@ class DataPMD {
 public:
 
 	// Parameters
-	short int* data;
+	unsigned short int* data;
 	int data_size;	
 
 	std::vector<float> frequencies;
@@ -65,7 +65,7 @@ public:
 	// Constructor
 	DataPMD::DataPMD(char* file_data_name_, char* file_info_name_);
 	// Constructor
-	DataPMD::DataPMD(short int* data_, int data_size_, std::vector<float> & frequencies_, std::vector<float> & distances_, std::vector<float> & shutters_, std::vector<float> & phases_, int width_, int heigth_, int numtakes_, int bytes_per_value_, int error_code_, char* file_data_name_, char* file_info_name_, Source src_);
+	DataPMD::DataPMD(unsigned short int* data_, int data_size_, std::vector<float> & frequencies_, std::vector<float> & distances_, std::vector<float> & shutters_, std::vector<float> & phases_, int width_, int heigth_, int numtakes_, int bytes_per_value_, int error_code_, char* file_data_name_, char* file_info_name_, Source src_);
 	// Constructor Default
 	DataPMD::DataPMD();
 
@@ -73,7 +73,7 @@ public:
 	// Returns the index in data[], corresponding to the parameter indices
 	int DataPMD::idx_in_data(int distances_idx, int frequencies_idx, int shutters_idx, int w, int h, int phases_idx);
 	// Returns the value corresponding to the parameter indices = data[idx_in_data]
-	short int DataPMD::at(int distances_idx, int frequencies_idx, int shutters_idx, int w, int h, int phases_idx);
+	unsigned short int DataPMD::at(int distances_idx, int frequencies_idx, int shutters_idx, int w, int h, int phases_idx);
 };
 
 
