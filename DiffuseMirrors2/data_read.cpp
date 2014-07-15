@@ -5,22 +5,31 @@
 #include "global.h"
 #include "data_read.h"
 #include "data_sim.h"
+#include "capturetoolDM2.h"
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv/cv.h>	
 
 
 // Constructor
-DataPMD::DataPMD(char* file_data_name_, char* file_info_name_) {
+DataPMD::DataPMD(char* dir_name_, char* file_name_) {
+
+	dir_name = dir_name_;
+	file_name = file_name_;
 	
-	file_data_name = file_data_name_;
-	file_info_name = file_info_name_;
+	char file_data_full_path_name_[1024];
+	char file_info_full_path_name_ [1024];
+	sprintf(file_data_full_path_name_,"%s\\%s%s", dir_name_, file_name_, FILE_DATA_NAME_SUFFIX);
+	sprintf(file_info_full_path_name_,"%s\\%s%s", dir_name_, file_name_, FILE_INFO_NAME_SUFFIX);
+	file_data_full_path_name = file_data_full_path_name_;
+	file_info_full_path_name = file_info_full_path_name_;
+
 	src = DATA_FILE;
 
 	// INFO FILE. Open with read permissions
-	FILE* file_info = fopen(file_info_name_, "r");
+	FILE* file_info = fopen(file_info_full_path_name, "r");
 	if (file_info == NULL) {
-		std::cout << "\n\nError Reading \""<< file_info_name_ << "\"\n\n";
+		std::cout << "\n\nError Reading \""<< file_info_full_path_name << "\"\n\n";
 		error_code = 1;
 		return;
 	}
@@ -70,9 +79,9 @@ DataPMD::DataPMD(char* file_data_name_, char* file_info_name_) {
 	int file_data_size_expected = frequencies.size() * distances.size() * shutters.size() * phases.size() * width * heigth;
 
 	// DATA FILE. Open with read permissions
-	FILE* file_data = fopen(file_data_name_, "rb");	// open in binary/raw mode
+	FILE* file_data = fopen(file_data_full_path_name, "rb");	// open in binary/raw mode
 	if (file_data == NULL) {
-		std::cout << "\n\nError Reading \""<< file_data_name_ << "\"\n\n";
+		std::cout << "\n\nError Reading \""<< file_data_full_path_name << "\"\n\n";
 		error_code = 1;
 		return;
 	}
@@ -83,7 +92,7 @@ DataPMD::DataPMD(char* file_data_name_, char* file_info_name_) {
 	data_size = ftell (file_data) / bytes_per_value;
 	rewind (file_data);
 	if (data_size != file_data_size_expected) {
-		std::cout << "\n\nSize Incoherence Error while getting size of \""<< file_data_name_ << "\"\n\n";
+		std::cout << "\n\nSize Incoherence Error while getting size of \""<< file_data_full_path_name << "\"\n\n";
 		error_code = 4;
 		return;
 	}
@@ -91,7 +100,7 @@ DataPMD::DataPMD(char* file_data_name_, char* file_info_name_) {
 	// allocate memory to contain the whole file
 	data = (unsigned short int*) malloc(sizeof(unsigned short int)*data_size);
 	if (data == NULL) {
-		std::cout << "\n\nMemory Error while allocating \""<< file_data_name_ << "\"\n\n";
+		std::cout << "\n\nMemory Error while allocating \""<< file_data_full_path_name << "\"\n\n";
 		error_code = 2;
 		return;
 	}
@@ -99,7 +108,7 @@ DataPMD::DataPMD(char* file_data_name_, char* file_info_name_) {
 	// copy the file into the buffer:
 	fread_output_size = fread (data, bytes_per_value, data_size, file_data);
 	if (fread_output_size != data_size) {
-		std::cout << "\n\nSize Error while reading \""<< file_data_name_ << "\"\n\n";
+		std::cout << "\n\nSize Error while reading \""<< file_data_full_path_name << "\"\n\n";
 		error_code = 3;
 		return;
 	}
@@ -107,10 +116,11 @@ DataPMD::DataPMD(char* file_data_name_, char* file_info_name_) {
 	fclose (file_data);
 	//free (data_size_);
 	error_code = 0;		// no errors
+
 }
 
 // Constructor
-DataPMD::DataPMD(unsigned short int* data_, int data_size_, std::vector<float> & frequencies_, std::vector<float> & distances_, std::vector<float> & shutters_, std::vector<float> & phases_, int width_, int heigth_, int numtakes_, int bytes_per_value_, int error_code_, char* file_data_name_, char* file_info_name_, Source src_) {
+DataPMD::DataPMD(unsigned short int* data_, int data_size_, std::vector<float> & frequencies_, std::vector<float> & distances_, std::vector<float> & shutters_, std::vector<float> & phases_, int width_, int heigth_, int numtakes_, Source src_, int bytes_per_value_, int error_code_, char* dir_name_, char* file_name_) {
 	data = data_;
 	data_size = data_size_;	
 	frequencies = frequencies_;
@@ -121,10 +131,18 @@ DataPMD::DataPMD(unsigned short int* data_, int data_size_, std::vector<float> &
 	heigth = heigth_;
 	numtakes = numtakes_;
 	bytes_per_value = bytes_per_value_;
-	error_code = error_code_;
-	file_data_name = file_data_name_;
-	file_info_name = file_info_name_;
 	src = src_;
+	error_code = error_code_;
+	dir_name = dir_name_;
+	file_name = file_name_;
+	if ((dir_name_ != NULL) && (file_name_ != NULL)) {
+		sprintf(file_data_full_path_name,"%s\\%s%s", dir_name_, file_name_, FILE_DATA_NAME_SUFFIX);
+		sprintf(file_info_full_path_name,"%s\\%s%s", dir_name_, file_name_, FILE_INFO_NAME_SUFFIX);
+	}
+	else {
+		file_data_full_path_name = NULL;
+		file_info_full_path_name = NULL;
+	}
 }
 // Constructor Default
 DataPMD::DataPMD() {
@@ -166,13 +184,12 @@ Frame::Frame(DataPMD & DataPMD_src_, int distance_idx_, int frequency_idx_, int 
 	width = DataPMD_src_.width;
 	heigth = DataPMD_src_.heigth;
 	numtakes = DataPMD_src_.numtakes;
-	bytes_per_value = DataPMD_src_.bytes_per_value;
 
 	src = DataPMD_src_.src;
 
+	bytes_per_value = DataPMD_src_.bytes_per_value;
+
 	matrix = cv::Mat(heigth, width, cv::DataType<float>::type);
-	short int value_short;
-	float value_float;
 	for (int h = 0; h < heigth; h++) {
 		for (int w = 0; w < width; w++) {
 			// data is not stored properly. -32768 fixes it thanks to short int over-run
@@ -182,7 +199,7 @@ Frame::Frame(DataPMD & DataPMD_src_, int distance_idx_, int frequency_idx_, int 
 	}
 }
 
-// Constructor from vector (from simulation usually)
+// Constructor from vector from SIMULATION oriented
 Frame::Frame(std::vector<float> & matrix_vector, int heigth_, int width_, bool rows_up2down, float distance_, float frequency_, float shutter_, float phase_, Source src_) {
 	
 	DataPMD_src = NULL;
@@ -200,9 +217,11 @@ Frame::Frame(std::vector<float> & matrix_vector, int heigth_, int width_, bool r
 	width = width_;
 	heigth = heigth_;
 	numtakes = 0;
-	bytes_per_value = 0;
 
 	src = src_;
+
+	bytes_per_value = 0;
+
 
 	matrix = cv::Mat(heigth, width, cv::DataType<float>::type);
 	if(rows_up2down) {
@@ -217,6 +236,40 @@ Frame::Frame(std::vector<float> & matrix_vector, int heigth_, int width_, bool r
 	}	}	}
 
 }
+
+// Constructor from vector from DATA_REAL_TIME oriented
+Frame::Frame(unsigned short int* data_, int heigth_, int width_, float distance_, float frequency_, float shutter_, float phase_, int phase_idx_, Source src_) {
+	
+	DataPMD_src = NULL;
+
+	distance_idx = 0;
+	frequency_idx = 0;
+	shutter_idx = 0;
+	phase_idx = phase_idx_;
+
+	distance = distance_;
+	frequency = frequency_;
+	shutter = shutter_;
+	phase = phase_;
+
+	width = width_;
+	heigth = heigth_;
+	numtakes = 0;
+
+	src = src_;
+
+	bytes_per_value = 0;
+
+
+	matrix = cv::Mat(heigth, width, cv::DataType<float>::type);
+	int idx_in_data;
+	for (int h = 0; h < heigth_; h++) {
+		for (int w = 0; w < width_; w++) {
+			idx_in_data = (heigth_ * width_ * phase_idx_) + (width_ * h) + (w);
+			matrix.at<float>(heigth_ - 1 - h, w) = (float)(data_[idx_in_data] - 32768);
+	}	}
+}
+
 // Constructor Default
 Frame::Frame() {
 }
@@ -268,22 +321,30 @@ void Frame::plot_frame() {
 int data_read_main() {
 
 	// Data and Info Files
-	char file_data_name[1024] = "f:\\tmp\\DiffuseMirrors\\test_jaime_data_003.dat";
-	char file_info_name[1024] = "f:\\tmp\\DiffuseMirrors\\test_jaime_info_003.txt";
+	//char file_data_name[1024] = "f:\\tmp\\DiffuseMirrors\\test_jaime_data_003.dat";
+	//char file_info_name[1024] = "f:\\tmp\\DiffuseMirrors\\test_jaime_info_003.txt";
 	//char file_data_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors\\DiffuseMirrors\\test_jaime_data_001.dat";
 	//char file_info_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors\\DiffuseMirrors\\test_jaime_info_001.txt";
 
+	char dir_name[1024] = "f:\\tmp\\pmdtest2";
+	char file_name[1024] = "PMD_test_meas";
+
 	// Create instance and store in data_readTURED
-	DATAPMD_READ = DataPMD(file_data_name, file_info_name);
+	DATAPMD_READ = DataPMD(dir_name, file_name);
 	// We have to check if there were errors while creating data_readTURED
 	if (DATAPMD_READ.error_code)
 		return 1;	// error
 
-	// test
+	// Tests
+	// DATAPMD_READ
 	Frame frame_read (DATAPMD_READ, 0, 0, 0, 0);
 	frame_read.plot_frame();
+	// DATAPMD_CAPTURE
 	Frame frame_captured (DATAPMD_CAPTURE, 0, 0, 0, 0);
 	frame_captured.plot_frame();
+	// FRAME_00_CAPTURE, FRAME_90_CAPTURE
+	FRAME_00_CAPTURE.plot_frame();
+	FRAME_90_CAPTURE.plot_frame();
 
 	return 0;	// no errors
 }

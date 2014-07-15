@@ -54,18 +54,22 @@ public:
 	int width;
 	int heigth;
 	int numtakes;
-	int bytes_per_value;
-
-	int error_code;	// 0=no_error, !=0:error
-	char* file_data_name;
-	char* file_info_name;
-
+	
 	Source src;
+	
+	int bytes_per_value;
+	int error_code;	// 0=no_error, !=0:error
+
+	char* dir_name;
+	char* file_name;
+	char* file_data_full_path_name;
+	char* file_info_full_path_name;
+
 
 	// Constructor
-	DataPMD::DataPMD(char* file_data_name_, char* file_info_name_);
+	DataPMD::DataPMD(char* dir_name_, char* file_name_);
 	// Constructor
-	DataPMD::DataPMD(unsigned short int* data_, int data_size_, std::vector<float> & frequencies_, std::vector<float> & distances_, std::vector<float> & shutters_, std::vector<float> & phases_, int width_, int heigth_, int numtakes_, int bytes_per_value_, int error_code_, char* file_data_name_, char* file_info_name_, Source src_);
+	DataPMD::DataPMD(unsigned short int* data_, int data_size_, std::vector<float> & frequencies_, std::vector<float> & distances_, std::vector<float> & shutters_, std::vector<float> & phases_, int width_, int heigth_, int numtakes_, Source src_, int bytes_per_value_ = 2, int error_code_ = 0, char* dir_name_ = NULL, char* file_name_ = NULL);
 	// Constructor Default
 	DataPMD::DataPMD();
 
@@ -86,7 +90,7 @@ public:
 	// Parameters
 	// matrix stores all cols, then next row and so on, from up to down
 	cv::Mat matrix;				// the opencv matrix with the values of the frame
-	DataPMD* DataPMD_src;		// The DataPMD the Frame comes from
+	DataPMD* DataPMD_src;		// a pointer to the DataPMD this Frame comes from
 
 	float distance;
 	float frequency;
@@ -107,8 +111,10 @@ public:
 	
 	// Constructor from DataPMD
 	Frame::Frame(DataPMD & DataPMD_src_, int distance_idx_, int frequency_idx_, int shutter_idx_, int phase_idx_);
-	// Constructor from vector (from simulation usually)
+	// Constructor from vector from SIMULATION oriented
 	Frame::Frame(std::vector<float> & matrix_vector, int heigth_, int width_, bool rows_up2down = true, float distance_ = 0.0f, float frequency_ = 0.0f, float shutter_ = 0.0f, float phase_ = 0.0f, Source src_ = SIMULATION);
+	// Constructor from vector from DATA_REAL_TIME oriented
+	Frame::Frame(unsigned short int* data_, int heigth_, int width_, float distance_, float frequency_, float shutter_, float phase_, int phase_idx_, Source src_ = DATA_REAL_TIME);
 	// Constructor Default
 	Frame::Frame();
 

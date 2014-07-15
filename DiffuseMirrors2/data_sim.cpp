@@ -346,6 +346,11 @@ void plot_transient_pixel (std::vector<std::multimap<float, float>> & transient_
 	// use fgetc() to make sure that we pause long enough to be able to see the plot
 	printf("Press ENTER to continue\n\n");
 	fgetc(stdin);
+
+	std::cout << "\nEnter string and click ENTER\n";
+	std::string answer;
+	std::cin >> answer;
+
 	// Free memory, close MATLAB figure.
 	mxDestroyArray(T);
 	mxDestroyArray(V);

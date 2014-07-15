@@ -5,6 +5,41 @@
 #include "shapes.h"
 #include "data_read.h"
 
+
+
+
+// CAPTURETOOL PARAMETERS
+#define SOURCE_PLUGIN "camboardnano"
+#define SOURCE_PARAM ""
+
+#define SYNTH_CLOCK 600.0000 // Sample clock of function generator
+//#define SPEEDOFLIGHT	 299792458	// (m/s)
+#define SPEEDOFLIGHT_AIR 299705000	// (m/s)
+#define DUTYCYCLE 10 // 1 us exposure, 9 us delay
+#define FILENAME_FORMAT "capture_take%02d_f%06.2f_d%05.2f" // Filename prefix: Frequency, delay in m
+#define FILENAME_APPEND "_p%03d.%s"         // Append phase, shutter (=0 for HDR) and suffix to filename
+#define FILE_DATA_NAME_SUFFIX ".dat"
+#define FILE_INFO_NAME_SUFFIX "_info.txt"
+
+#define PMD_WIDTH 165	// (MHz)
+#define PMD_HEIGTH 120	// (MHz)
+
+#define FREQUENCY_MIN 1.0	// (MHz)
+#define FREQUENCY_MAX 180.0	// (MHz)
+#define SHUTTER_MIN 3.0		// (us)
+#define SHUTTER_MAX 1920.0	// (us)
+
+// TRANSIENTPMD SETTINGS
+#define COMPORT_FORMAT "\\\\.\\%s"
+
+// OPENCV
+#define WindowName "PMD Image"
+#define NOJPEG
+
+
+
+
+
 // SPEED OF LIGHT IN AIR and PI
 const float C_LIGHT_AIR = 299705000.0f;	// (m/s)
 const float PI = 3.14159265359f;
@@ -48,9 +83,11 @@ const float L_E = 1.0f;	// Le(l) in the paper. Radiance from the light point in 
 const int OBJECT3D_SET_SIZE = 10;
 extern Object3D_Set OBJECT3D_SET;
 
-// DataPMD Objects
+// DataPMD and FrameObjects
 extern DataPMD DATAPMD_READ;
 extern DataPMD DATAPMD_CAPTURE;
+extern Frame FRAME_00_CAPTURE;
+extern Frame FRAME_90_CAPTURE;
 
 
 #endif
