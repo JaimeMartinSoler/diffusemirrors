@@ -1057,6 +1057,9 @@ int capturetoolDM2_main(int argc, char *argv[]) {
 	float frequency = 100.0f;
 	float distance = 0.0f;
 	float shutter = 1920.0f;
+	Frame * frame_00_null = NULL;	// (*frame_00_null) in PMD_params_to_Frame(...), if we want to avoid this Frame meas
+	Frame * frame_90_null = NULL;	// (*frame_90_null) in PMD_params_to_Frame(...), if we want to avoid this Frame meas
+	// FRAME_00_CAPTURE, FRAME_90_CAPTURE
 	if (PMD_params_to_Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE, frequency, distance, shutter, comport, false))
 		error = 1;
 

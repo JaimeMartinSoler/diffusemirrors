@@ -121,18 +121,24 @@ DataPMD::DataPMD(char* dir_name_, char* file_name_) {
 
 // Constructor
 DataPMD::DataPMD(unsigned short int* data_, int data_size_, std::vector<float> & frequencies_, std::vector<float> & distances_, std::vector<float> & shutters_, std::vector<float> & phases_, int width_, int heigth_, int numtakes_, Source src_, int bytes_per_value_, int error_code_, char* dir_name_, char* file_name_) {
+	
 	data = data_;
 	data_size = data_size_;	
+	
 	frequencies = frequencies_;
 	distances = distances_;
 	shutters = shutters_;
 	phases = phases_;
+	
 	width = width_;
 	heigth = heigth_;
 	numtakes = numtakes_;
-	bytes_per_value = bytes_per_value_;
+	
 	src = src_;
+
+	bytes_per_value = bytes_per_value_;
 	error_code = error_code_;
+	
 	dir_name = dir_name_;
 	file_name = file_name_;
 	if ((dir_name_ != NULL) && (file_name_ != NULL)) {
@@ -146,6 +152,28 @@ DataPMD::DataPMD(unsigned short int* data_, int data_size_, std::vector<float> &
 }
 // Constructor Default
 DataPMD::DataPMD() {
+	
+	data = NULL;
+	data_size = 0;	
+	
+	frequencies = std::vector<float>(0);
+	distances = std::vector<float>(0);
+	shutters = std::vector<float>(0);
+	phases = std::vector<float>(0);
+	
+	width = 0;
+	heigth = 0;
+	numtakes = 0;
+	
+	src = UNKNOWN_SRC;
+
+	bytes_per_value = 0;
+	error_code = 0;
+	
+	dir_name = NULL;
+	file_name = NULL;
+	file_data_full_path_name = NULL;
+	file_info_full_path_name = NULL;
 }
 
 // Returns the index in data[] corresponding to the parameter indices
@@ -166,7 +194,7 @@ unsigned short int DataPMD::at(int distances_idx, int frequencies_idx, int shutt
 
 
 
-// Constructor
+// Constructor from DataPMD oriented
 Frame::Frame(DataPMD & DataPMD_src_, int distance_idx_, int frequency_idx_, int shutter_idx_, int phase_idx_) {
 
 	DataPMD_src = &DataPMD_src_;
@@ -272,6 +300,27 @@ Frame::Frame(unsigned short int* data_, int heigth_, int width_, float distance_
 
 // Constructor Default
 Frame::Frame() {
+	
+	matrix = cv::Mat(0, 0, cv::DataType<float>::type);
+	DataPMD_src = NULL;
+
+	distance_idx = 0;
+	frequency_idx = 0;
+	shutter_idx = 0;
+	phase_idx = 0;
+
+	distance = 0.0f;
+	frequency = 0.0f;
+	shutter = 0.0f;
+	phase = 0.0f;
+
+	width = 0;
+	heigth = 0;
+	numtakes = 0;
+
+	src = UNKNOWN_SRC;
+
+	bytes_per_value = 0;
 }
 
 // first_idx can be 0 (default) or 1, it is the first idx of the row and col we are considering
@@ -284,6 +333,9 @@ float Frame::at(int row, int col, int first_idx) {	// (int first_idx = 0) by def
 
 // Plot frame with opencv
 void Frame::plot_frame() {
+
+	if ((width <= 0) || (heigth <= 0))
+		return;
 
 	// Get a normalized matrix (min=0.0, max=1.0)
 	cv::Mat M_norm = matrix.clone();
@@ -300,8 +352,8 @@ void Frame::plot_frame() {
 	cv::imshow("Frame", M_norm);
 	cv::waitKey(0);
 
-	/*
 	// REAL TIME EXAMPLE
+	/*
 	cv::Mat mat_test = cv::Mat::zeros(200, 200, cv::DataType<float>::type);
 	cv::namedWindow("Test", cv::WINDOW_AUTOSIZE);
 	for (int i = 0; i < 100; i++) {
@@ -319,12 +371,6 @@ void Frame::plot_frame() {
 
 // Reads data from a .dat and info.txt file setting the data_readTURE variable
 int data_read_main() {
-
-	// Data and Info Files
-	//char file_data_name[1024] = "f:\\tmp\\DiffuseMirrors\\test_jaime_data_003.dat";
-	//char file_info_name[1024] = "f:\\tmp\\DiffuseMirrors\\test_jaime_info_003.txt";
-	//char file_data_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors\\DiffuseMirrors\\test_jaime_data_001.dat";
-	//char file_info_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors\\DiffuseMirrors\\test_jaime_info_001.txt";
 
 	char dir_name[1024] = "f:\\tmp\\pmdtest2";
 	char file_name[1024] = "PMD_test_meas";

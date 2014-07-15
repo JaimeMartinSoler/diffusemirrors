@@ -343,11 +343,8 @@ void plot_transient_pixel (std::vector<std::multimap<float, float>> & transient_
 	engEvalString(ep, "xlabel('time (ns)');");
 	engEvalString(ep, "ylabel('value');");
 
-	// use fgetc() to make sure that we pause long enough to be able to see the plot
-	printf("Press ENTER to continue\n\n");
-	fgetc(stdin);
-
-	std::cout << "\nEnter string and click ENTER\n";
+	// use std::cin freeze the plot
+	std::cout << "\nWrite any string and click ENTER to continue\n";
 	std::string answer;
 	std::cin >> answer;
 

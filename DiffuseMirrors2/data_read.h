@@ -36,7 +36,7 @@
 	// ------------------------------------------------------------------------------------------------------------------------------
 
 // enum Source
-enum Source {DATA_FILE, DATA_REAL_TIME, SIMULATION};
+enum Source {DATA_FILE, DATA_REAL_TIME, SIMULATION, UNKNOWN_SRC};
 
 // DATA-PMD 
 class DataPMD {
@@ -109,7 +109,7 @@ public:
 
 	Source src;
 	
-	// Constructor from DataPMD
+	// Constructor from DataPMD oriented
 	Frame::Frame(DataPMD & DataPMD_src_, int distance_idx_, int frequency_idx_, int shutter_idx_, int phase_idx_);
 	// Constructor from vector from SIMULATION oriented
 	Frame::Frame(std::vector<float> & matrix_vector, int heigth_, int width_, bool rows_up2down = true, float distance_ = 0.0f, float frequency_ = 0.0f, float shutter_ = 0.0f, float phase_ = 0.0f, Source src_ = SIMULATION);
