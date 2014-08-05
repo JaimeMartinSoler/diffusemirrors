@@ -6,10 +6,10 @@
 #include <map>
 
 // gets all the data results, once the scene (OBJECT3D_SET) has been configured
-void get_data_sim();
+void get_data_sim_diffused_mirror();
 
 // gets all the data results with the simple set-up, once the scene (OBJECT3D_SET) has been configured
-void get_data_sim_simple();
+void get_data_sim_direct_vision_wall();
 
 // gets the Radiance from each volume patch (radiance from each volume patch). L(x) in the paper. 
 // It deals with patches backing (not facing) the wall (they are not taken into account)

@@ -348,9 +348,11 @@ void Frame::plot_frame() {
 	}
 	
 	// show the image
+	std::cout << "showing image\n";
 	cv::namedWindow("Frame", cv::WINDOW_AUTOSIZE);	// WINDOW_NORMAL, WINDOW_AUTOSIZE
 	cv::imshow("Frame", M_norm);
-	cv::waitKey(0);
+	cv::waitKey(1000);
+	std::cout << "image closed\n";
 
 	// REAL TIME EXAMPLE
 	/*
@@ -369,25 +371,9 @@ void Frame::plot_frame() {
 
 
 
-// Reads data from a .dat and info.txt file setting the data_readTURE variable
+// Reads data from a .dat and info.txt file setting the DATAPMD_READ variable
 int data_read_main() {
 
-	char dir_name[1024] = "f:\\tmp\\pmdtest2";
-	char file_name[1024] = "PMD_test_meas";
-
-	// Create instance and store in data_readTURED
-	DATAPMD_READ = DataPMD(dir_name, file_name);
-	// We have to check if there were errors while creating data_readTURED
-	if (DATAPMD_READ.error_code)
-		return 1;	// error
-
-	// Tests
-	// DATAPMD_READ
-	Frame frame_read (DATAPMD_READ, 0, 0, 0, 0);
-	frame_read.plot_frame();
-	// DATAPMD_CAPTURE
-	Frame frame_captured (DATAPMD_CAPTURE, 0, 0, 0, 0);
-	frame_captured.plot_frame();
 	// FRAME_00_CAPTURE, FRAME_90_CAPTURE
 	FRAME_00_CAPTURE.plot_frame();
 	FRAME_90_CAPTURE.plot_frame();

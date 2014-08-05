@@ -128,7 +128,7 @@ public:
 
 
 
-// Reads data from a .dat and info.txt file setting the data_readTURE variable
+// Reads data from a .dat and info.txt file setting the data_read variable
 int data_read_main();
 
 // sets a vector of floats form a char array from a given delimiter

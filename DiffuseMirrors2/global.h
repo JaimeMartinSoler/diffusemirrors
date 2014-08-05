@@ -5,7 +5,8 @@
 #include "shapes.h"
 #include "data_read.h"
 
-
+// enums
+enum Scene {DIRECT_VISION_WALL, DIRECT_VISION_ANY, DIFFUSED_MIRROR, UNKNOWN_SCENE};
 
 
 // CAPTURETOOL PARAMETERS
@@ -35,10 +36,6 @@
 // OPENCV
 #define WindowName "PMD Image"
 #define NOJPEG
-
-
-
-
 
 // SPEED OF LIGHT IN AIR and PI
 const float C_LIGHT_AIR = 299705000.0f;	// (m/s)
@@ -79,15 +76,18 @@ const int VOLUME_PATCHES = 9;
 // Image Formation Model
 const float L_E = 1.0f;	// Le(l) in the paper. Radiance from the light point in the wall from the laser
 
+// To externally control the capability to loop of the capturetoolDM2.cpp functions (true by default)
+extern bool PMD_LOOP_ENABLE;
+
 // vectors with all the object3D to be studied (and rendered)
 const int OBJECT3D_SET_SIZE = 10;
 extern Object3D_Set OBJECT3D_SET;
 
 // DataPMD and FrameObjects
-extern DataPMD DATAPMD_READ;
-extern DataPMD DATAPMD_CAPTURE;
-extern Frame FRAME_00_CAPTURE;
-extern Frame FRAME_90_CAPTURE;
+extern DataPMD DATAPMD_READ;	// DataPMD Read from a File (.dat)
+extern DataPMD DATAPMD_CAPTURE;	// DataPMD Captured (directly from the PMD to this object)
+extern Frame FRAME_00_CAPTURE;	// Frame (phase=00) Captured (directly from the PMD to this object)
+extern Frame FRAME_90_CAPTURE;	// Frame (phase=90) Captured (directly from the PMD to this object)
 
 
 #endif

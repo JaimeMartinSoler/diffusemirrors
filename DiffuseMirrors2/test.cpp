@@ -1,7 +1,14 @@
 
 
 #include "test.h"
+#include "global.h"
+#include "main.h"
+#include "render.h"
+#include "scene.h"
+#include "data_sim.h"
+#include "data_read.h"
 #include "shapes.h"
+#include "capturetoolDM2.h"
 // http://eigen.tuxfamily.org/dox/group__QuickRefPage.html
 #include <Eigen/Dense>
 using namespace Eigen;
@@ -13,8 +20,83 @@ using namespace Eigen;
 
 // test function for testing
 void test() {
-	test_get_area();
+	test_capturetoolDM2_main();
 }
+
+// Reads data from a .dat and info.txt file setting the DATAPMD_READ variable
+int test_data_read_main() {
+
+	char dir_name[1024] = "f:\\tmp\\pmdtest2";
+	char file_name[1024] = "PMD_test_meas";
+
+	// Create instance and store in DATAPMD_READ
+	DATAPMD_READ = DataPMD(dir_name, file_name);
+	// We have to check if there were errors while creating DATAPMD_READ
+	if (DATAPMD_READ.error_code)
+		return 1;	// error
+
+	// Tests
+	// DATAPMD_READ
+	Frame frame_read (DATAPMD_READ, 0, 0, 0, 0);
+	frame_read.plot_frame();
+	// DATAPMD_CAPTURE
+	Frame frame_captured (DATAPMD_CAPTURE, 0, 0, 0, 0);
+	frame_captured.plot_frame();
+	// FRAME_00_CAPTURE, FRAME_90_CAPTURE
+	FRAME_00_CAPTURE.plot_frame();
+	FRAME_90_CAPTURE.plot_frame();
+
+	return 0;	// no errors
+}
+
+
+// test_capturetoolDM2_main(...)
+int test_capturetoolDM2_main() {
+	
+	// DiffuseMirrors2.exe "80 90 100" "0 1 2 3" "1920" f:\tmp\pmdtest2 PMD_test_meas COM6 1
+	//int error_in_PMD_charArray_to_file = PMD_charArray_to_file (argc, argv);
+	//return error_in_PMD_charArray_to_file;
+
+	int error = 0;
+
+	// DiffuseMirrors2.exe
+	//std::vector<float> frequencies(1);	frequencies[0] = 100.0f;
+	std::vector<float> frequencies(3);	frequencies[0] = 100.0f;	frequencies[1] = 80.0f;	frequencies[2] = 100.0f;
+	//std::vector<float> frequencies(1000, 100.0f);
+	
+	//std::vector<float> delays(1);	delays[0] = 0.0f;
+	std::vector<float> delays(4);	delays[0] = 0.0f;	delays[1] = 1.0f;	delays[2] = 2.0f;	delays[3] = 3.0f;
+
+	std::vector<float> shutters_float(1); 
+	shutters_float[0] = 1920.0f;
+	
+	char dir_name[1024] = "f:\\tmp\\pmdtest2";
+	char file_name[1024] = "PMD_test_meas";
+	char comport[128] = "COM6";
+
+	int numtakes = 1;
+
+	// Capture from PMD to file file_name
+	if (PMD_params_to_file (frequencies,delays,shutters_float, dir_name, file_name, comport, numtakes))
+		error = 1;
+	
+	// Capture directly from PMD to DataPMD (DataPMD DATAPMD_CAPTURE)
+	if (PMD_params_to_DataPMD (DATAPMD_CAPTURE, frequencies, delays, shutters_float, comport, numtakes, false))
+		error = 1;
+	
+	// Capture directly from PMD to Frame (Frame FRAME_00_CAPTURE, Frame FRAME_90_CAPTURE)
+	float frequency = 100.0f;
+	float distance = 0.0f;
+	float shutter = 1920.0f;
+	Frame * frame_00_null = NULL;	// (*frame_00_null) in PMD_params_to_Frame(...), if we want to avoid this Frame meas
+	Frame * frame_90_null = NULL;	// (*frame_90_null) in PMD_params_to_Frame(...), if we want to avoid this Frame meas
+	// FRAME_00_CAPTURE, FRAME_90_CAPTURE
+	if (PMD_params_to_Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE, frequency, distance, shutter, comport, false))
+		error = 1;
+
+	return error;
+}
+
 
 // test get_area()
 void test_get_area() {
@@ -46,16 +128,10 @@ void test_geometry_term() {
 
 }
 
-/* $Revision: 1.1.6.4 $ */
-/*
- *	engdemo.cpp
- *
- *	A simple program to illustrate how to call MATLAB
- *	Engine functions from a C++ program.
- *
- * Copyright 1984-2011 The MathWorks, Inc.
- * All rights reserved
- */
+
+// engdemo.cpp	// Revision: 1.1.6.4
+// opyright 1984-2011 The MathWorks, Inc.
+// All rights reserved
 int test_MATLAB_engine() {
 	
 	const int BUFSIZE = 256;

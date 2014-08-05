@@ -295,8 +295,8 @@ void process_data(int w, int h, vector<pair<int, unsigned short* > > &shutters, 
 	cvReleaseImageHeader(&img);
 }
 
-
-void process_data_to_buffer(int w, int h, vector<pair<int, unsigned short* > > &shutters, unsigned short* ushort_img[2], int pass = 0) {
+// Author: Jaime Martin (modification of process_data())
+void process_data_to_buffer(int w, int h, std::vector<std::pair<int, unsigned short* > > &shutters, unsigned short* ushort_img[2], int pass) {	// default: (int pass = 0)
 
 	int capturecount = shutters.size();
 	int* int_img = new int[w*2*h];
@@ -381,7 +381,7 @@ void process_data_to_buffer(int w, int h, vector<pair<int, unsigned short* > > &
 
 
 template <typename T>
-T ato ( const string &text) {
+T ato (const string &text) {
 	stringstream ss(text);
 	T result;
 	return ss >> result ? result : 0;
@@ -399,6 +399,7 @@ bool dir_exists(const std::string& dirName_in)
   return false;    // this is not a directory!
 }
 
+// Author: Jaime Martin
 bool file_exists (const std::string& name) {
     if (FILE *file = fopen(name.c_str(), "r")) {
         fclose(file);
@@ -407,7 +408,7 @@ bool file_exists (const std::string& name) {
     return false;  
 }
 
-
+// Author: Jaime Martin
 // str_is_number ()
 bool str_is_number (std::string & str) {
 	
@@ -428,7 +429,7 @@ bool str_is_number (std::string & str) {
 	return true;
 }
 
-
+// Author: Jaime Martin
 // char_array_to_float_vector (...)
 void char_array_to_float_vector (char* & char_array, std::vector<float> & float_vector, float min, float max) {
 
@@ -458,8 +459,7 @@ void char_array_to_float_vector (char* & char_array, std::vector<float> & float_
 }
 
 
-
-
+// Author: Jaime Martin
 // parser_main(...)
 // return 0:  No errors parsing
 // return -1: Errors parsing
@@ -521,6 +521,7 @@ int parser_main (int argc, char *argv[], std::vector<float> & frequencies, std::
 }
 
 
+// Author: Jaime Martin
 // check_parameters(...)
 // return 0: all parameters OK
 // return 1: any parameter out of bounds, modified
@@ -553,6 +554,7 @@ int check_parameters (float frequency_, float shutter_, char* comport) {
 
 
 
+// Author: Jaime Martin
 // check_parameters_vector(...)
 // return 0: all parameters OK
 // return 1: any parameter out of bounds, modified
@@ -607,6 +609,7 @@ int check_parameters_vector (std::vector<float> & frequencies, std::vector<float
 
 
 
+// Author: Jaime Martin
 // PMD_charArray_to_file
 int PMD_charArray_to_file (int argc, char *argv[]) {
 
@@ -630,7 +633,7 @@ int PMD_charArray_to_file (int argc, char *argv[]) {
 
 
 
-
+// Author: Jaime Martin (modification of previous function)
 // PMD_params_to_file
 int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* dir_name, char* file_name, char* comport, int & numtakes) {
 	
@@ -696,7 +699,6 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 	cvNamedWindow( WindowName, CV_WINDOW_AUTOSIZE );
 
 	bool firstiter = true;
-
 
 	for (int take = 0; take < numtakes;++take) {
 		char fn[256];
@@ -811,6 +813,8 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 	return 0;
 }
 
+
+// Author: Jaime Martin
 // copy_array (...)
 // return 0: no error, in bounds
 // return 1: error, out of bounds
@@ -825,6 +829,8 @@ int copy_array (unsigned short int* dst, unsigned short int* src, int dst_pos, i
 }
 
 
+
+// Author: Jaime Martin (modification of previous function)
 // PMD_params_to_DataPMD
 int PMD_params_to_DataPMD (DataPMD & DataPMD_cap, std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* comport, int & numtakes, bool loop) {
 
@@ -858,7 +864,9 @@ int PMD_params_to_DataPMD (DataPMD & DataPMD_cap, std::vector<float> & frequenci
 	// --- CAPTURE LOOP --------------------------------------------------------------------------------------
 	bool first_iter = true;
 	while(loop || first_iter) {
-
+		
+		if (!PMD_LOOP_ENABLE && !first_iter)
+			break;
 		first_iter = false;
 		data_buffer_PMD_pos = 0;
 
@@ -938,6 +946,8 @@ int PMD_params_to_DataPMD (DataPMD & DataPMD_cap, std::vector<float> & frequenci
 }
 
 
+
+// Author: Jaime Martin (modification of previous function)
 // PMD_params_to_DataPMD
 int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequency_, float distance_, float shutter_, char* comport, bool loop) {
 
@@ -970,6 +980,8 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequ
 	bool first_iter = true;
 	while(loop || first_iter) {
 
+		if (!PMD_LOOP_ENABLE && !first_iter)
+			break;
 		first_iter = false;
 
 		timed = get_cpu_time_cycles();
@@ -1020,49 +1032,19 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequ
 
 
 
+// Author: Jaime Martin 
 // MAIN
 int capturetoolDM2_main(int argc, char *argv[]) {
-	
-	// DiffuseMirrors2.exe "80 90 100" "0 1 2 3" "1920" f:\tmp\pmdtest2 PMD_test_meas COM6 1
-	//int error_in_PMD_charArray_to_file = PMD_charArray_to_file (argc, argv);
-	//return error_in_PMD_charArray_to_file;
 
-	int error = 0;
-
-	// DiffuseMirrors2.exe
-	//std::vector<float> frequencies(1);	frequencies[0] = 100.0f;
-	std::vector<float> frequencies(3);	frequencies[0] = 100.0f;	frequencies[1] = 80.0f;	frequencies[2] = 100.0f;
-	
-	//std::vector<float> delays(1);	delays[0] = 0.0f;
-	std::vector<float> delays(4);	delays[0] = 0.0f;	delays[1] = 1.0f;	delays[2] = 2.0f;	delays[3] = 3.0f;
-
-	std::vector<float> shutters_float(1); 
-	shutters_float[0] = 1920.0f;
-	
-	char dir_name[1024] = "f:\\tmp\\pmdtest2";
-	char file_name[1024] = "PMD_test_meas";
-	char comport[128] = "COM6";
-
-	int numtakes = 1;
-
-	// Capture from PMD to file file_name
-	if (PMD_params_to_file (frequencies,delays,shutters_float, dir_name, file_name, comport, numtakes))
-		error = 1;
-	
-	// Capture directly from PMD to DataPMD (DataPMD DATAPMD_CAPTURE)
-	if (PMD_params_to_DataPMD (DATAPMD_CAPTURE, frequencies, delays, shutters_float, comport, numtakes, false))
-		error = 1;
-	
 	// Capture directly from PMD to Frame (Frame FRAME_00_CAPTURE, Frame FRAME_90_CAPTURE)
 	float frequency = 100.0f;
 	float distance = 0.0f;
 	float shutter = 1920.0f;
-	Frame * frame_00_null = NULL;	// (*frame_00_null) in PMD_params_to_Frame(...), if we want to avoid this Frame meas
-	Frame * frame_90_null = NULL;	// (*frame_90_null) in PMD_params_to_Frame(...), if we want to avoid this Frame meas
+	char comport[128] = "COM6";
+	Frame * frame_00_null = NULL;	// (*frame_00_null) in PMD_params_to_Frame(...), if we want to avoid this Frame measurement
+	Frame * frame_90_null = NULL;	// (*frame_90_null) in PMD_params_to_Frame(...), if we want to avoid this Frame measurement
 	// FRAME_00_CAPTURE, FRAME_90_CAPTURE
-	if (PMD_params_to_Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE, frequency, distance, shutter, comport, false))
-		error = 1;
-
-	return error;
+	return PMD_params_to_Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE, frequency, distance, shutter, comport, true);
 }
+
 

@@ -7,8 +7,8 @@
 #include "global.h"
 
 
-// sets all the scene
-void set_scene() {
+// sets all the Diffused Mirror (occluded wall) scene
+void set_scene_diffused_mirror() {
 
 	// CAMERA (0)
 	Point camera_pos(0.0f, 0.75f, 0.0f);		// pos of the center of the camera
@@ -78,8 +78,8 @@ void set_scene() {
 }
 
 
-// sets all the scene with the simple configuration
-void set_scene_simple() {
+// sets all the Direct Vision Wall scene
+void set_scene_direct_vision_wall() {
 
 	// CAMERA (0)
 	Point camera_pos(0.0f, 0.75f, 0.0f);		// pos of the center of the camera

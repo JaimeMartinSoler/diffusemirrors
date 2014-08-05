@@ -5,10 +5,10 @@
 #include "shapes.h"
 
 // sets all the Object3D (in OBJECT3D_SET) of the scene
-void set_scene();
+void set_scene_diffused_mirror();
 
 // sets all the scene with the simple configuration
-void set_scene_simple();
+void set_scene_direct_vision_wall();
 
 // sets the Object3D camera
 void set_camera(Point* camera_pos_, Point* camera_rot_, Point* camera_size_, Point* camera_centre_);

@@ -9,7 +9,7 @@
 
 
 // gets all the data results, once the scene (OBJECT3D_SET) has been configured
-void get_data_sim() {
+void get_data_sim_diffused_mirror() {
 
 	// PAPER ------------------------------------------------------------------------------------
 
@@ -54,7 +54,8 @@ void get_data_sim() {
 	// Plot a transient pixel with MATLAB Engine, from transient_image
 	int pix_x = (CAMERA_PIX_X-1) / 2;	// max = CAMERA_PIX_X-1
 	int pix_y = (CAMERA_PIX_Y-1) / 2;	// max = CAMERA_PIX_Y-1
-	plot_transient_pixel(transient_image, pix_x, pix_y);
+	// MATLAB Engine takes too much time to start, comment out next line unless you need to debugg
+	//plot_transient_pixel(transient_image, pix_x, pix_y);
 
 	// Plot image pixels values with opencv, from pixels_value
 	Frame pixels_value_frame(pixels_value, CAMERA_PIX_Y, CAMERA_PIX_X, false, distance, frequency, phase, shutter, SIMULATION);
@@ -63,7 +64,7 @@ void get_data_sim() {
 
 
 // gets all the data results with the simple set-up, once the scene (OBJECT3D_SET) has been configured
-void get_data_sim_simple() {
+void get_data_sim_direct_vision_wall() {
 
 	// Transient pixel = Impulse response of the scene. alpha_r in Ref08
 	// vector of maps. One map for pixel representing
@@ -85,6 +86,8 @@ void get_data_sim_simple() {
 	Frame pixels_value_simple_frame(pixels_value_simple, CAMERA_PIX_Y, CAMERA_PIX_X, false, distance, frequency, phase, shutter, SIMULATION);
 	pixels_value_simple_frame.plot_frame();
 }
+
+
 
 
 // gets the Radiance from each volume patch (radiance from each volume patch). L(x) in the paper. 
