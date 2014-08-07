@@ -67,7 +67,7 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequ
 
 // Author: Jaime Martin 
 // MAIN
-int capturetoolDM2_main(int argc, char *argv[]);
+int capturetoolDM2_main(int argc, char *argv[], bool loop = false);
 
 
 #endif

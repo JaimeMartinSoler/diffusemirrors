@@ -92,10 +92,10 @@ public:
 	cv::Mat matrix;				// the opencv matrix with the values of the frame
 	DataPMD* DataPMD_src;		// a pointer to the DataPMD this Frame comes from
 
-	float distance;
-	float frequency;
-	float shutter;
-	float phase;
+	float distance;		// (m)
+	float frequency;	// (MHz)
+	float shutter;		// (us)
+	float phase;		// (degrees)
 
 	int distance_idx;
 	int frequency_idx;

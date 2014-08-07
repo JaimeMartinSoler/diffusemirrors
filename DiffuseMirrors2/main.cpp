@@ -18,6 +18,10 @@ Jaime Martin
 #include <thread>      
 
 
+
+
+
+
 // MAIN
 // Observation: PMD captures at 9.5 fps with the current set-up (2014-08-05):
 //     100 captures (in loop, with pmd always opened) take aprox 10.5 seconds,
@@ -30,14 +34,15 @@ int main(int argc, char** argv) {
 	// DiffuseMirrors2.exe "80 90 100" "0 1 2 3" "1920" f:\tmp\pmdtest2 PMD_test_meas COM6 1
 	// ------------------------------------------------------------------------------------------------------------------------------
 
-	Scene scene = DIFFUSED_MIRROR;	// DIRECT_VISION_WALL,    DIRECT_VISION_ANY,    DIFFUSED_MIRROR,    UNKNOWN_SCENE
+	Scene scene = DIRECT_VISION_ANY;	// DIRECT_VISION_WALL,    DIRECT_VISION_ANY,    DIFFUSED_MIRROR,    UNKNOWN_SCENE
+	bool loop = true;
 
 	// tests some functions
 	//test();
 	//return 0;
 	
 	// capture data from PMD
-	std::thread thread_capturetoolDM2_main (capturetoolDM2_main, argc, argv);
+	std::thread thread_capturetoolDM2_main (capturetoolDM2_main, argc, argv, loop);
 	/*
 	if (capturetoolDM2_main(argc, argv) != 0) {
 		system("pause");
@@ -54,12 +59,12 @@ int main(int argc, char** argv) {
 		return 0;
 	}
 	std::cout << "data_read_main() done\n";
-
+	
+	std::cout << "Sleep for 5 seconds\n";
+	Sleep(5000);
+	std::cout << "Wake up\n";
 	// Set all the object3D of the corresponding scene
-	if (scene == DIRECT_VISION_WALL)
-		set_scene_direct_vision_wall();
-	else if (scene == DIFFUSED_MIRROR)
-		set_scene_diffused_mirror();
+	std::thread thread_set_scene (set_scene, scene, loop);
 	std::cout << "set_scene() done\n";
 	
 	// Get all the data of the model from the corresponding simulation
@@ -82,6 +87,7 @@ int main(int argc, char** argv) {
 	}
 	PMD_LOOP_ENABLE = false;
 	thread_capturetoolDM2_main.join();
+	thread_set_scene.join();
 	thread_render.join();
 
 	system("pause");

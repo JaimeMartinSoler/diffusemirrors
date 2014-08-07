@@ -25,16 +25,16 @@ void transform_UI();
 void render_OBJECT3D_SET();
 
 // It renders all the PointMesh of the Object3D obj
-void render_Object3D(Object3D* obj);
+void render_Object3D(Object3D* obj, int OBJECT3D_IDX);
 
 // It renders all the shapes of the PointMesh pm
-void render_PointMesh(PointMesh* pm);
+void render_PointMesh(PointMesh* pm, int OBJECT3D_IDX);
 
 // It renders a rectangle from 4 points
-void render_rectangle(Point* p0, Point* p1, Point* p2, Point* p3, float* gray_color);
+void render_rectangle(Point* p0, Point* p1, Point* p2, Point* p3, float* gray_color, int OBJECT3D_IDX);
 
 // It renders a triangle from 3 points
-void render_triangle(Point* p0, Point* p1, Point* p2, float* gray_color);
+void render_triangle(Point* p0, Point* p1, Point* p2, float* gray_color, int OBJECT3D_IDX);
 
 // It renders a line from 2 points
 void render_line(Point* p0, Point* p1, Point* color);

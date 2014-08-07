@@ -1034,7 +1034,7 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequ
 
 // Author: Jaime Martin 
 // MAIN
-int capturetoolDM2_main(int argc, char *argv[]) {
+int capturetoolDM2_main(int argc, char *argv[], bool loop) {	// by default: bool = false
 
 	// Capture directly from PMD to Frame (Frame FRAME_00_CAPTURE, Frame FRAME_90_CAPTURE)
 	float frequency = 100.0f;
@@ -1044,7 +1044,7 @@ int capturetoolDM2_main(int argc, char *argv[]) {
 	Frame * frame_00_null = NULL;	// (*frame_00_null) in PMD_params_to_Frame(...), if we want to avoid this Frame measurement
 	Frame * frame_90_null = NULL;	// (*frame_90_null) in PMD_params_to_Frame(...), if we want to avoid this Frame measurement
 	// FRAME_00_CAPTURE, FRAME_90_CAPTURE
-	return PMD_params_to_Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE, frequency, distance, shutter, comport, true);
+	return PMD_params_to_Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE, frequency, distance, shutter, comport, loop);
 }
 
 

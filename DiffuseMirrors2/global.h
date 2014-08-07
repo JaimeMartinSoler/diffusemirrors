@@ -43,8 +43,8 @@ const float PI = 3.14159265359f;
 
 // CAMERA CONFIGURATION
 // Pixels
-const int CAMERA_PIX_X = 32;	// Real: 165
-const int CAMERA_PIX_Y = 24;	// Real: 120
+const int CAMERA_PIX_X = 165;	// Real: 165
+const int CAMERA_PIX_Y = 120;	// Real: 120
 // Measuring the FoV of the camera
 const float CAMERA_DIST_FOV_MEAS = 1.0f;	// distance from camera center and screen (with same normal)
 const float CAMERA_FOV_X_METERS = 0.5f;
@@ -62,16 +62,17 @@ const float VOLUME_GRID_Y_ANGLE_MAX = 180.0f;
 const float VOLUME_GRID_Y_ANGLE_STEP = 10.0f;
 
 // OBJECT3D_SET[i], i = constant index content
-const int CAMERA		= 0;
-const int LASER			= 1;
-const int WALL			= 2;
-const int OCCLUDER		= 3;
-const int FLOOR			= 4;
-const int VOLUME		= 5;
-const int WALL_PATCHES	= 6;
-const int CAMERA_FOV	= 7;
-const int LASER_RAY		= 8;
+const int CAMERA		 = 0;
+const int LASER			 = 1;
+const int WALL			 = 2;
+const int OCCLUDER		 = 3;
+const int FLOOR			 = 4;
+const int VOLUME		 = 5;
+const int WALL_PATCHES	 = 6;
+const int CAMERA_FOV	 = 7;
+const int LASER_RAY		 = 8;
 const int VOLUME_PATCHES = 9;
+const int PIXEL_PATCHES  = 10;	// Only to represent the Direct-Vision-Any scene
 
 // Image Formation Model
 const float L_E = 1.0f;	// Le(l) in the paper. Radiance from the light point in the wall from the laser
@@ -80,7 +81,7 @@ const float L_E = 1.0f;	// Le(l) in the paper. Radiance from the light point in 
 extern bool PMD_LOOP_ENABLE;
 
 // vectors with all the object3D to be studied (and rendered)
-const int OBJECT3D_SET_SIZE = 10;
+const int OBJECT3D_SET_SIZE = 11;
 extern Object3D_Set OBJECT3D_SET;
 
 // DataPMD and FrameObjects

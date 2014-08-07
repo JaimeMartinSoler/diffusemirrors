@@ -89,30 +89,34 @@ void render_OBJECT3D_SET() {
 	for (std::size_t i = 0; i < OBJECT3D_SET.size(); i++) {
 		if ((i == WALL_PATCHES) && !render_wall_patches)
 			continue;
-		render_Object3D(OBJECT3D_SET[i]);
+		render_Object3D(OBJECT3D_SET[i], i);
 	}
 }
 
 // It renders all the PointMesh of the Object3D obj
-void render_Object3D(Object3D* obj) {
+void render_Object3D(Object3D* obj, int OBJECT3D_IDX) {
 	for (std::size_t i = 0; i < (*obj).size(); i++)
-		render_PointMesh((*obj)[i]);
+		render_PointMesh((*obj)[i], OBJECT3D_IDX);
 	// it renders the center of the Object3D obj
 	if ((*obj).size() > 0)
 		render_point((*obj)[0]->c);
 }
 
 // It renders all the shapes of the PointMesh pm
-void render_PointMesh(PointMesh* pm) {
-	float gray_color = 0.2f;
+void render_PointMesh(PointMesh* pm, int OBJECT3D_IDX) {
+	float gray_color = 0.2f;	// better colors if setted to 0.2f
+	if (OBJECT3D_IDX == WALL)
+		gray_color = 0.7f;
+	else if (OBJECT3D_IDX == PIXEL_PATCHES)
+		gray_color = 0.7f;
 	if ((*pm).shape == RECTANGLE) {
 		for (std::size_t i = 0; i < pm->p.size(); i += 4) {
-			render_rectangle(pm->p[i], pm->p[i + 1], pm->p[i + 2], pm->p[i + 3], &gray_color);
+			render_rectangle(pm->p[i], pm->p[i + 1], pm->p[i + 2], pm->p[i + 3], &gray_color, OBJECT3D_IDX);
 		}
 	}
 	if ((*pm).shape == TRIANGLE) {
 		for (std::size_t i = 0; i < pm->p.size(); i += 3) {
-			render_triangle(pm->p[i], pm->p[i + 1], pm->p[i + 2], &gray_color);
+			render_triangle(pm->p[i], pm->p[i + 1], pm->p[i + 2], &gray_color, OBJECT3D_IDX);
 		}
 	}
 	if ((*pm).shape == LINE) {
@@ -129,7 +133,7 @@ void render_PointMesh(PointMesh* pm) {
 }
 
 // It renders a rectangle from 4 points
-void render_rectangle(Point* p0, Point* p1, Point* p2, Point* p3, float* gray_color) {
+void render_rectangle(Point* p0, Point* p1, Point* p2, Point* p3, float* gray_color, int OBJECT3D_IDX) {
 	glLoadIdentity();
 	set_initial_pose();
 	transform_UI();
@@ -148,6 +152,8 @@ void render_rectangle(Point* p0, Point* p1, Point* p2, Point* p3, float* gray_co
 	glVertex3f((*p3)[0], (*p3)[1], (*p3)[2]);
 	glEnd();
 	// it renders the sides of the rectangle
+	if (OBJECT3D_IDX == PIXEL_PATCHES)
+		return;
 	Point color_black(0.0f, 0.0f, 0.0f);
 	render_line(p0, p1, &color_black);
 	render_line(p1, p2, &color_black);
@@ -156,7 +162,7 @@ void render_rectangle(Point* p0, Point* p1, Point* p2, Point* p3, float* gray_co
 }
 
 // It renders a triangle from 3 points
-void render_triangle(Point* p0, Point* p1, Point* p2, float* gray_color) {
+void render_triangle(Point* p0, Point* p1, Point* p2, float* gray_color, int OBJECT3D_IDX) {
 	glLoadIdentity();
 	set_initial_pose();
 	transform_UI();

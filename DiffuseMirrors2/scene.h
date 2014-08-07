@@ -3,12 +3,27 @@
 #define __SCENE_H
 
 #include "shapes.h"
+#include "data_read.h"
+#include "global.h"
+// OPENCV INCLUDES
+#include <cv.h>
+#include <cvaux.h>
+#include <highgui.h>
+
+
+// sets the scene depending on the Scene passed as argument
+void set_scene(Scene scene, bool loop = false);
+
 
 // sets all the Object3D (in OBJECT3D_SET) of the scene
 void set_scene_diffused_mirror();
 
 // sets all the scene with the simple configuration
 void set_scene_direct_vision_wall();
+
+// sets all the Direct Vision Any scene
+void set_scene_direct_vision_any(bool loop = false);
+
 
 // sets the Object3D camera
 void set_camera(Point* camera_pos_, Point* camera_rot_, Point* camera_size_, Point* camera_centre_);
@@ -36,6 +51,15 @@ void set_volume_patches(Point* volume_pos_, Point* volume_rot_, Point* volume_si
 
 // sets the albedo value for each wall patch
 void set_wall_patches_albedo(std::vector<float> & wall_patches_albedo_);
+
+// sets the Object3D with all the pixel patches (pixel patch = PointMesh with one rectangle). Only for Direct-Vision-Any scene
+void set_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_centre_, bool loop = false);
+
+// sets the vector of normals of the centers and corners of the pixel patches from the camera(pixel patch = PointMesh with one rectangle). Only for Direct-Vision-Any scene
+void set_screen_normals_pixel_patches(std::vector<Point*> & screen_patches_corners_normals_, std::vector<Point*> & screen_patches_centers_normals_, Point* camera_pos_, Point* camera_rot_, Point* camera_centre_);
+
+// sets a depth map from the 2 frames
+void set_depth_map(cv::Mat & depth_map_, Frame & Frame_00_cap, Frame & Frame_90_cap);
 
 // sets the albedo, rotation and bool values for each volume patch
 void set_volume_patches_params(std::vector<float> & volume_patches_albedo_, std::vector<Point*> & volume_patches_rot_, std::vector<bool> & volume_patches_bool_);

@@ -5,7 +5,27 @@
 #include "scene.h"
 #include "shapes.h"
 #include "global.h"
+#include "data_read.h"
+// OPENCV INCLUDES
+#include <cv.h>
+#include <cvaux.h>
+#include <highgui.h>
+// http://eigen.tuxfamily.org/dox/group__QuickRefPage.html
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
+using namespace Eigen;
 
+
+// sets the scene depending on the Scene passed as argument
+void set_scene(Scene scene, bool loop) {	// by default: loop = false
+
+	if (scene == DIRECT_VISION_ANY)
+		set_scene_direct_vision_any (loop);
+	else if (scene == DIRECT_VISION_WALL)
+		set_scene_direct_vision_wall();
+	else if (scene == DIFFUSED_MIRROR)
+		set_scene_diffused_mirror();
+}
 
 // sets all the Diffused Mirror (occluded wall) scene
 void set_scene_diffused_mirror() {
@@ -75,6 +95,10 @@ void set_scene_diffused_mirror() {
 	set_volume_patches_params(volume_patches_albedo, volume_patches_rot, volume_patches_bool);
 	set_volume_patches(&volume_pos, &volume_rot, &volume_size, &volume_centre,
 					   volume_patches_albedo, volume_patches_rot, volume_patches_bool);
+
+	// PIXEL_PATCHES (10) // empty
+	Object3D* pixel_patches_obj3D = new Object3D(0);
+	OBJECT3D_SET[PIXEL_PATCHES] = pixel_patches_obj3D;
 }
 
 
@@ -135,6 +159,71 @@ void set_scene_direct_vision_wall() {
 	Object3D* volume_patches_obj3D = new Object3D(0);
 	OBJECT3D_SET[VOLUME_PATCHES] = volume_patches_obj3D;
 
+	// PIXEL_PATCHES (10) // empty
+	Object3D* pixel_patches_obj3D = new Object3D(0);
+	OBJECT3D_SET[PIXEL_PATCHES] = pixel_patches_obj3D;
+}
+
+
+// sets all the Direct Vision Any scene
+void set_scene_direct_vision_any (bool loop) {	// by default: loop = false
+	
+	// CAMERA (0)
+	Point camera_pos(0.0f, 0.75f, 0.0f);		// pos of the center of the camera
+	Point camera_rot(0.0f, 180.0f, 0.0f);		// rot from the center of the camera
+	Point camera_size(0.2f, 0.2f, 0.1f);
+	Point camera_centre(camera_size.x() / 2.0f, camera_size.y() / 2.0f, 0.0f);	// centre relative to the first point
+	set_camera(&camera_pos, &camera_rot, &camera_size, &camera_centre);
+
+	// LASER (1)
+	Point laser_pos(0.75f, 0.75f, 0.0f);		// pos of the center of the laser
+	Point laser_rot(0.0f, 180.0f, 0.0f);		// rot from the center of the laser
+	Point laser_size(0.1f, 0.1f, 0.3f);
+	Point laser_centre(laser_size.x() / 2.0f, laser_size.y() / 2.0f, 0.0f);	// centre relative to the first point
+	set_laser(&laser_pos, &laser_rot, &laser_size, &laser_centre);
+
+	// WALL (2)
+	Point wall_pos(-1.625f, 0.2f, -2.0f);		// pos of the center of the wall
+	Point wall_rot(0.0f, 0.0f, 0.0f);			// rot from the center of the wall
+	Point wall_size(4.0f, 0.1f, 0.2f);
+	Point wall_centre(0.0f, 0.0f, 0.0f);		// centre relative to the first point
+	float wall_albedo = 0.5f;	// does not matter
+	set_box(&wall_pos, &wall_rot, &wall_size, &wall_centre, WALL, wall_albedo);
+
+	// OCCLUDER (3) // empty
+	Object3D* occluder_obj3D = new Object3D(0);
+	OBJECT3D_SET[OCCLUDER] = occluder_obj3D;
+
+	// FLOOR (4)
+	Point floor_pos(wall_pos.x(), 0.0f, 0.7f);
+	Point floor_rot(-90.0f, 0.0f, 0.0f);
+	Point floor_size(wall_size.x(), 6.0f, wall_size.z());
+	Point floor_centre(0.0f, 0.0f, 0.0f);
+	float floor_albedo = 0.5f;	// does not matter
+	set_box(&floor_pos, &floor_rot, &floor_size, &floor_centre, FLOOR, floor_albedo);
+
+	// VOLUME (5) // empty
+	Object3D* volume_obj3D = new Object3D(0);
+	OBJECT3D_SET[VOLUME] = volume_obj3D;
+
+	// WALL_PATCHES (6) // empty
+	Object3D* wall_patches_obj3D = new Object3D(0);
+	OBJECT3D_SET[PIXEL_PATCHES] = wall_patches_obj3D;
+
+	// CAMERA_FOV (7) // empty (CAMERA_FOV uses WALL_PATCHES)
+	Object3D* camera_fov_obj3D = new Object3D(0);
+	OBJECT3D_SET[CAMERA_FOV] = camera_fov_obj3D;
+
+	// LASER_RAY (8) // empty
+	Object3D* laser_ray_obj3D = new Object3D(0);
+	OBJECT3D_SET[LASER_RAY] = laser_ray_obj3D;
+
+	// VOLUME_PATCHES (9) // empty
+	Object3D* volume_patches_obj3D = new Object3D(0);
+	OBJECT3D_SET[VOLUME_PATCHES] = volume_patches_obj3D;
+
+	// PIXEL_PATCHES (10)
+	set_pixel_patches(&camera_pos, &camera_rot, &camera_centre, loop);
 }
 
 
@@ -326,6 +415,118 @@ void set_wall_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_size
 	
 	std::vector<Point*> patches_centres(CAMERA_PIX_X * CAMERA_PIX_Y);
 	*/
+}
+
+// sets the Object3D with all the pixel patches (pixel patch = PointMesh with one rectangle). Only for Direct-Vision-Any scene
+void set_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_centre_, bool loop) {	// by default: loop = false
+	
+	// Get the screen normals (once, out of the loop).
+	// Ordering: 1st row: col, col, col... 2nd row: col, col, col... from left to right, from bottom to top
+	std::vector<Point*> screen_patches_corners_normals((CAMERA_PIX_X + 1) * (CAMERA_PIX_Y + 1));
+	std::vector<Point*> screen_patches_centers_normals(CAMERA_PIX_X * CAMERA_PIX_Y);
+	set_screen_normals_pixel_patches(screen_patches_corners_normals, screen_patches_centers_normals, camera_pos_, camera_rot_, camera_centre_);
+
+	// Get the depth map (in loop)
+	// Ordering: 1st row: col, col, col... 2nd row: col, col, col... from left to right, from top to bottom (matrix ordering)
+	cv::Mat depth_map(CAMERA_PIX_Y, CAMERA_PIX_X, cv::DataType<float>::type);
+	// Object3D
+	Object3D* pixel_patches = new Object3D(CAMERA_PIX_X * CAMERA_PIX_Y);
+
+	// --- LOOP --------------------------------------------------------------------------------------
+	float albedo = 0.5f;	// does not matter
+	bool first_iter = true;
+	while(loop || first_iter) {
+
+		if (!PMD_LOOP_ENABLE && !first_iter)
+			break;
+		first_iter = false;
+		
+		set_depth_map(depth_map, FRAME_00_CAPTURE, FRAME_90_CAPTURE);
+
+		for (int iy = 0; iy < CAMERA_PIX_Y; iy++) {
+			for (int ix = 0; ix < CAMERA_PIX_X; ix++) {
+				Point* p0 = new Point((*(screen_patches_corners_normals[iy*(CAMERA_PIX_X + 1) + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_));
+				Point* p1 = new Point((*(screen_patches_corners_normals[iy*(CAMERA_PIX_X + 1) + ix + 1])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_));
+				Point* p2 = new Point((*(screen_patches_corners_normals[(iy + 1)*(CAMERA_PIX_X + 1) + ix + 1])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_));
+				Point* p3 = new Point((*(screen_patches_corners_normals[(iy + 1)*(CAMERA_PIX_X + 1) + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_));
+				Point* c  = new Point((*(screen_patches_centers_normals[iy*CAMERA_PIX_X + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_)); 
+				// PointMesh
+				// Each wall_patch will be a PointMesh with one rectangle inside the Object3D wall_patches
+				PointMesh* pixel_patches_pm = new PointMesh(vp_rectangle(p0, p1, p2, p3), RECTANGLE, c, albedo);
+				(*pixel_patches)[iy*CAMERA_PIX_X + ix] = pixel_patches_pm;	// pos_in_vector = iy*CAMERA_PIX_X + ix
+			}
+		}
+		// Object3D_Set
+		//delete OBJECT3D_SET[PIXEL_PATCHES];	// with this line it crashes when looping
+		OBJECT3D_SET[PIXEL_PATCHES] = pixel_patches;
+	}
+}
+
+// sets the vector of normals of the centers and corners of the pixel patches from the camera(pixel patch = PointMesh with one rectangle). Only for Direct-Vision-Any scene
+void set_screen_normals_pixel_patches(std::vector<Point*> & screen_patches_corners_normals_, std::vector<Point*> & screen_patches_centers_normals_, Point* camera_pos_, Point* camera_rot_, Point* camera_centre_) {
+
+	// code taken from set_wall_patches(...) below: -------------------------------------------------------------------------------------------------
+	// setting the screen of the original camera FoV measurement
+	std::vector<Point*> screen_patches_corners((CAMERA_PIX_X + 1) * (CAMERA_PIX_Y + 1));
+	std::vector<Point*> screen_patches_centers(CAMERA_PIX_X * CAMERA_PIX_Y);
+	float pixel_size_x = CAMERA_FOV_X_METERS / ((float)CAMERA_PIX_X);
+	float pixel_size_y = CAMERA_FOV_Y_METERS / ((float)CAMERA_PIX_Y);
+	float pixel_center0_x = pixel_size_x / 2.0f;
+	float pixel_center0_y = pixel_size_y / 2.0f;
+	float screen_center_x = CAMERA_FOV_X_METERS / 2.0f;
+	float screen_center_y = CAMERA_FOV_Y_METERS / 2.0f;
+	for (int iy = 0; iy <= CAMERA_PIX_Y; iy++) {
+		for (int ix = 0; ix <= CAMERA_PIX_X; ix++) {
+			screen_patches_corners[iy*(CAMERA_PIX_X + 1) + ix] = new Point(((float)ix)*pixel_size_x, ((float)iy)*pixel_size_y, 0.0f);
+		}
+	}
+	for (int iy = 0; iy < CAMERA_PIX_Y; iy++) {
+		for (int ix = 0; ix < CAMERA_PIX_X; ix++) {
+			screen_patches_centers[iy*CAMERA_PIX_X + ix] = new Point(pixel_center0_x + ((float)ix)*pixel_size_x, pixel_center0_y + ((float)iy)*pixel_size_y, 0.0f);
+		}
+	}
+	PointMesh* screen_patches_corners_pm = new PointMesh(screen_patches_corners, PT, new Point(screen_center_x, screen_center_y, 0.0f));
+	PointMesh* screen_patches_centers_pm = new PointMesh(screen_patches_centers, PT, new Point(screen_center_x, screen_center_y, 0.0f));
+	// setting the relative-to-the-camera position of the original camera FoV measurement
+	(*screen_patches_corners_pm).tra_center_to(camera_centre_);
+	(*screen_patches_centers_pm).tra_center_to(camera_centre_);
+	(*screen_patches_corners_pm).rot_from_c(new Point(0.0f, 180.0f, 0.0f), true);
+	(*screen_patches_centers_pm).rot_from_c(new Point(0.0f, 180.0f, 0.0f), true);
+	(*screen_patches_corners_pm).tra_center_to(new Point(0.0f, 0.0f, CAMERA_DIST_FOV_MEAS));
+	(*screen_patches_centers_pm).tra_center_to(new Point(0.0f, 0.0f, CAMERA_DIST_FOV_MEAS));
+	// moving the screen to the new position of the camera
+	(*screen_patches_corners_pm).tra(camera_pos_);
+	(*screen_patches_centers_pm).tra(camera_pos_);
+	(*screen_patches_corners_pm).rot(camera_rot_, camera_pos_, true);
+	(*screen_patches_centers_pm).rot(camera_rot_, camera_pos_, true);
+	// code taken from set_wall_patches(...) above: -------------------------------------------------------------------------------------------------
+	
+	// fill the vectors of Points with the corresponding normals
+	for (size_t i = 0; i < (*screen_patches_corners_pm).p.size(); i++) {
+		Point* pn = new Point(*(*screen_patches_corners_pm).p[i]);
+		(*pn) = (*pn) - (*camera_centre_);
+		(*pn).normalize();
+		screen_patches_corners_normals_[i] = pn;
+	}
+	for (size_t i = 0; i < (*screen_patches_centers_pm).p.size(); i++) {
+		Point* pn = new Point(*(*screen_patches_centers_pm).p[i]);
+		(*pn) = (*pn) - (*camera_centre_);
+		(*pn).normalize();
+		screen_patches_centers_normals_[i] = pn;
+	}
+}
+
+// sets a depth map from the 2 frames
+void set_depth_map(cv::Mat & depth_map_, Frame & Frame_00_cap, Frame & Frame_90_cap) {
+
+	// It would be better to do this by accessing to a calibration matrix
+	
+	float offset = 4.0f;
+	for (int r = 0; r < depth_map_.rows; r++) {
+		for (int c = 0; c < depth_map_.cols; c++) {
+			depth_map_.at<float>(r,c) = atan2(-Frame_90_cap.at(r,c,1), Frame_00_cap.at(r,c,1)) * C_LIGHT_AIR / (2 * PI * Frame_00_cap.frequency * 1000000.0f) + offset;
+		}
+	}
 }
 
 // sets the Object3D with the lines representing the camera FoV and its intersection with the wall
