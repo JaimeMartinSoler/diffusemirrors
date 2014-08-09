@@ -988,15 +988,13 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequ
 		freqd = get_cpu_frequency();
 		int shutter = shutters[0].first;
 		unsigned short* buffer = shutters[0].second;
-		//cout << " " << shutter << flush;
 
 		// PMD CAPTURE
 		pmd_capture(hnd, port, shutter, frequency_, distance_, buffer, w, h, numframes);
 
-		// unsigned short* ushort_img[0][0] will be size w*h*shutters.size()*2	// 2=num_of_phases
+		// unsigned short* ushort_img[0][0] will be size w*h*shutters.size()*2	// 2 = num_of_phases
 		// will contain all the data captured for those shutters
 		process_data_to_buffer(w, h, shutters, ushort_img, 0);
-		//cout << endl;
 						
 		// ABSOLUTELY IMPORTANT for thermal stability: 
 		// add delay to ensure a duty cycle below 4%
@@ -1006,12 +1004,7 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequ
 		if (extra_delay > 0)
 		Sleep(extra_delay);
 
-		//Sleep(2000);
-		//int totalfreqs = 1;
-		//int currentfreq = 1;
-		//cout << "Progress: " << (float)(100 * (currentfreq+1)/totalfreqs) << "% of pass " << take <<endl;
-
-		// Save data_buffer_PMD to the DataPMD instance
+		// Save buffer to Frames. The frames construction takes: < 1 ms
 		if (&Frame_00_cap != NULL)
 			Frame_00_cap = Frame(ushort_img[0], h, w, distance_, frequency_, shutter_, phases[0], 0, DATA_REAL_TIME);
 		if (&Frame_90_cap != NULL)

@@ -17,7 +17,15 @@ Jaime Martin
 
 #include <thread>      
 
-
+// To measure loop time:
+/*
+	const clock_t begin_time = clock();
+		// code...
+	const clock_t end_time = clock();
+	float ms_time = 1000.0f * float(end_time - begin_time) / (float)CLOCKS_PER_SEC;
+	float fps_time = 1000.0f / ms_time;
+	std::cout << "time = " << ms_time << " ms,    fps = " << fps_time <<  " fps\n";
+*/
 
 
 
@@ -35,7 +43,7 @@ int main(int argc, char** argv) {
 	// ------------------------------------------------------------------------------------------------------------------------------
 
 	Scene scene = DIRECT_VISION_ANY;	// DIRECT_VISION_WALL,    DIRECT_VISION_ANY,    DIFFUSED_MIRROR,    UNKNOWN_SCENE
-	bool loop = true;
+	bool loop = false;
 
 	// tests some functions
 	//test();
@@ -60,8 +68,8 @@ int main(int argc, char** argv) {
 	}
 	std::cout << "data_read_main() done\n";
 	
-	std::cout << "Sleep for 5 seconds\n";
-	Sleep(5000);
+	std::cout << "Sleep for 2 seconds\n";
+	Sleep(2000);
 	std::cout << "Wake up\n";
 	// Set all the object3D of the corresponding scene
 	std::thread thread_set_scene (set_scene, scene, loop);

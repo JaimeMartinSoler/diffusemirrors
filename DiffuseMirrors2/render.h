@@ -59,8 +59,17 @@ void specialKeys(int key, int x, int y);
 // keyboardKeys() Callback Function
 void keyboardKeys(unsigned char key, int x, int y);
 
-// idle(): to deal with th mouse
+// idle(): executed when render is free (not drawing)
 void idle();
+
+// calculates the frames per second
+void calculateFPS();
+
+// draws FPS
+void drawFPS();
+
+// draws a string at the specified coordinates
+void printw (float x, float y, float z, char* format, ...);
 
 // mouse(...): to deal with th mouse
 void mouse(int button, int state, int x, int y);

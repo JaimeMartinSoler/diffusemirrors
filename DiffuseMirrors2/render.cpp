@@ -15,6 +15,7 @@ From the building parameters it renders the building
 #include "scene.h"
 
 // Global variables
+// position, rotation, mouse
 char* title = "Master Thesis";
 float rotate_x = 0.0f;
 float rotate_y = 0.0f;
@@ -31,6 +32,11 @@ float scale_x = 1.0f;
 float scale_y = 1.0f;
 float scale_z = 1.0f;
 float scale_incr = 1.05f;
+// fps
+int frameCount = 0;
+float fps = 0.0f;
+int currentTime = 0;
+int previousTime = 0;
 
 // Initialize OpenGL Graphics 
 void initGL() {
@@ -224,6 +230,7 @@ void display() {
 	glMatrixMode(GL_MODELVIEW);     // To operate on model-view matrix
 
 	render_OBJECT3D_SET();
+	drawFPS();
 
 	glutSwapBuffers();  // Swap the front and back frame buffers (double buffering)
 }
@@ -290,13 +297,83 @@ void keyboardKeys(unsigned char key, int x, int y) {
 	glutPostRedisplay();
 }
 
-// idle(): to deal with th mouse
+// idle(): executed when render is free (not drawing)
 void idle() {
-	if (!mouseDown) {
-		rotate_x += rotate_incr;
-		rotate_y += rotate_incr;
-	}
+	// calculate FPS
+    calculateFPS();
+	// draw the current frame
 	glutPostRedisplay();
+}
+
+// calculates the frames per second
+void calculateFPS() {
+
+    //  Increase frame count
+    frameCount++;
+
+    //  Get the number of milliseconds since glutInit called 
+    //  (or first call to glutGet(GLUT_ELAPSED_TIME)).
+    currentTime = glutGet(GLUT_ELAPSED_TIME);
+
+    //  Calculate time passed
+    int timeInterval = currentTime - previousTime;
+
+    if (timeInterval > 1000) {
+        //  calculate the number of frames per second
+        fps = ((float)frameCount) / (((float)timeInterval) / 1000.0f);
+        previousTime = currentTime;
+        frameCount = 0;
+    }
+}
+
+// draws FPS
+void drawFPS() {
+
+	glLoadIdentity ();
+	
+	printw (-0.9, -0.9, 0, "FPS: %4.2f", fps);
+	printw (0.9, 0.9, 0, "FPS: %4.2f", fps);
+}
+
+// draws a string at the specified coordinates
+void printw (float x, float y, float z, char* format, ...) {
+
+	va_list args;	//  Variable argument list
+	int len;		//	String length
+	int i;			//  Iterator
+	char * text;	//	Text
+
+	//  Initialize a variable argument list
+	va_start(args, format);
+
+	//  Return the number of characters in the string referenced the list of arguments.
+	//  _vscprintf doesn't count terminating '\0' (that's why +1)
+	len = _vscprintf(format, args) + 1; 
+
+	//  Allocate memory for a string of the specified size
+	text = (char *)malloc(len * sizeof(char));
+
+	//  Write formatted output using a pointer to the list of arguments
+	vsprintf_s(text, len, format, args);
+
+	//  End using variable argument list 
+	va_end(args);
+
+	//  Specify the raster position for pixel operations.
+	glRasterPos3f (x, y, z);
+	//glRasterPos2i( 20, 20 );
+
+	//  Draw the characters one by one
+	//std::cout << text << ",    fps = " << fps << "\n";
+	//glColor3f(1.0f, 0.0f, 0.0f);
+	GLvoid *font_style = GLUT_BITMAP_TIMES_ROMAN_24;
+    for (i = 0; text[i] != '\0'; i++)
+        glutBitmapCharacter(font_style, text[i]);
+	//const unsigned char test[3] = {'W', 'E', '\0'};
+	//glutBitmapString(GLUT_BITMAP_TIMES_ROMAN_24, test); 
+
+	//  Free the allocated memory for the string
+	free(text);
 }
 
 // mouse(...): to deal with th mouse
@@ -332,6 +409,7 @@ int render(int argc, char** argv) {
 	glutKeyboardFunc(keyboardKeys);	// Register callback handler for rotation via UI (WASD, etc)
 	glutMouseFunc(mouse);
 	glutMotionFunc(mouseMotion);
+	glutIdleFunc (idle);
 	initGL();                       // Our own OpenGL initialization
 	glutMainLoop();                 // Enter the infinite event-processing loop
 	return 0;
