@@ -4,6 +4,8 @@
 
 #include "shapes.h"
 #include "data_read.h"
+#include <mutex>              // std::mutex, std::unique_lock
+#include <condition_variable> // std::condition_variable
 
 // enums
 enum Scene {DIRECT_VISION_WALL, DIRECT_VISION_ANY, DIFFUSED_MIRROR, UNKNOWN_SCENE};
@@ -45,6 +47,10 @@ const float PI = 3.14159265359f;
 // Pixels
 const int CAMERA_PIX_X = 165;	// Real: 165
 const int CAMERA_PIX_Y = 120;	// Real: 120
+const int CAMERA_PIX_X_BAD_LEFT = 1;
+const int CAMERA_PIX_X_BAD_RIGHT = 1;
+const int CAMERA_PIX_X_BAD = CAMERA_PIX_X_BAD_LEFT + CAMERA_PIX_X_BAD_RIGHT;
+const int CAMERA_PIX_X_GOOD = CAMERA_PIX_X - CAMERA_PIX_X_BAD;
 // Measuring the FoV of the camera
 const float CAMERA_DIST_FOV_MEAS = 1.0f;	// distance from camera center and screen (with same normal)
 const float CAMERA_FOV_X_METERS = 0.5f;
@@ -77,9 +83,6 @@ const int PIXEL_PATCHES  = 10;	// Only to represent the Direct-Vision-Any scene
 // Image Formation Model
 const float L_E = 1.0f;	// Le(l) in the paper. Radiance from the light point in the wall from the laser
 
-// To externally control the capability to loop of the capturetoolDM2.cpp functions (true by default)
-extern bool PMD_LOOP_ENABLE;
-
 // vectors with all the object3D to be studied (and rendered)
 const int OBJECT3D_SET_SIZE = 11;
 extern Object3D_Set OBJECT3D_SET;
@@ -90,6 +93,14 @@ extern DataPMD DATAPMD_CAPTURE;	// DataPMD Captured (directly from the PMD to th
 extern Frame FRAME_00_CAPTURE;	// Frame (phase=00) Captured (directly from the PMD to this object)
 extern Frame FRAME_90_CAPTURE;	// Frame (phase=90) Captured (directly from the PMD to this object)
 
+// To externally control the capability to loop of the capturetoolDM2.cpp functions (true by default)
+extern bool PMD_LOOP_ENABLE;
+
+// Syncornization
+extern std::mutex mutex_frame_object;
+extern std::condition_variable cv_frame_object;
+extern bool UPDATED_NEW_FRAME;
+extern bool UPDATED_NEW_OBJECT;
 
 #endif
 

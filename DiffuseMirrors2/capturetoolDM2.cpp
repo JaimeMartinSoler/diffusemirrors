@@ -976,6 +976,10 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequ
 	// Init OpenCV
 	cvNamedWindow(WindowName, CV_WINDOW_AUTOSIZE);
 
+	// Syncronization
+	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
+	locker_frame_object = std::unique_lock<std::mutex>(mutex_frame_object,std::defer_lock);
+
 	// --- CAPTURE LOOP --------------------------------------------------------------------------------------
 	bool first_iter = true;
 	while(loop || first_iter) {
@@ -1004,11 +1008,22 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequ
 		if (extra_delay > 0)
 		Sleep(extra_delay);
 
-		// Save buffer to Frames. The frames construction takes: < 1 ms
+		// Save buffer to Frames. The frames construction takes: < 1 ms. Deals with Syncronization.
+		locker_frame_object.lock();		// Lock mutex_frame_object, any thread which used mutex_frame_object can NOT continue untill unlock()
+		while (!UPDATED_NEW_OBJECT) {
+			std::cout << "\n\nWaiting in Frame to finish the UPDATED_NEW_OBJECT. This should never happen!\n\n";
+			cv_frame_object.wait(locker_frame_object);
+		}
 		if (&Frame_00_cap != NULL)
 			Frame_00_cap = Frame(ushort_img[0], h, w, distance_, frequency_, shutter_, phases[0], 0, DATA_REAL_TIME);
 		if (&Frame_90_cap != NULL)
 			Frame_90_cap = Frame(ushort_img[0], h, w, distance_, frequency_, shutter_, phases[1], 1, DATA_REAL_TIME);
+		//std::cout << "UPDATED_NEW_FRAME";
+		UPDATED_NEW_FRAME = true;
+		UPDATED_NEW_OBJECT = false;
+		cv_frame_object.notify_all();	// Notify all cv_frame_object. All threads waiting for cv_frame_object will break the wait after waking up
+		locker_frame_object.unlock();	// Unlock mutex_frame_object, now threads which used mutex_frame_object can continue
+
 	}
 	// --- END OF CAPTURE LOOP -------------------------------------------------------------------------------
 	

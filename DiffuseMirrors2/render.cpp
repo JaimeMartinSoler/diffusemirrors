@@ -228,7 +228,7 @@ void render_point(Point* p0) {
 void display() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear color and depth buffers
 	glMatrixMode(GL_MODELVIEW);     // To operate on model-view matrix
-
+	
 	render_OBJECT3D_SET();
 	drawFPS();
 

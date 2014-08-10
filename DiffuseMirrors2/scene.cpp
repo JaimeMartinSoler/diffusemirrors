@@ -183,7 +183,7 @@ void set_scene_direct_vision_any (bool loop) {	// by default: loop = false
 	set_laser(&laser_pos, &laser_rot, &laser_size, &laser_centre);
 
 	// WALL (2)
-	Point wall_pos(-1.625f, 0.0f, -1.21f);		// pos of the center of the wall
+	Point wall_pos(-1.625f, 0.0f, -1.36f);		// pos of the center of the wall
 	Point wall_rot(0.0f, 0.0f, 0.0f);			// rot from the center of the wall
 	Point wall_size(4.0f, 0.01f, 0.2f);
 	Point wall_centre(0.0f, 0.0f, 0.0f);		// centre relative to the first point
@@ -430,6 +430,10 @@ void set_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_cen
 	// Ordering: 1st row: col, col, col... 2nd row: col, col, col... from left to right, from top to bottom (matrix ordering)
 	cv::Mat depth_map(CAMERA_PIX_Y, CAMERA_PIX_X, cv::DataType<float>::type);
 	
+	// Syncronization
+	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
+	locker_frame_object = std::unique_lock<std::mutex>(mutex_frame_object,std::defer_lock);
+
 	Point* camera_centre_abs = (*(*OBJECT3D_SET[CAMERA])[0]).c;
 	float albedo = 0.5f;	// does not matter
 	bool first_iter = true;
@@ -442,6 +446,13 @@ void set_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_cen
 		if (!PMD_LOOP_ENABLE && !first_iter)
 			break;
 		
+		// Syncronization
+		locker_frame_object.lock();		// Lock mutex_frame_object, any thread which used mutex_frame_object can NOT continue until unlock()
+		while (!UPDATED_NEW_FRAME) {
+			//std::cout << "Waiting in Object to finish the UPDATED_NEW_Frame. This is OK!\n";
+			cv_frame_object.wait(locker_frame_object);
+		}
+
 		set_depth_map(depth_map, FRAME_00_CAPTURE, FRAME_90_CAPTURE);
 
 		// FIRST ITER
@@ -486,6 +497,13 @@ void set_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_cen
 			}
 		}
 		
+		// Syncronization
+		//std::cout << ",    UPDATED_NEW_OBJECT\n";
+		UPDATED_NEW_FRAME = false;
+		UPDATED_NEW_OBJECT = true;
+		cv_frame_object.notify_all();	// Notify all cv_frame_object. All threads waiting for cv_frame_object will break the wait after waking up
+		locker_frame_object.unlock();	// Unlock mutex_frame_object, now threads which used mutex_frame_object can continue
+
 		//const clock_t end_time = clock();
 		//float ms_time = 1000.0f * float(end_time - begin_time) / (float)CLOCKS_PER_SEC;
 		//float fps_time = 1000.0f / ms_time;
@@ -495,6 +513,7 @@ void set_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_cen
 	}
 	// --- END OF LOOP -----------------------------------------------------------------------------------------
 }
+
 
 // sets the vector of normals of the centers and corners of the pixel patches from the camera(pixel patch = PointMesh with one rectangle). Only for Direct-Vision-Any scene
 void set_screen_normals_pixel_patches(std::vector<Point*> & screen_patches_corners_normals_, std::vector<Point*> & screen_patches_centers_normals_, Point* camera_pos_, Point* camera_rot_, Point* camera_centre_) {
@@ -556,11 +575,21 @@ void set_depth_map(cv::Mat & depth_map_, Frame & Frame_00_cap, Frame & Frame_90_
 
 	// It would be better to do this by accessing to a calibration matrix
 	
-	float offset = 3.6f;
+	//float wave_length = C_LIGHT_AIR / (Frame_00_cap.frequency * 1000000.0f);
+	//int range_cycle = 1;
+	//float range_min = (wave_length / 2.0f) * range_cycle;
+	//float range_max = (wave_length / 2.0f) * (range_cycle + 1);
+	//float delay_ns = 6.667.0f;
+	//float delay_m  = delay_ns * C_LIGHT_AIR / 1000000000.f;
+	
+	// There exists an additional delay between the laser and the camera. This delay is freq-dependent (not const in rad or meters),
+	// but it does not depend on a constant delay time, so it sould be calibrated for each frequency.
+	float delay_m_100MHz = 2.0f;	// delay @ 100 MHz = 2.0m
+
 	float path_dist = 0.0f;
 	for (int r = 0; r < depth_map_.rows; r++) {
 		for (int c = 0; c < depth_map_.cols; c++) {
-			path_dist = atan2(-Frame_90_cap.at(r,c,1), Frame_00_cap.at(r,c,1)) * C_LIGHT_AIR / (2 * PI * Frame_00_cap.frequency * 1000000.0f) + offset;
+			path_dist = (atan2(-Frame_90_cap.at(r,c,1), Frame_00_cap.at(r,c,1)) + PI) * C_LIGHT_AIR / (2 * PI * Frame_00_cap.frequency * 1000000.0f) + delay_m_100MHz;
 			depth_map_.at<float>(r,c) = path_dist / 2.0f;	// this is an approximation that supposes camera and laser close enough
 		}
 	}
