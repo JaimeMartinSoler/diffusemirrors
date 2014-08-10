@@ -228,6 +228,10 @@ void set_scene_direct_vision_any (bool loop) {	// by default: loop = false
 	OBJECT3D_SET[VOLUME_PATCHES] = volume_patches_obj3D;
 
 	// PIXEL_PATCHES (10)
+	// first: empty object to let the render start properly since the first frame
+	Object3D* pixel_patches_obj3D = new Object3D(0);
+	OBJECT3D_SET[PIXEL_PATCHES] = pixel_patches_obj3D;
+	// second: set_pixel_patches(...) actually
 	set_pixel_patches(&camera_pos, &camera_rot, &camera_centre, screen_patches_corners_normals, screen_patches_centers_normals);
 
 	// UPDATE PIXEL PATCHES IF LOOP
