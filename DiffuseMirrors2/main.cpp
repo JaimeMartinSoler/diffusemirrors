@@ -68,9 +68,6 @@ int main(int argc, char** argv) {
 	}
 	std::cout << "data_read_main() done\n";
 	
-	//std::cout << "Sleep for 2 seconds\n";
-	//Sleep(2000);
-	std::cout << "Wake up\n";
 	// Set all the object3D of the corresponding scene
 	std::thread thread_set_scene (set_scene, scene, loop);
 	std::cout << "set_scene() done\n";

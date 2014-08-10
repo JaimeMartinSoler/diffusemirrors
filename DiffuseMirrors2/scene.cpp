@@ -174,6 +174,11 @@ void set_scene_direct_vision_any (bool loop) {	// by default: loop = false
 	Point camera_size(0.15f, 0.15f, 0.04f);
 	Point camera_centre(camera_size.x() / 2.0f, camera_size.y() / 2.0f, 0.0f);	// centre relative to the first point
 	set_camera(&camera_pos, &camera_rot, &camera_size, &camera_centre);
+	// Get the screen normals:
+	// Ordering: 1st row: col, col, col... 2nd row: col, col, col... from left to right, from bottom to top
+	std::vector<Point*> screen_patches_corners_normals((CAMERA_PIX_X + 1) * (CAMERA_PIX_Y + 1));
+	std::vector<Point*> screen_patches_centers_normals(CAMERA_PIX_X * CAMERA_PIX_Y);
+	set_screen_normals_pixel_patches(screen_patches_corners_normals, screen_patches_centers_normals, &camera_pos, &camera_rot, &camera_centre);
 
 	// LASER (1)
 	Point laser_pos(-0.15f, 0.75f, 0.0f);		// pos of the center of the laser
@@ -208,7 +213,7 @@ void set_scene_direct_vision_any (bool loop) {	// by default: loop = false
 
 	// WALL_PATCHES (6) // empty
 	Object3D* wall_patches_obj3D = new Object3D(0);
-	OBJECT3D_SET[PIXEL_PATCHES] = wall_patches_obj3D;
+	OBJECT3D_SET[WALL_PATCHES] = wall_patches_obj3D;
 
 	// CAMERA_FOV (7) // empty (CAMERA_FOV uses WALL_PATCHES)
 	Object3D* camera_fov_obj3D = new Object3D(0);
@@ -223,7 +228,11 @@ void set_scene_direct_vision_any (bool loop) {	// by default: loop = false
 	OBJECT3D_SET[VOLUME_PATCHES] = volume_patches_obj3D;
 
 	// PIXEL_PATCHES (10)
-	set_pixel_patches(&camera_pos, &camera_rot, &camera_centre, loop);
+	set_pixel_patches(&camera_pos, &camera_rot, &camera_centre, screen_patches_corners_normals, screen_patches_centers_normals);
+
+	// UPDATE PIXEL PATCHES IF LOOP
+	if (loop)
+		update_pixel_patches(&camera_pos, &camera_rot, &camera_centre, screen_patches_corners_normals, screen_patches_centers_normals, loop);
 }
 
 
@@ -418,15 +427,8 @@ void set_wall_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_size
 }
 
 // sets the Object3D with all the pixel patches (pixel patch = PointMesh with one rectangle). Only for Direct-Vision-Any scene
-void set_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_centre_, bool loop) {	// by default: loop = false
-	
-	// Get the screen normals (once, out of the loop).
-	// Ordering: 1st row: col, col, col... 2nd row: col, col, col... from left to right, from bottom to top
-	std::vector<Point*> screen_patches_corners_normals((CAMERA_PIX_X + 1) * (CAMERA_PIX_Y + 1));
-	std::vector<Point*> screen_patches_centers_normals(CAMERA_PIX_X * CAMERA_PIX_Y);
-	set_screen_normals_pixel_patches(screen_patches_corners_normals, screen_patches_centers_normals, camera_pos_, camera_rot_, camera_centre_);
+void set_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_centre_, std::vector<Point*> & screen_patches_corners_normals_, std::vector<Point*> & screen_patches_centers_normals_) {	
 
-	// Get the depth map (in loop)
 	// Ordering: 1st row: col, col, col... 2nd row: col, col, col... from left to right, from top to bottom (matrix ordering)
 	cv::Mat depth_map(CAMERA_PIX_Y, CAMERA_PIX_X, cv::DataType<float>::type);
 	
@@ -436,6 +438,55 @@ void set_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_cen
 
 	Point* camera_centre_abs = (*(*OBJECT3D_SET[CAMERA])[0]).c;
 	float albedo = 0.5f;	// does not matter
+
+	// Syncronization
+	locker_frame_object.lock();		// Lock mutex_frame_object, any thread which used mutex_frame_object can NOT continue until unlock()
+	while (!UPDATED_NEW_FRAME) {
+		//std::cout << "Waiting in Object to finish the UPDATED_NEW_Frame. This is OK!\n";
+		cv_frame_object.wait(locker_frame_object);
+	}
+
+	// Setting Depth Map
+	set_depth_map(depth_map, FRAME_00_CAPTURE, FRAME_90_CAPTURE);
+
+	// Object3D
+	Object3D* pixel_patches = new Object3D(CAMERA_PIX_X * CAMERA_PIX_Y);
+	for (int iy = 0; iy < CAMERA_PIX_Y; iy++) {
+		for (int ix = 0; ix < CAMERA_PIX_X; ix++) {
+			Point* p0 = new Point((*(screen_patches_corners_normals_[iy*(CAMERA_PIX_X + 1) + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
+			Point* p1 = new Point((*(screen_patches_corners_normals_[iy*(CAMERA_PIX_X + 1) + ix + 1])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
+			Point* p2 = new Point((*(screen_patches_corners_normals_[(iy + 1)*(CAMERA_PIX_X + 1) + ix + 1])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
+			Point* p3 = new Point((*(screen_patches_corners_normals_[(iy + 1)*(CAMERA_PIX_X + 1) + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
+			Point* c  = new Point((*(screen_patches_centers_normals_[iy*CAMERA_PIX_X + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs)); 
+			// PointMesh
+			// Each wall_patch will be a PointMesh with one rectangle inside the Object3D wall_patches
+			PointMesh* pixel_patches_pm = new PointMesh(vp_rectangle(p0, p1, p2, p3), RECTANGLE, c, albedo);
+			(*pixel_patches)[iy*CAMERA_PIX_X + ix] = pixel_patches_pm;	// pos_in_vector = iy*CAMERA_PIX_X + ix
+		}
+	}
+	// Object3D_Set
+	//delete OBJECT3D_SET[PIXEL_PATCHES];	// with this line it crashes when looping
+	OBJECT3D_SET[PIXEL_PATCHES] = pixel_patches;
+		
+	// Syncronization
+	//std::cout << ",    UPDATED_NEW_OBJECT\n";
+	UPDATED_NEW_FRAME = false;
+	UPDATED_NEW_OBJECT = true;
+	cv_frame_object.notify_all();	// Notify all cv_frame_object. All threads waiting for cv_frame_object will break the wait after waking up
+	locker_frame_object.unlock();	// Unlock mutex_frame_object, now threads which used mutex_frame_object can continue
+}
+
+// sets the Object3D with all the pixel patches (pixel patch = PointMesh with one rectangle). Only for Direct-Vision-Any scene
+void update_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_centre_, std::vector<Point*> & screen_patches_corners_normals_, std::vector<Point*> & screen_patches_centers_normals_, bool loop) {	// by default: loop = false
+
+	// Ordering: 1st row: col, col, col... 2nd row: col, col, col... from left to right, from top to bottom (matrix ordering)
+	cv::Mat depth_map(CAMERA_PIX_Y, CAMERA_PIX_X, cv::DataType<float>::type);
+	
+	// Syncronization
+	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
+	locker_frame_object = std::unique_lock<std::mutex>(mutex_frame_object,std::defer_lock);
+
+	Point* camera_centre_abs = (*(*OBJECT3D_SET[CAMERA])[0]).c;
 	bool first_iter = true;
 
 	// --- LOOP ------------------------------------------------------------------------------------------------
@@ -445,6 +496,7 @@ void set_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_cen
 
 		if (!PMD_LOOP_ENABLE && !first_iter)
 			break;
+		first_iter = false;
 		
 		// Syncronization
 		locker_frame_object.lock();		// Lock mutex_frame_object, any thread which used mutex_frame_object can NOT continue until unlock()
@@ -452,48 +504,25 @@ void set_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_cen
 			//std::cout << "Waiting in Object to finish the UPDATED_NEW_Frame. This is OK!\n";
 			cv_frame_object.wait(locker_frame_object);
 		}
-
+		
+		// Setting Depth Map
 		set_depth_map(depth_map, FRAME_00_CAPTURE, FRAME_90_CAPTURE);
 
-		// FIRST ITER
-		if (first_iter) {
-			// Object3D
-			Object3D* pixel_patches = new Object3D(CAMERA_PIX_X * CAMERA_PIX_Y);
-			for (int iy = 0; iy < CAMERA_PIX_Y; iy++) {
-				for (int ix = 0; ix < CAMERA_PIX_X; ix++) {
-					Point* p0 = new Point((*(screen_patches_corners_normals[iy*(CAMERA_PIX_X + 1) + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
-					Point* p1 = new Point((*(screen_patches_corners_normals[iy*(CAMERA_PIX_X + 1) + ix + 1])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
-					Point* p2 = new Point((*(screen_patches_corners_normals[(iy + 1)*(CAMERA_PIX_X + 1) + ix + 1])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
-					Point* p3 = new Point((*(screen_patches_corners_normals[(iy + 1)*(CAMERA_PIX_X + 1) + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
-					Point* c  = new Point((*(screen_patches_centers_normals[iy*CAMERA_PIX_X + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs)); 
-					// PointMesh
-					// Each wall_patch will be a PointMesh with one rectangle inside the Object3D wall_patches
-					PointMesh* pixel_patches_pm = new PointMesh(vp_rectangle(p0, p1, p2, p3), RECTANGLE, c, albedo);
-					(*pixel_patches)[iy*CAMERA_PIX_X + ix] = pixel_patches_pm;	// pos_in_vector = iy*CAMERA_PIX_X + ix
-				}
-			}
-			// Object3D_Set
-			//delete OBJECT3D_SET[PIXEL_PATCHES];	// with this line it crashes when looping
-			OBJECT3D_SET[PIXEL_PATCHES] = pixel_patches;
-			first_iter = false;
-		}
 		// LOOP ITERS (not the first)	// this loop takes 0-1 ms
-		else {
-			for (int iy = 0; iy < CAMERA_PIX_Y; iy++) {
-				for (int ix = 0; ix < CAMERA_PIX_X; ix++) {
-					Point p0 ((*(screen_patches_corners_normals[iy*(CAMERA_PIX_X + 1) + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
-					Point p1 ((*(screen_patches_corners_normals[iy*(CAMERA_PIX_X + 1) + ix + 1])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
-					Point p2 ((*(screen_patches_corners_normals[(iy + 1)*(CAMERA_PIX_X + 1) + ix + 1])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
-					Point p3 ((*(screen_patches_corners_normals[(iy + 1)*(CAMERA_PIX_X + 1) + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
-					Point c  ((*(screen_patches_centers_normals[iy*CAMERA_PIX_X + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs)); 
-					// Update points and center
-					// WARNING: NORMAL VECTOR OF THE POINTMESH IS NOT BEEING UPDATED (but neither being used)
-					(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[iy*CAMERA_PIX_X + ix]).p[0]) = p0;
-					(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[iy*CAMERA_PIX_X + ix]).p[1]) = p1;
-					(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[iy*CAMERA_PIX_X + ix]).p[2]) = p2;
-					(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[iy*CAMERA_PIX_X + ix]).p[3]) = p3;
-					(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[iy*CAMERA_PIX_X + ix]).c) = c;
-				}
+		for (int iy = 0; iy < CAMERA_PIX_Y; iy++) {
+			for (int ix = 0; ix < CAMERA_PIX_X; ix++) {
+				Point p0 ((*(screen_patches_corners_normals_[iy*(CAMERA_PIX_X + 1) + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
+				Point p1 ((*(screen_patches_corners_normals_[iy*(CAMERA_PIX_X + 1) + ix + 1])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
+				Point p2 ((*(screen_patches_corners_normals_[(iy + 1)*(CAMERA_PIX_X + 1) + ix + 1])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
+				Point p3 ((*(screen_patches_corners_normals_[(iy + 1)*(CAMERA_PIX_X + 1) + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
+				Point c  ((*(screen_patches_centers_normals_[iy*CAMERA_PIX_X + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs)); 
+				// Update points and center
+				// WARNING: NORMAL VECTOR OF THE POINTMESH IS NOT BEEING UPDATED (but neither being used)
+				(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[iy*CAMERA_PIX_X + ix]).p[0]) = p0;
+				(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[iy*CAMERA_PIX_X + ix]).p[1]) = p1;
+				(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[iy*CAMERA_PIX_X + ix]).p[2]) = p2;
+				(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[iy*CAMERA_PIX_X + ix]).p[3]) = p3;
+				(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[iy*CAMERA_PIX_X + ix]).c) = c;
 			}
 		}
 		
@@ -508,17 +537,13 @@ void set_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_cen
 		//float ms_time = 1000.0f * float(end_time - begin_time) / (float)CLOCKS_PER_SEC;
 		//float fps_time = 1000.0f / ms_time;
 		//std::cout << "time = " << ms_time << " ms,    fps = " << fps_time <<  " fps\n";
-
-		//rot_from_c(OBJECT3D_SET[WALL], new Point(0.5f, 0.0f, 0.0f), true);
 	}
 	// --- END OF LOOP -----------------------------------------------------------------------------------------
 }
 
-
 // sets the vector of normals of the centers and corners of the pixel patches from the camera(pixel patch = PointMesh with one rectangle). Only for Direct-Vision-Any scene
 void set_screen_normals_pixel_patches(std::vector<Point*> & screen_patches_corners_normals_, std::vector<Point*> & screen_patches_centers_normals_, Point* camera_pos_, Point* camera_rot_, Point* camera_centre_) {
 
-	// code taken from set_wall_patches(...) below: -------------------------------------------------------------------------------------------------
 	// setting the screen of the original camera FoV measurement
 	std::vector<Point*> screen_patches_corners((CAMERA_PIX_X + 1) * (CAMERA_PIX_Y + 1));
 	std::vector<Point*> screen_patches_centers(CAMERA_PIX_X * CAMERA_PIX_Y);
@@ -552,8 +577,8 @@ void set_screen_normals_pixel_patches(std::vector<Point*> & screen_patches_corne
 	(*screen_patches_centers_pm).tra(camera_pos_);
 	(*screen_patches_corners_pm).rot(camera_rot_, camera_pos_, true);
 	(*screen_patches_centers_pm).rot(camera_rot_, camera_pos_, true);
-	// code taken from set_wall_patches(...) above: -------------------------------------------------------------------------------------------------
 
+	// get and normalize the vectors
 	Point* camera_centre_abs = (*(*OBJECT3D_SET[CAMERA])[0]).c;
 	// fill the vectors of Points with the corresponding normals
 	for (size_t i = 0; i < (*screen_patches_corners_pm).p.size(); i++) {
