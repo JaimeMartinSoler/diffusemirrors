@@ -16,10 +16,10 @@ void set_scene(Scene scene, bool loop = false);
 
 
 // sets all the Object3D (in OBJECT3D_SET) of the scene
-void set_scene_diffused_mirror();
+void set_scene_diffused_mirror(bool loop = false);
 
 // sets all the scene with the simple configuration
-void set_scene_direct_vision_wall();
+void set_scene_direct_vision_wall(bool loop = false);
 
 // sets all the Direct Vision Any scene
 void set_scene_direct_vision_any(bool loop = false);
@@ -35,10 +35,10 @@ void set_laser(Point* laser_pos_, Point* laser_rot_, Point* laser_size_, Point* 
 void set_box(Point* box_pos_, Point* box_rot_, Point* box_size_, Point* box_centre_, int Obj3D_idx, float albedo);
 
 // sets the Object3D with all the wall patches (wall patch = PointMesh with one rectangle)
-void set_wall_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_size_, Point* camera_centre_, std::vector<float> & wall_patches_albedo_);
+void set_wall_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_size_, Point* camera_centre_, std::vector<Point*> & screen_patches_corners_normals_, std::vector<Point*> & screen_patches_centers_normals_, std::vector<float> & wall_patches_albedo_);
 
 // sets the Object3D with the lines representing the camera FoV and its intersection with the wall
-void set_camera_fov();
+void set_camera_fov(Point* camera_pos_, std::vector<Point*> & screen_patches_corners_normals_);
 
 // sets the Object3D with a line representing the laser ray and its intersection with the wall
 void set_laser_ray();

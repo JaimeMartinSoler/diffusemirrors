@@ -10,6 +10,9 @@
 // Author: Jaime Martin (modification of process_data())
 void process_data_to_buffer(int w, int h, std::vector<std::pair<int, unsigned short* > > &shutters, unsigned short* ushort_img[2], int pass = 0);
 
+// Author: Jaime Martin (modification of process_data()). It does not plot frames with openCV
+void process_data_to_buffer_no_cv(int w, int h, std::vector<std::pair<int, unsigned short* > > &shutters, unsigned short* ushort_img[2], int pass = 0);
+
 bool dir_exists(const std::string& dirName_in);
 
 // Author: Jaime Martin
@@ -62,7 +65,7 @@ int copy_array (unsigned short int* dst, unsigned short int* src, int dst_pos, i
 int PMD_params_to_DataPMD (DataPMD & DataPMD_cap, std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* comport, int & numtakes, bool loop);
 
 // Author: Jaime Martin (modification of previous function)
-// PMD_params_to_DataPMD
+// PMD_params_to_Frame
 int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequency_, float distance_, float shutter_, char* comport, bool loop);
 
 // Author: Jaime Martin 

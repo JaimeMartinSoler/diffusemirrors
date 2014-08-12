@@ -124,6 +124,8 @@ public:
 	// Plot frame with opencv
 	void Frame::plot_frame();
 };
+// For FoV measurement scene. Plot frame with opencv with syncronization
+void plot_frame_fov_measurement(bool loop = false);
 
 
 

@@ -378,6 +378,34 @@ void process_data_to_buffer(int w, int h, std::vector<std::pair<int, unsigned sh
 }
 
 
+// Author: Jaime Martin (modification of process_data()). It does not plot frames with openCV
+void process_data_to_buffer_no_cv(int w, int h, std::vector<std::pair<int, unsigned short* > > &shutters, unsigned short* ushort_img[2], int pass) {	// default: (int pass = 0)
+
+	int capturecount = shutters.size();
+	ushort_img[0] = new unsigned short[w*h*capturecount*2];
+	ushort_img[1] = new unsigned short[w*h*capturecount];
+
+	// Loop through all exposures
+	for (size_t i = 0; i < capturecount; ++i)  { 
+		int shuttertime = shutters[i].first;
+		unsigned short* ubuf = shutters[i].second + w * h; // (discard first subframe)
+
+		// Compute difference images between opposite phases
+		for (int x = 0; x < w; ++x) {
+			for (int y = 0; y < h; ++y) {
+				for (int ph = 0; ph < 2; ++ph) { // 0: 0deg, 1: 90deg
+
+					int diff = (int) ubuf[x + y*w + (2+ph)*w*h] - ubuf[x + y*w +ph*w*h];
+					float gammacorr = pow((double)(diff * 2+32768)/65536.f, 1/1);
+					unsigned char eightbitvalue = 255 * gammacorr;
+
+					// Bias and clamp to 16-bit range
+					diff += 32768;
+					ushort_img[0][x + y*w + i*w*h + capturecount*ph*w*h] = (diff > 65535) ? 65535 : ((diff < 0) ? 0  : diff);
+	}	}	}	}
+}
+
+
 
 
 template <typename T>
@@ -787,7 +815,7 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 				
 				timed = get_cpu_time_cycles() - timed;
 				int ms_elapsed = (int) get_cpu_time_ms(timed, freqd);
-				int extra_delay = 4L*DUTYCYCLE*shutter/1000 - ms_elapsed + 1;
+				int extra_delay = 4L*DUTYCYCLE_INVERSE_OLD*shutter/1000 - ms_elapsed + 1;
 				if (extra_delay > 0)
 				Sleep( extra_delay );
 
@@ -918,7 +946,7 @@ int PMD_params_to_DataPMD (DataPMD & DataPMD_cap, std::vector<float> & frequenci
 						// add delay to ensure a duty cycle below 4%
 						timed = get_cpu_time_cycles() - timed;
 						int ms_elapsed = (int) get_cpu_time_ms(timed, freqd);
-						int extra_delay = 4L*DUTYCYCLE*shutter/1000 - ms_elapsed + 1;
+						int extra_delay = 4L*DUTYCYCLE_INVERSE_OLD*shutter/1000 - ms_elapsed + 1;
 						if (extra_delay > 0)
 						Sleep(extra_delay);
 					}
@@ -948,7 +976,7 @@ int PMD_params_to_DataPMD (DataPMD & DataPMD_cap, std::vector<float> & frequenci
 
 
 // Author: Jaime Martin (modification of previous function)
-// PMD_params_to_DataPMD
+// PMD_params_to_Frame
 int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequency_, float distance_, float shutter_, char* comport, bool loop) {
 
 	// Checking errors in parameters
@@ -972,9 +1000,11 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequ
 	int res = pmdOpenSourcePlugin(&hnd, SOURCE_PLUGIN, SOURCE_PARAM);
 	pmd_handle_error(hnd, res, "Could not open device");
 	SerialPort port = control_init(comport_full_name);
-	double timed, freqd;
+	float ms_time_loop;
+	int ms_extra_delay;
 	// Init OpenCV
-	cvNamedWindow(WindowName, CV_WINDOW_AUTOSIZE);
+	if (CV_WHILE_CAPTURING)
+		cvNamedWindow(WindowName, CV_WINDOW_AUTOSIZE);
 
 	// Syncronization
 	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
@@ -983,32 +1013,36 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequ
 	// --- CAPTURE LOOP --------------------------------------------------------------------------------------
 	bool first_iter = true;
 	while(loop || first_iter) {
+		
+		const clock_t begin_time_loop = clock();	// begin_time_loop for DUTYCYCLE Sleep
 
 		if (!PMD_LOOP_ENABLE && !first_iter)
 			break;
 		first_iter = false;
 
-		timed = get_cpu_time_cycles();
-		freqd = get_cpu_frequency();
 		int shutter = shutters[0].first;
 		unsigned short* buffer = shutters[0].second;
-
+		
 		// PMD CAPTURE
+				//const clock_t begin_time_pmd_capture = clock();
 		pmd_capture(hnd, port, shutter, frequency_, distance_, buffer, w, h, numframes);
-
+				//const clock_t end_time_pmd_capture = clock();
+				//float ms_time_pmd_capture = 1000.0f * float(end_time_pmd_capture - begin_time_pmd_capture) / (float)CLOCKS_PER_SEC;
+				//std::cout << "pmd_capture    : time = " << ms_time_pmd_capture << " ms\n";
+		
 		// unsigned short* ushort_img[0][0] will be size w*h*shutters.size()*2	// 2 = num_of_phases
 		// will contain all the data captured for those shutters
-		process_data_to_buffer(w, h, shutters, ushort_img, 0);
-						
-		// ABSOLUTELY IMPORTANT for thermal stability: 
-		// add delay to ensure a duty cycle below 4%
-		timed = get_cpu_time_cycles() - timed;
-		int ms_elapsed = (int) get_cpu_time_ms(timed, freqd);
-		int extra_delay = 4L*DUTYCYCLE*shutter/1000 - ms_elapsed + 1;
-		if (extra_delay > 0)
-		Sleep(extra_delay);
-
+				//const clock_t begin_time_process_data_to_buffer = clock();
+		if (CV_WHILE_CAPTURING)
+			process_data_to_buffer(w, h, shutters, ushort_img, 0);
+		else
+			process_data_to_buffer_no_cv(w, h, shutters, ushort_img, 0);
+				//const clock_t end_time_process_data_to_buffer = clock();
+				//float ms_time_process_data_to_buffer = 1000.0f * float(end_time_process_data_to_buffer - begin_time_process_data_to_buffer) / (float)CLOCKS_PER_SEC;
+				//std::cout << "data_to_buffer : time = " << ms_time_process_data_to_buffer << " ms\n";
+			
 		// Save buffer to Frames. The frames construction takes: < 1 ms. Deals with Syncronization.
+				//const clock_t begin_time_buffer_to_frame = clock();
 		locker_frame_object.lock();		// Lock mutex_frame_object, any thread which used mutex_frame_object can NOT continue untill unlock()
 		while (!UPDATED_NEW_OBJECT) {
 			std::cout << "\n\nWaiting in Frame to finish the UPDATED_NEW_OBJECT. This should never happen!\n\n";
@@ -1023,7 +1057,22 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequ
 		UPDATED_NEW_OBJECT = false;
 		cv_frame_object.notify_all();	// Notify all cv_frame_object. All threads waiting for cv_frame_object will break the wait after waking up
 		locker_frame_object.unlock();	// Unlock mutex_frame_object, now threads which used mutex_frame_object can continue
+				//const clock_t end_time_buffer_to_frame = clock();
+				//float ms_time_buffer_to_frame = 1000.0f * float(end_time_buffer_to_frame - begin_time_buffer_to_frame) / (float)CLOCKS_PER_SEC;
+				//std::cout << "buffer_to_frame: time = " << ms_time_buffer_to_frame << " ms\n";
 
+		const clock_t end_time_loop = clock();		// end_time_loop for DUTYCYCLE Sleep
+		ms_time_loop = 1000.0f * float(end_time_loop - begin_time_loop) / (float)CLOCKS_PER_SEC;
+		ms_extra_delay = ((float)shutter)/(DUTYCYCLE*1000.0f) - ms_time_loop + 1.0f;
+		if (ms_extra_delay > 0)
+			Sleep(ms_extra_delay);	// suspends the execution of the current thread until the time-out interval elapses
+				//std::cout << "ms_time_loop   : " << ms_time_loop << " ms\n";
+				//std::cout << "ms_extra_delay : " << ms_extra_delay << " ms\n";
+
+				//const clock_t end_time_loop_total = clock();
+				//float ms_time_loop_total = 1000.0f * float(end_time_loop_total - begin_time_loop) / (float)CLOCKS_PER_SEC;
+				//float fps_time_loop_total = 1000.0f / ms_time_loop_total;
+				//std::cout << "total          : time = " << ms_time_loop_total << " ms,    fps = " << fps_time_loop_total <<  " fps\n\n";
 	}
 	// --- END OF CAPTURE LOOP -------------------------------------------------------------------------------
 	

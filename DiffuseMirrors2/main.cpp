@@ -30,6 +30,114 @@ Jaime Martin
 
 
 
+// it allows to externally control when the loops will finish
+void control_loop_pause() {
+	
+	char end_loop[1024];	end_loop[0] = 'n';
+	while ((end_loop[0] != 'y') && (end_loop[0] != 'Y')) {
+		std::cout << "\nDo you want to finish the PMD (and this) loop? (y/n)\n";
+		std::cin >> end_loop;
+	}
+	PMD_LOOP_ENABLE = false;
+}
+
+
+
+
+// main_direct_vision_any(...)
+int main_direct_vision_any(int argc, char** argv, bool loop = true, Scene scene = DIRECT_VISION_ANY) {
+
+	// capture data from PMD
+	std::thread thread_capturetoolDM2_main (capturetoolDM2_main, argc, argv, loop);
+	
+	// Set all the object3D of the corresponding scene
+	std::thread thread_set_scene (set_scene, scene, loop);
+	
+	// Render all the object3D of the scene
+	std::thread thread_render (render, argc, argv);
+	std::cout << "\n\nDo NOT close the openGL window while the PMD loop is runnung.\n(it wouldn't be the end of the world, but it's better not to)\n\n";
+
+	// pause in main to allow control when the loops will finish
+	control_loop_pause();
+
+	// joins
+	thread_capturetoolDM2_main.join();
+	thread_set_scene.join();
+	thread_render.join();
+
+	return 0;
+}
+
+// main_direct_vision_wall(...)
+int main_direct_vision_wall(int argc, char** argv, bool loop = true, Scene scene = DIRECT_VISION_WALL) {
+
+	// capture data from PMD
+	std::thread thread_capturetoolDM2_main (capturetoolDM2_main, argc, argv, loop);
+	
+	// Set all the object3D of the corresponding scene
+	std::thread thread_set_scene (set_scene, scene, loop);
+	
+	// Render all the object3D of the scene
+	std::thread thread_render (render, argc, argv);
+	std::cout << "\n\nDo NOT close the openGL window while the PMD loop is runnung.\n(it wouldn't be the end of the world, but it's better not to)\n\n";
+
+	// pause in main to allow control when the loops will finish
+	control_loop_pause();
+
+	// joins
+	thread_capturetoolDM2_main.join();
+	thread_set_scene.join();
+	thread_render.join();
+
+	return 0;
+	
+	return 0;
+}
+
+// main_diffused_mirror(...)
+int main_diffused_mirror(int argc, char** argv, bool loop = true, Scene scene = DIFFUSED_MIRROR) {
+
+	// capture data from PMD
+	std::thread thread_capturetoolDM2_main (capturetoolDM2_main, argc, argv, loop);
+	
+	// Set all the object3D of the corresponding scene
+	std::thread thread_set_scene (set_scene, scene, loop);
+	
+	// Simulation
+	get_data_sim_diffused_mirror();
+
+	// Render all the object3D of the scene
+	std::thread thread_render (render, argc, argv);
+	std::cout << "\n\nDo NOT close the openGL window while the PMD loop is runnung.\n(it wouldn't be the end of the world, but it's better not to)\n\n";
+
+	// pause in main to allow control when the loops will finish
+	control_loop_pause();
+
+	return 0;
+}
+
+// main_direct_vision_any(...)
+int main_fov_measurement(int argc, char** argv, bool loop = true, Scene scene = FOV_MEASUREMENT) {
+
+	// capture data from PMD
+	std::thread thread_capturetoolDM2_main (capturetoolDM2_main, argc, argv, loop);
+	
+	// plot the frame_00
+	std::thread thread_plot_frame_fov_measurement (plot_frame_fov_measurement, loop);
+
+	// pause in main to allow control when the loops will finish
+	control_loop_pause();
+
+	// joins
+	thread_capturetoolDM2_main.join();
+	thread_plot_frame_fov_measurement.join();
+
+	return 0;
+}
+
+
+
+
 // MAIN
 // Observation: PMD captures at 9.5 fps with the current set-up (2014-08-05):
 //     100 captures (in loop, with pmd always opened) take aprox 10.5 seconds,
@@ -42,58 +150,19 @@ int main(int argc, char** argv) {
 	// DiffuseMirrors2.exe "80 90 100" "0 1 2 3" "1920" f:\tmp\pmdtest2 PMD_test_meas COM6 1
 	// ------------------------------------------------------------------------------------------------------------------------------
 
-	Scene scene = DIRECT_VISION_ANY;	// DIRECT_VISION_WALL,    DIRECT_VISION_ANY,    DIFFUSED_MIRROR,    UNKNOWN_SCENE
-	bool loop = true;
-
 	// tests some functions
 	//test();
 	//return 0;
-	
-	// capture data from PMD
-	std::thread thread_capturetoolDM2_main (capturetoolDM2_main, argc, argv, loop);
-	/*
-	if (capturetoolDM2_main(argc, argv) != 0) {
-		system("pause");
-		return 0;
-	}
-	*/
 
-	// Read data from file (.dat)
-	// This just makes sense if capturetoolDM2_main(...) generated some data to a file,
-	// if we are capturing data directly from the PMD into DataPMD or Frame variables there is nothing to do with data_read_main(),
-	// unless we want to read from a previous measurement, for example one storing the calibration matrix
-	if (data_read_main() != 0) {
-		system("pause");
-		return 0;
-	}
-	std::cout << "data_read_main() done\n";
+	Scene scene = DIRECT_VISION_ANY;	// DIRECT_VISION_WALL,    DIRECT_VISION_ANY,    DIFFUSED_MIRROR,    FOV_MEASUREMENT,    CALIBRATION_MATRIX,    UNKNOWN_SCENE
+	bool loop = true;
 	
-	// Set all the object3D of the corresponding scene
-	std::thread thread_set_scene (set_scene, scene, loop);
-	std::cout << "set_scene() done\n";
-	
-	// Get all the data of the model from the corresponding simulation
-	if (scene == DIRECT_VISION_WALL)
-		get_data_sim_direct_vision_wall();
-	else if (scene == DIFFUSED_MIRROR)
-		get_data_sim_diffused_mirror();
-	std::cout << "get_data() done\n";
-
-	// Render all the object3D of the scene
-	//render(argc, argv);
-	std::thread thread_render (render, argc, argv);
-	std::cout << "\n\nDo NOT close the openGL window while the PMD loop is runnung.\n(it wouldn't be the end of the world, but it's better not to)\n\n";
-
-	// Pause till the threads have ended
-	char end_loop[1024];	end_loop[0] = 'n';
-	while ((end_loop[0] != 'y') && (end_loop[0] != 'Y')) {
-		std::cout << "\nDo you want to finish the PMD (and this) loop? (y/n)\n";
-		std::cin >> end_loop;
+	switch(scene) {
+		case DIRECT_VISION_WALL: main_direct_vision_wall(argc, argv, loop, scene); break;
+		case DIRECT_VISION_ANY : main_direct_vision_any (argc, argv, loop, scene); break;
+		case DIFFUSED_MIRROR   : main_diffused_mirror   (argc, argv, loop, scene); break;
+		case FOV_MEASUREMENT   : main_fov_measurement   (argc, argv, loop, scene); break;
 	}
-	PMD_LOOP_ENABLE = false;
-	thread_capturetoolDM2_main.join();
-	thread_set_scene.join();
-	thread_render.join();
 
 	system("pause");
 	return 0;

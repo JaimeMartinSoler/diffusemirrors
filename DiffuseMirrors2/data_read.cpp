@@ -348,11 +348,9 @@ void Frame::plot_frame() {
 	}
 	
 	// show the image
-	std::cout << "showing image\n";
 	cv::namedWindow("Frame", cv::WINDOW_AUTOSIZE);	// WINDOW_NORMAL, WINDOW_AUTOSIZE
 	cv::imshow("Frame", M_norm);
 	cv::waitKey(1000);
-	std::cout << "image closed\n";
 
 	// REAL TIME EXAMPLE
 	/*
@@ -368,6 +366,59 @@ void Frame::plot_frame() {
 
 }
 
+// For FoV measurement scene. Plot frame with opencv with syncronization
+void plot_frame_fov_measurement(bool loop) {		// by default: loop = false
+
+	// Syncronization
+	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
+	locker_frame_object = std::unique_lock<std::mutex>(mutex_frame_object,std::defer_lock);
+
+	
+	// show the image
+	cv::Mat M_norm;
+	int scale = 10;
+	bool first_iter = true;
+	cv::namedWindow("Frame", cv::WINDOW_AUTOSIZE);	// WINDOW_NORMAL, WINDOW_AUTOSIZE
+
+	// --- LOOP ------------------------------------------------------------------------------------------------
+	while(loop || first_iter) {
+
+		if (!PMD_LOOP_ENABLE && !first_iter)
+			break;
+		first_iter = false;
+		
+		// Syncronization
+		locker_frame_object.lock();		// Lock mutex_frame_object, any thread which used mutex_frame_object can NOT continue until unlock()
+		while (!UPDATED_NEW_FRAME) {
+			cv_frame_object.wait(locker_frame_object);
+		}
+
+		// this three lines are the only critical zone
+		if ((FRAME_90_CAPTURE.width <= 0) || (FRAME_90_CAPTURE.heigth <= 0)) {
+			return;
+		}
+		M_norm = FRAME_90_CAPTURE.matrix.clone();		
+		
+		// Syncronization
+		UPDATED_NEW_FRAME = false;
+		UPDATED_NEW_OBJECT = true;
+		cv_frame_object.notify_all();	// Notify all cv_frame_object. All threads waiting for cv_frame_object will break the wait after waking up
+		locker_frame_object.unlock();	// Unlock mutex_frame_object, now threads which used mutex_frame_object can continue
+
+		// Get a normalized matrix (min=0.0, max=1.0)
+		double min, max, new_value;
+		cv::minMaxLoc(M_norm, &min, &max);
+		max -= min;
+		cv::MatIterator_<float> it, end;
+		for(it = M_norm.begin<float>(), end = M_norm.end<float>(); it != end; ++it)
+			(*it) = ((*it)-min) / max;
+		cv::resize(M_norm, M_norm, cv::Size(), scale, scale, cv::INTER_NEAREST);
+
+		// show window
+		cv::imshow("Frame", M_norm);
+		cv::waitKey(20);
+	}
+}
 
 
 

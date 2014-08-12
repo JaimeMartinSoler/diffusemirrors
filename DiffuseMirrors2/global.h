@@ -8,7 +8,7 @@
 #include <condition_variable> // std::condition_variable
 
 // enums
-enum Scene {DIRECT_VISION_WALL, DIRECT_VISION_ANY, DIFFUSED_MIRROR, UNKNOWN_SCENE};
+enum Scene {DIRECT_VISION_WALL, DIRECT_VISION_ANY, DIFFUSED_MIRROR, FOV_MEASUREMENT, CALIBRATION_MATRIX, UNKNOWN_SCENE};
 
 
 // CAPTURETOOL PARAMETERS
@@ -18,7 +18,8 @@ enum Scene {DIRECT_VISION_WALL, DIRECT_VISION_ANY, DIFFUSED_MIRROR, UNKNOWN_SCEN
 #define SYNTH_CLOCK 600.0000 // Sample clock of function generator
 //#define SPEEDOFLIGHT	 299792458	// (m/s)
 #define SPEEDOFLIGHT_AIR 299705000	// (m/s)
-#define DUTYCYCLE 10 // 1 us exposure, 9 us delay
+#define DUTYCYCLE_INVERSE_OLD 10 // 1 us exposure, 9 us delay
+#define DUTYCYCLE 0.04f // ABSOLUTELY IMPORTANT for thermal stability: add delay to ensure a duty cycle below 4%
 #define FILENAME_FORMAT "capture_take%02d_f%06.2f_d%05.2f" // Filename prefix: Frequency, delay in m
 #define FILENAME_APPEND "_p%03d.%s"         // Append phase, shutter (=0 for HDR) and suffix to filename
 #define FILE_DATA_NAME_SUFFIX ".dat"
@@ -38,6 +39,7 @@ enum Scene {DIRECT_VISION_WALL, DIRECT_VISION_ANY, DIFFUSED_MIRROR, UNKNOWN_SCEN
 // OPENCV
 #define WindowName "PMD Image"
 #define NOJPEG
+#define CV_WHILE_CAPTURING false
 
 // SPEED OF LIGHT IN AIR and PI
 const float C_LIGHT_AIR = 299705000.0f;	// (m/s)
@@ -52,8 +54,8 @@ const int CAMERA_PIX_X_BAD_RIGHT = 1;
 const int CAMERA_PIX_X_BAD = CAMERA_PIX_X_BAD_LEFT + CAMERA_PIX_X_BAD_RIGHT;
 const int CAMERA_PIX_X_GOOD = CAMERA_PIX_X - CAMERA_PIX_X_BAD;
 // Measuring the FoV of the camera
-const float CAMERA_DIST_FOV_MEAS = 1.0f;	// distance from camera center and screen (with same normal)
-const float CAMERA_FOV_X_METERS = 0.5f;
+const float CAMERA_DIST_FOV_MEAS = 2.0f;	// distance from camera center and screen (with same normal)
+const float CAMERA_FOV_X_METERS = 0.855f;
 const float CAMERA_FOV_Y_METERS = CAMERA_FOV_X_METERS * (((float)CAMERA_PIX_Y) / ((float)CAMERA_PIX_X));	// square pixels assumption
 
 // VOLUME PATCHES CONFIGURATION

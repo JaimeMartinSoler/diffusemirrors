@@ -112,7 +112,7 @@ void render_Object3D(Object3D* obj, int OBJECT3D_IDX) {
 void render_PointMesh(PointMesh* pm, int OBJECT3D_IDX) {
 	float gray_color = 0.2f;	// better colors if setted to 0.2f
 	if (OBJECT3D_IDX == WALL)
-		gray_color = 0.7f;
+		gray_color = 0.4f;
 	else if (OBJECT3D_IDX == PIXEL_PATCHES)
 		gray_color = 0.7f;
 	if ((*pm).shape == RECTANGLE) {
