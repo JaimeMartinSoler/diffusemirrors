@@ -90,7 +90,7 @@ void transform_UI() {
 // It renders all the object3D of OBJECT3D_SET
 void render_OBJECT3D_SET() {
 
-	bool render_wall_patches = true;
+	bool render_wall_patches = false;
 
 	for (std::size_t i = 0; i < OBJECT3D_SET.size(); i++) {
 		if ((i == WALL_PATCHES) && !render_wall_patches)

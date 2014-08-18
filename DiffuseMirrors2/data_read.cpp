@@ -195,9 +195,10 @@ unsigned short int DataPMD::at(int distances_idx, int frequencies_idx, int shutt
 
 
 // Constructor from DataPMD oriented
-Frame::Frame(DataPMD & DataPMD_src_, int distance_idx_, int frequency_idx_, int shutter_idx_, int phase_idx_) {
+Frame::Frame(DataPMD & DataPMD_src_, int distance_idx_, int frequency_idx_, int shutter_idx_, int phase_idx_, Pixels_storing pixels_storing_) {
 
 	DataPMD_src = &DataPMD_src_;
+	pixels_storing = pixels_storing_;
 
 	distance_idx = distance_idx_;
 	frequency_idx = frequency_idx_;
@@ -209,8 +210,14 @@ Frame::Frame(DataPMD & DataPMD_src_, int distance_idx_, int frequency_idx_, int 
 	shutter = DataPMD_src_.shutters[shutter_idx_];
 	phase = DataPMD_src_.phases[phase_idx_];
 
-	width = DataPMD_src_.width;
-	heigth = DataPMD_src_.heigth;
+	if (pixels_storing_ == PIXELS_TOTAL) {
+		width = DataPMD_src_.width;
+		heigth = DataPMD_src_.heigth;
+	}
+	else if (pixels_storing_ == PIXELS_VALID) {
+		width = CAMERA_PIX_X_VALID;
+		heigth = CAMERA_PIX_Y_VALID;
+	}
 	numtakes = DataPMD_src_.numtakes;
 
 	src = DataPMD_src_.src;
@@ -218,19 +225,30 @@ Frame::Frame(DataPMD & DataPMD_src_, int distance_idx_, int frequency_idx_, int 
 	bytes_per_value = DataPMD_src_.bytes_per_value;
 
 	matrix = cv::Mat(heigth, width, cv::DataType<float>::type);
-	for (int h = 0; h < heigth; h++) {
-		for (int w = 0; w < width; w++) {
-			// data is not stored properly. -32768 fixes it thanks to short int over-run
-			// by default image is up-down-fliped so heigth_real = (heigth-1-h)
-			matrix.at<float>(heigth - 1 - h, w) = (float)(DataPMD_src_.at(distance_idx_, frequency_idx_, shutter_idx_, w, h, phase_idx_) - 32768);
+	if (pixels_storing_ == PIXELS_TOTAL) {
+		for (int h = 0; h < heigth; h++) {
+			for (int w = 0; w < width; w++) {
+				// data is not stored properly. -32768 fixes it thanks to short int over-run
+				// by default image is up-down-fliped so heigth_DataPMD = (heigth_Frame-1-h)
+				matrix.at<float>(h, w) = (float)(DataPMD_src_.at(distance_idx_, frequency_idx_, shutter_idx_, w, heigth - 1 - h, phase_idx_) - 32768);
+			}
 		}
+	} else if (pixels_storing_ == PIXELS_VALID) {
+		for (int h = 0; h < heigth; h++) {
+			for (int w = 0; w < width; w++) {
+				// Also, take into account that DataPMD only stores Pixels Total
+				matrix.at<float>(h, w) = (float)(DataPMD_src_.at(distance_idx_, frequency_idx_, shutter_idx_, w + CAMERA_PIX_X_BAD_LEFT, CAMERA_PIX_Y - CAMERA_PIX_Y_BAD_TOP - 1 - h, phase_idx_) - 32768);
+			}
+		}
+
 	}
 }
 
-// Constructor from vector from SIMULATION oriented
-Frame::Frame(std::vector<float> & matrix_vector, int heigth_, int width_, bool rows_up2down, float distance_, float frequency_, float shutter_, float phase_, Source src_) {
+// Constructor from vector from SIMULATION oriented. For any Pixels_storing it considered the vector matrix_vector properly arranged
+Frame::Frame(std::vector<float> & matrix_vector, int heigth_, int width_, bool rows_up2down, float distance_, float frequency_, float shutter_, float phase_, Source src_, Pixels_storing pixels_storing_) {
 	
 	DataPMD_src = NULL;
+	pixels_storing = pixels_storing_;
 
 	distance_idx = 0;
 	frequency_idx = 0;
@@ -265,10 +283,11 @@ Frame::Frame(std::vector<float> & matrix_vector, int heigth_, int width_, bool r
 
 }
 
-// Constructor from vector from DATA_REAL_TIME oriented
-Frame::Frame(unsigned short int* data_, int heigth_, int width_, float distance_, float frequency_, float shutter_, float phase_, int phase_idx_, Source src_) {
+// Constructor from vector from DATA_REAL_TIME oriented. heigth_ and width_ must be refered to the sizes of the total frame, regerdingless to the Pixels_storing
+Frame::Frame(unsigned short int* data_, int heigth_, int width_, float distance_, float frequency_, float shutter_, float phase_, int phase_idx_, Source src_, Pixels_storing pixels_storing_) {
 	
 	DataPMD_src = NULL;
+	pixels_storing = pixels_storing_;
 
 	distance_idx = 0;
 	frequency_idx = 0;
@@ -279,23 +298,37 @@ Frame::Frame(unsigned short int* data_, int heigth_, int width_, float distance_
 	frequency = frequency_;
 	shutter = shutter_;
 	phase = phase_;
+	
 
-	width = width_;
-	heigth = heigth_;
+	if (pixels_storing_ == PIXELS_TOTAL) {
+		width = width_;
+		heigth = heigth_;
+	}
+	else if (pixels_storing_ == PIXELS_VALID) {
+		width = CAMERA_PIX_X_VALID;
+		heigth = CAMERA_PIX_Y_VALID;
+	}
 	numtakes = 0;
 
 	src = src_;
 
 	bytes_per_value = 0;
 
-
 	matrix = cv::Mat(heigth, width, cv::DataType<float>::type);
 	int idx_in_data;
-	for (int h = 0; h < heigth_; h++) {
-		for (int w = 0; w < width_; w++) {
-			idx_in_data = (heigth_ * width_ * phase_idx_) + (width_ * h) + (w);
-			matrix.at<float>(heigth_ - 1 - h, w) = (float)(data_[idx_in_data] - 32768);
-	}	}
+	if (pixels_storing_ == PIXELS_TOTAL) {
+		for (int h = 0; h < heigth; h++) {
+			for (int w = 0; w < width; w++) {
+				idx_in_data = (heigth_ * width_ * phase_idx_) + (width_ * (heigth_ - 1 - h)) + (w);
+				matrix.at<float>(h, w) = (float)(data_[idx_in_data] - 32768);
+		}	}
+	} else if (pixels_storing_ == PIXELS_VALID) {
+		for (int h = 0; h < heigth; h++) {
+			for (int w = 0; w < width; w++) {
+				idx_in_data = (heigth_ * width_ * phase_idx_) + (width_ * (CAMERA_PIX_Y - CAMERA_PIX_Y_BAD_TOP - 1 - h)) + (w + CAMERA_PIX_X_BAD_LEFT);
+				matrix.at<float>(h, w) = (float)(data_[idx_in_data] - 32768);
+		}	}
+	}
 }
 
 // Constructor Default
@@ -351,19 +384,6 @@ void Frame::plot_frame() {
 	cv::namedWindow("Frame", cv::WINDOW_AUTOSIZE);	// WINDOW_NORMAL, WINDOW_AUTOSIZE
 	cv::imshow("Frame", M_norm);
 	cv::waitKey(1000);
-
-	// REAL TIME EXAMPLE
-	/*
-	cv::Mat mat_test = cv::Mat::zeros(200, 200, cv::DataType<float>::type);
-	cv::namedWindow("Test", cv::WINDOW_AUTOSIZE);
-	for (int i = 0; i < 100; i++) {
-		float value = (float)i / 100.0f;
-		mat_test = value;
-		cv::imshow("Test", mat_test);
-		cv::waitKey(20);	// WE NEED THIS TO LET IT WORK
-	}
-	*/
-
 }
 
 // For FoV measurement scene. Plot frame with opencv with syncronization

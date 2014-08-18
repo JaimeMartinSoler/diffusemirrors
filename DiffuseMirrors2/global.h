@@ -2,14 +2,18 @@
 #ifndef __GLOBAL_H
 #define __GLOBAL_H
 
-#include "shapes.h"
-#include "data_read.h"
+#include <vector>
 #include <mutex>              // std::mutex, std::unique_lock
 #include <condition_variable> // std::condition_variable
 
 // enums
 enum Scene {DIRECT_VISION_WALL, DIRECT_VISION_ANY, DIFFUSED_MIRROR, FOV_MEASUREMENT, CALIBRATION_MATRIX, UNKNOWN_SCENE};
+// The PMD camera stores 165x120 pixels but some of them in the edges can not be considered as valid pixel measurements
+enum Pixels_storing {PIXELS_TOTAL, PIXELS_VALID, UNKNOWN_PIXELS_STORING};
+enum Source {DATA_FILE, DATA_REAL_TIME, SIMULATION, UNKNOWN_SRC};
 
+
+#define PIXELS_STORING_GLOBAL PIXELS_VALID		// PIXELS_TOTAL,    PIXELS_VALID,    UNKNOWN_PIXELS_STORING
 
 // CAPTURETOOL PARAMETERS
 #define SOURCE_PLUGIN "camboardnano"
@@ -49,10 +53,16 @@ const float PI = 3.14159265359f;
 // Pixels
 const int CAMERA_PIX_X = 165;	// Real: 165
 const int CAMERA_PIX_Y = 120;	// Real: 120
-const int CAMERA_PIX_X_BAD_LEFT = 1;
-const int CAMERA_PIX_X_BAD_RIGHT = 1;
+// Bad pixels left and right
+const int CAMERA_PIX_X_BAD_LEFT = 1;	// = 1
+const int CAMERA_PIX_X_BAD_RIGHT = 2;	// = 1
 const int CAMERA_PIX_X_BAD = CAMERA_PIX_X_BAD_LEFT + CAMERA_PIX_X_BAD_RIGHT;
-const int CAMERA_PIX_X_GOOD = CAMERA_PIX_X - CAMERA_PIX_X_BAD;
+const int CAMERA_PIX_X_VALID = CAMERA_PIX_X - CAMERA_PIX_X_BAD;
+// Bad pixels bottom and top
+const int CAMERA_PIX_Y_BAD_TOP = 1;		// = 1
+const int CAMERA_PIX_Y_BAD_BOTTOM = 0;	// = 0
+const int CAMERA_PIX_Y_BAD = CAMERA_PIX_Y_BAD_TOP + CAMERA_PIX_Y_BAD_BOTTOM;
+const int CAMERA_PIX_Y_VALID = CAMERA_PIX_Y - CAMERA_PIX_Y_BAD;
 // Measuring the FoV of the camera
 const float CAMERA_DIST_FOV_MEAS = 2.0f;	// distance from camera center and screen (with same normal)
 const float CAMERA_FOV_X_METERS = 0.855f;
@@ -87,9 +97,14 @@ const float L_E = 1.0f;	// Le(l) in the paper. Radiance from the light point in 
 
 // vectors with all the object3D to be studied (and rendered)
 const int OBJECT3D_SET_SIZE = 11;
+class PointMesh;
+typedef std::vector<PointMesh*> Object3D;
+typedef std::vector<Object3D*> Object3D_Set;
 extern Object3D_Set OBJECT3D_SET;
 
 // DataPMD and FrameObjects
+class DataPMD;
+class Frame;
 extern DataPMD DATAPMD_READ;	// DataPMD Read from a File (.dat)
 extern DataPMD DATAPMD_CAPTURE;	// DataPMD Captured (directly from the PMD to this object)
 extern Frame FRAME_00_CAPTURE;	// Frame (phase=00) Captured (directly from the PMD to this object)

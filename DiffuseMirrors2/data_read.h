@@ -2,6 +2,8 @@
 #ifndef __DATA_READ_H
 #define __DATA_READ_H
 
+#include "global.h"
+
 #include <vector>
 
 #include <opencv2/highgui/highgui.hpp>
@@ -35,8 +37,6 @@
 	//     int pos_Byte = 2 * pos;
 	// ------------------------------------------------------------------------------------------------------------------------------
 
-// enum Source
-enum Source {DATA_FILE, DATA_REAL_TIME, SIMULATION, UNKNOWN_SRC};
 
 // DATA-PMD 
 class DataPMD {
@@ -91,6 +91,8 @@ public:
 	// matrix stores all cols, then next row and so on, from up to down
 	cv::Mat matrix;				// the opencv matrix with the values of the frame
 	DataPMD* DataPMD_src;		// a pointer to the DataPMD this Frame comes from
+	Scene ertwerg;
+	Pixels_storing pixels_storing;	// the kind of pixels it can store (PIXELS_TOTAL, PIXELS_VALID, UNKNOWN_PIXELS_STORING). See global.h
 
 	float distance;		// (m)
 	float frequency;	// (MHz)
@@ -109,12 +111,12 @@ public:
 
 	Source src;
 	
-	// Constructor from DataPMD oriented
-	Frame::Frame(DataPMD & DataPMD_src_, int distance_idx_, int frequency_idx_, int shutter_idx_, int phase_idx_);
-	// Constructor from vector from SIMULATION oriented
-	Frame::Frame(std::vector<float> & matrix_vector, int heigth_, int width_, bool rows_up2down = true, float distance_ = 0.0f, float frequency_ = 0.0f, float shutter_ = 0.0f, float phase_ = 0.0f, Source src_ = SIMULATION);
-	// Constructor from vector from DATA_REAL_TIME oriented
-	Frame::Frame(unsigned short int* data_, int heigth_, int width_, float distance_, float frequency_, float shutter_, float phase_, int phase_idx_, Source src_ = DATA_REAL_TIME);
+	// Constructor. DataPMD oriented
+	Frame::Frame(DataPMD & DataPMD_src_, int distance_idx_, int frequency_idx_, int shutter_idx_, int phase_idx_, Pixels_storing pixels_storing_ = PIXELS_VALID);
+	// Constructor from vector. SIMULATION oriented. For any Pixels_storing it considered the vector matrix_vector properly arranged
+	Frame::Frame(std::vector<float> & matrix_vector, int heigth_, int width_, bool rows_up2down = true, float distance_ = 0.0f, float frequency_ = 0.0f, float shutter_ = 0.0f, float phase_ = 0.0f, Source src_ = SIMULATION, Pixels_storing pixels_storing_ = PIXELS_VALID);
+	// Constructor from vector. DATA_REAL_TIME oriented
+	Frame::Frame(unsigned short int* data_, int heigth_, int width_, float distance_, float frequency_, float shutter_, float phase_, int phase_idx_, Source src_ = DATA_REAL_TIME, Pixels_storing pixels_storing_ = PIXELS_VALID);
 	// Constructor Default
 	Frame::Frame();
 

@@ -35,10 +35,11 @@ void control_loop_pause() {
 	
 	char end_loop[1024];	end_loop[0] = 'n';
 	while ((end_loop[0] != 'y') && (end_loop[0] != 'Y')) {
-		std::cout << "\nDo you want to finish the PMD (and this) loop? (y/n)\n";
+		std::cout << "\nDo you want to finish the PMD (and this) loop? (y/n)\n  ";
 		std::cin >> end_loop;
 	}
 	PMD_LOOP_ENABLE = false;
+	std::cout << "OK, finishing loops...\n\n";
 }
 
 
@@ -154,7 +155,7 @@ int main(int argc, char** argv) {
 	//test();
 	//return 0;
 
-	Scene scene = DIRECT_VISION_ANY;	// DIRECT_VISION_WALL,    DIRECT_VISION_ANY,    DIFFUSED_MIRROR,    FOV_MEASUREMENT,    CALIBRATION_MATRIX,    UNKNOWN_SCENE
+	Scene scene = DIRECT_VISION_WALL;	// DIRECT_VISION_WALL,    DIRECT_VISION_ANY,    DIFFUSED_MIRROR,    FOV_MEASUREMENT,    CALIBRATION_MATRIX,    UNKNOWN_SCENE
 	bool loop = true;
 	
 	switch(scene) {
