@@ -34,8 +34,8 @@ void set_scene_diffused_mirror(bool loop) {	// by default: loop = false
 
 	// CAMERA (0)
 	Point camera_pos(0.0f, 0.75f, 0.0f);		// pos of the center of the camera
-	Point camera_rot(0.0f, 140.0f, 0.0f);		// rot from the center of the camera
-	Point camera_size(0.2f, 0.2f, 0.1f);
+	Point camera_rot(0.0f, 180.0f, 0.0f);		// rot from the center of the camera
+	Point camera_size(0.15f, 0.15f, 0.04f);
 	Point camera_centre(camera_size.x() / 2.0f, camera_size.y() / 2.0f, 0.0f);	// centre relative to the first point
 	set_camera(&camera_pos, &camera_rot, &camera_size, &camera_centre);
 	// Get the screen normals:
@@ -45,8 +45,8 @@ void set_scene_diffused_mirror(bool loop) {	// by default: loop = false
 	set_screen_normals_pixel_patches(screen_patches_corners_normals, screen_patches_centers_normals, &camera_pos, &camera_rot, &camera_centre);
 
 	// LASER (1)
-	Point laser_pos(0.75f, 0.75f, 0.0f);		// pos of the center of the laser
-	Point laser_rot(0.0f, 125.0f, 0.0f);		// rot from the center of the laser
+	Point laser_pos(-0.15f, 0.75f, 0.0f);		// pos of the center of the laser
+	Point laser_rot(0.0f, 180.0f, 0.0f);		// rot from the center of the laser
 	Point laser_size(0.1f, 0.1f, 0.3f);
 	Point laser_centre(laser_size.x() / 2.0f, laser_size.y() / 2.0f, 0.0f);	// centre relative to the first point
 	set_laser(&laser_pos, &laser_rot, &laser_size, &laser_centre);
@@ -115,7 +115,7 @@ void set_scene_direct_vision_wall(bool loop) {	// by default: loop = false
 	// CAMERA (0)
 	Point camera_pos(0.0f, 0.75f, 0.0f);		// pos of the center of the camera
 	Point camera_rot(0.0f, 180.0f, 0.0f);		// rot from the center of the camera
-	Point camera_size(0.2f, 0.2f, 0.1f);
+	Point camera_size(0.15f, 0.15f, 0.04f);
 	Point camera_centre(camera_size.x() / 2.0f, camera_size.y() / 2.0f, 0.0f);	// centre relative to the first point
 	set_camera(&camera_pos, &camera_rot, &camera_size, &camera_centre);
 	// Get the screen normals:
@@ -125,7 +125,7 @@ void set_scene_direct_vision_wall(bool loop) {	// by default: loop = false
 	set_screen_normals_pixel_patches(screen_patches_corners_normals, screen_patches_centers_normals, &camera_pos, &camera_rot, &camera_centre);
 
 	// LASER (1)
-	Point laser_pos(0.75f, 0.75f, 0.0f);		// pos of the center of the laser
+	Point laser_pos(-0.15f, 0.75f, 0.0f);		// pos of the center of the laser
 	Point laser_rot(0.0f, 180.0f, 0.0f);		// rot from the center of the laser
 	Point laser_size(0.1f, 0.1f, 0.3f);
 	Point laser_centre(laser_size.x() / 2.0f, laser_size.y() / 2.0f, 0.0f);	// centre relative to the first point
@@ -577,14 +577,18 @@ void update_wall_and_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point
 	}
 
 	// Array Wall Variables	// Ordering: like a Matrix (row, col, starting with 0)
-	std::vector<int> r_idx (r_div);
-	std::vector<int> c_idx (c_div);
+	std::vector<int> r_idx (r_div);	// this will contain the indices of the rows of the pixels involved to get mean_pt, mean_n
+	std::vector<int> c_idx (c_div);	// this will contain the indices of the cols of the pixels involved to get mean_pt, mean_n
 	for (size_t r = 0; r < r_idx.size(); r++)
 		r_idx[r] = std::min((int)(r*FRAME_00_CAPTURE.heigth/(r_div-1)), FRAME_00_CAPTURE.heigth-1);
 	for (size_t c = 0; c < c_idx.size(); c++)
 		c_idx[c] = std::min((int)(c*FRAME_00_CAPTURE.width/(c_div-1)), FRAME_00_CAPTURE.width-1);
-	std::vector<Point> pos_points (r_div * c_div);	// Ordering: like a Matrix (row, col, starting with 0)
-	Point mean_pt;
+	std::vector<Point> vector_points (r_div * c_div);					// Ordering: like a Matrix (row, col, starting with 0)
+	std::vector<Point> vector_normals (4 * (r_div - 1) * (c_div - 1));	// Ordering: like a Matrix (row, col, starting with 0)
+	Point mean_pt, mean_n;	// the mean of the position and normal of the points
+	Point * p0, * p1, * p2, * p3;	// Auxiliar pointers to points
+	Point scale_axis_rotation = Point(1.0f, 1.0f, 0.0f);	// This is due to we don't want to rotate in z axis, and errors in z axis would persist. rot_from_c_to_normal(...) nornmalizes after scaling
+
 
 
 	// --- LOOP ------------------------------------------------------------------------------------------------
@@ -610,18 +614,13 @@ void update_wall_and_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point
 		pos_in_Object3D = 0;
 		for (int iy = y_begin; iy < y_end; iy++) {
 			for (int ix = x_begin; ix < x_end; ix++) {
-				Point p0 ((*(screen_patches_corners_normals_[iy*(CAMERA_PIX_X + 1) + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
-				Point p1 ((*(screen_patches_corners_normals_[iy*(CAMERA_PIX_X + 1) + ix + 1])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
-				Point p2 ((*(screen_patches_corners_normals_[(iy + 1)*(CAMERA_PIX_X + 1) + ix + 1])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
-				Point p3 ((*(screen_patches_corners_normals_[(iy + 1)*(CAMERA_PIX_X + 1) + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
-				Point c  ((*(screen_patches_centers_normals_[iy*CAMERA_PIX_X + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs)); 
 				// Update points and center
 				// WARNING: NORMAL VECTOR OF THE POINTMESH IS NOT BEEING UPDATED (but neither being used)
-				(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[pos_in_Object3D]).p[0]) = p0;
-				(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[pos_in_Object3D]).p[1]) = p1;
-				(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[pos_in_Object3D]).p[2]) = p2;
-				(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[pos_in_Object3D]).p[3]) = p3;
-				(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[pos_in_Object3D]).c) = c;
+				(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[pos_in_Object3D]).p[0]) = Point((*(screen_patches_corners_normals_[iy*(CAMERA_PIX_X + 1) + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
+				(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[pos_in_Object3D]).p[1]) = Point((*(screen_patches_corners_normals_[iy*(CAMERA_PIX_X + 1) + ix + 1])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
+				(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[pos_in_Object3D]).p[2]) = Point((*(screen_patches_corners_normals_[(iy + 1)*(CAMERA_PIX_X + 1) + ix + 1])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
+				(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[pos_in_Object3D]).p[3]) = Point((*(screen_patches_corners_normals_[(iy + 1)*(CAMERA_PIX_X + 1) + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
+				(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[pos_in_Object3D]).c)	   = Point((*(screen_patches_centers_normals_[iy*CAMERA_PIX_X + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs)); 
 				pos_in_Object3D++;
 			}
 		}
@@ -629,10 +628,24 @@ void update_wall_and_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point
 		// UPDATING THE WALL
 		for (size_t r = 0; r < r_idx.size(); r++) {
 			for (size_t c = 0; c < c_idx.size(); c++) {
-				pos_points[r*c_div + c] = (*(*(*OBJECT3D_SET[PIXEL_PATCHES])[(FRAME_00_CAPTURE.heigth - r_idx[r] - 1) * FRAME_00_CAPTURE.width + c_idx[c]]).c);
+				p0 = (*(*OBJECT3D_SET[PIXEL_PATCHES])[(FRAME_00_CAPTURE.heigth - r_idx[r] - 1) * FRAME_00_CAPTURE.width + c_idx[c]]).c;
+				vector_points[r*c_div + c] = (*p0);
 		}	}
-		mean_vector_of_points (pos_points, mean_pt);
+		for (size_t r = 1; r < r_idx.size(); r++) {
+			for (size_t c = 0; c < c_idx.size() - 1; c++) {
+				p0 = (*(*OBJECT3D_SET[PIXEL_PATCHES])[(FRAME_00_CAPTURE.heigth - r_idx[r    ] - 1) * FRAME_00_CAPTURE.width + c_idx[c    ]]).c;
+				p1 = (*(*OBJECT3D_SET[PIXEL_PATCHES])[(FRAME_00_CAPTURE.heigth - r_idx[r    ] - 1) * FRAME_00_CAPTURE.width + c_idx[c + 1]]).c;
+				p2 = (*(*OBJECT3D_SET[PIXEL_PATCHES])[(FRAME_00_CAPTURE.heigth - r_idx[r - 1] - 1) * FRAME_00_CAPTURE.width + c_idx[c + 1]]).c;
+				p3 = (*(*OBJECT3D_SET[PIXEL_PATCHES])[(FRAME_00_CAPTURE.heigth - r_idx[r - 1] - 1) * FRAME_00_CAPTURE.width + c_idx[c    ]]).c;
+				get_normal ((*p0), (*p1), (*p2), vector_normals[4*((r-1)*(c_div-1) + c) + 0]);
+				get_normal ((*p1), (*p2), (*p3), vector_normals[4*((r-1)*(c_div-1) + c) + 1]);
+				get_normal ((*p2), (*p3), (*p0), vector_normals[4*((r-1)*(c_div-1) + c) + 2]);
+				get_normal ((*p3), (*p0), (*p1), vector_normals[4*((r-1)*(c_div-1) + c) + 3]);
+		}	}
+		mean_vector_of_points (vector_points, mean_pt);
+		mean_vector_of_points (vector_normals, mean_n);
 		tra_center_to(OBJECT3D_SET[WALL], &mean_pt),
+		rot_from_c_to_normal(OBJECT3D_SET[WALL], &mean_n, scale_axis_rotation);
 
 		// Syncronization
 		//std::cout << ",    UPDATED_NEW_OBJECT\n";

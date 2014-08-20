@@ -26,6 +26,7 @@ float dist_2(Point* p0, Point* p1);
 float dist_3(Point* p0, Point* p1, Point* p2);
 float dist_4(Point* p0, Point* p1, Point* p2, Point* p3);
 float dist_5(Point* p0, Point* p1, Point* p2, Point* p3, Point* p4);
+void get_normal(Point p0, Point p1, Point p2, Point & p_out);
 
 // Functions to be used in the constructor:
 // PointMesh(std::vector<Point*> & p_, Point* c_, Shape shape_);
@@ -82,6 +83,9 @@ public:
 	void rot(Point* r_, Point* cr_, bool degrees);
 	void rot(Point* r_, bool degrees);	// rotates from (0.0f,0.0f,0.0f)
 	void rot_from_c(Point* r_, bool degrees);
+	void rot_to_normal(Point* n_, Point* cr_, Point scale_axis);
+	void rot_to_normal(Point* n_, Point scale_axis);
+	void rot_from_c_to_normal(Point* r_, Point scale_axis);
 	// Transformations of the PointMesh shape
 	void change_shape(Shape shape_);
 	// Get area of the PointMesh (first Triangle or Rectangle)
@@ -100,6 +104,9 @@ void tra_center_to(Object3D* obj, Point* t_c_to_);
 void rot(Object3D* obj, Point* r_, Point* cr_, bool degrees);
 void rot(Object3D* obj, Point* r_, bool degrees);	// rotates from (0.0f,0.0f,0.0f)
 void rot_from_c(Object3D* obj, Point* r_, bool degrees);
+void rot_to_normal(Object3D* obj, Point* n_, Point* cr_, Point scale_axis);
+void rot_to_normal(Object3D* obj, Point* n_, Point scale_axis);
+void rot_from_c_to_normal(Object3D* obj, Point* n_, Point scale_axis);
 
 
 // OBJECT3D_SET class

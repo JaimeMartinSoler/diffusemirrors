@@ -1,6 +1,9 @@
 
 #include "math.h"
 #include "shapes.h"
+
+#include <iostream>
+
 // http://eigen.tuxfamily.org/dox/group__QuickRefPage.html
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
@@ -58,6 +61,12 @@ float dist_4(Point* p0, Point* p1, Point* p2, Point* p3) {
 }
 float dist_5(Point* p0, Point* p1, Point* p2, Point* p3, Point* p4) {
 	return dist_2(p0, p1) + dist_2(p1, p2) + dist_2(p2, p3) + dist_2(p3, p4);
+}
+void get_normal(Point p0, Point p1, Point p2, Point & p_out) {
+	Point u = p1 - p0;
+	Point v = p2 - p1;
+	p_out = Point(u.cross(v));
+	p_out.normalize();
 }
 
 // returns the intersection point between a line given by 2 points (p0 and p1)
@@ -330,6 +339,30 @@ void PointMesh::rot(Point* r_, bool degrees) {
 void PointMesh::rot_from_c(Point* r_, bool degrees) {
 	rot(r_, c, degrees);
 }
+void PointMesh::rot_to_normal(Point* n_, Point* cr_, Point scale_axis) {
+	(*n_).normalize();	// just in case it is not normalized yet
+	if (((*n[0]).x() == (*n_).x()) && ((*n[0]).y() == (*n_).y()) && ((*n[0]).z() == (*n_).z())) 
+		return;
+	Point cross_prod = (*n[0]).cross((*n_));
+	cross_prod.x() *= scale_axis.x();
+	cross_prod.y() *= scale_axis.y();
+	cross_prod.z() *= scale_axis.z();	
+	cross_prod.normalize();
+	float radians = acos ((*n_).dot(*n[0]));
+	AngleAxis<float> rotation (radians, Vector3f(cross_prod.x(), cross_prod.y(), cross_prod.z()));
+	Translation<float, 3> t_n(-(*cr_));
+	Translation<float, 3> t_p((*cr_));
+	for (int i_p = 0; i_p < p.size(); i_p++)
+		(*p[i_p]) = t_p * rotation * t_n * (*p[i_p]);
+	(*c) = t_p * rotation * t_n * (*c);
+	set_normal();
+}
+void PointMesh::rot_to_normal(Point* n_, Point scale_axis) {
+	rot_to_normal(n_, new Point(0.0f, 0.0f, 0.0f), scale_axis);
+}
+void PointMesh::rot_from_c_to_normal(Point* r_, Point scale_axis) {
+	rot_to_normal(r_, c, scale_axis);
+}
 
 // Transformations of the PointMesh shape
 void PointMesh::change_shape(Shape shape_) {
@@ -433,13 +466,23 @@ void rot(Object3D* obj, Point* r_, Point* cr_, bool degrees) {
 	for (int i = 0; i < (*obj).size(); i++)
 		(*obj)[i]->rot(r_, cr_, degrees);
 }
-
 void rot(Object3D* obj, Point* r_, bool degrees) {
 	rot(obj, r_, new Point(0.0f, 0.0f, 0.0f), degrees);
 }
 // The center will be the center of the first PointMesh
 void rot_from_c(Object3D* obj, Point* r_, bool degrees) {
 	rot(obj, r_, (*obj)[0]->c, degrees);
+}
+void rot_to_normal(Object3D* obj, Point* n_, Point* cr_, Point scale_axis) {
+	for (int i = 0; i < (*obj).size(); i++)
+		(*obj)[i]->rot_to_normal(n_, cr_, scale_axis);
+}
+void rot_to_normal(Object3D* obj, Point* n_, Point scale_axis) {
+	rot_to_normal(obj, n_, new Point(0.0f, 0.0f, 0.0f), scale_axis);
+}
+// The center will be the center of the first PointMesh
+void rot_from_c_to_normal(Object3D* obj, Point* n_, Point scale_axis) {
+	rot_to_normal(obj, n_, (*obj)[0]->c, scale_axis);
 }
 
 
