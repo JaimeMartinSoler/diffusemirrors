@@ -3,6 +3,8 @@ Mater Thesis
 Jaime Martin
 */
 
+//#define _VARIADIC_MAX 10	// To let thread dealing with functions up to 10 variables. Already defined in Preprocessor Definitions
+
 #include <windows.h>  // for MS Windows
 #include <GL/glut.h>  // GLUT, include glu.h and gl.h
 #include "global.h"
@@ -39,7 +41,7 @@ void control_loop_pause() {
 		std::cin >> end_loop;
 	}
 	PMD_LOOP_ENABLE = false;
-	std::cout << "OK, finishing loops...\n\n";
+	std::cout << "\nOK, finishing loops...\n\n";
 }
 
 
@@ -48,11 +50,17 @@ void control_loop_pause() {
 // main_direct_vision_any(...)
 int main_direct_vision_any(int argc, char** argv, bool loop = true, Scene scene = DIRECT_VISION_ANY) {
 
-	// capture data from PMD
-	std::thread thread_capturetoolDM2_main (capturetoolDM2_main, argc, argv, loop);
+	// capture data directly from PMD to Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE)
+	float frequency = 100.0f;
+	float distance = 0.0f;
+	float shutter = 1920.0f;
+	char comport[128] = "COM6";
+	Frame * frame_00_null = NULL;	// (*frame_00_null) in PMD_params_to_Frame(...), to avoid this Frame meas. FRAME_00_CAPTURE else
+	Frame * frame_90_null = NULL;	// (*frame_90_null) in PMD_params_to_Frame(...), to avoid this Frame meas. FRAME_90_CAPTURE else
+	std::thread thread_PMD_params_to_Frame (PMD_params_to_Frame_anti_bug_thread, FRAME_00_CAPTURE, FRAME_90_CAPTURE, frequency, distance, shutter, comport, loop);
 	
 	// Set all the object3D of the corresponding scene
-	std::thread thread_set_scene (set_scene, scene, loop);
+	std::thread thread_set_scene (set_scene_direct_vision_any, loop);
 	
 	// Render all the object3D of the scene
 	std::thread thread_render (render, argc, argv);
@@ -62,7 +70,7 @@ int main_direct_vision_any(int argc, char** argv, bool loop = true, Scene scene 
 	control_loop_pause();
 
 	// joins
-	thread_capturetoolDM2_main.join();
+	thread_PMD_params_to_Frame.join();
 	thread_set_scene.join();
 	thread_render.join();
 
@@ -71,12 +79,18 @@ int main_direct_vision_any(int argc, char** argv, bool loop = true, Scene scene 
 
 // main_direct_vision_wall(...)
 int main_direct_vision_wall(int argc, char** argv, bool loop = true, Scene scene = DIRECT_VISION_WALL) {
-
-	// capture data from PMD
-	std::thread thread_capturetoolDM2_main (capturetoolDM2_main, argc, argv, loop);
+	
+	// capture data directly from PMD to Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE)
+	float frequency = 100.0f;
+	float distance = 0.0f;
+	float shutter = 1920.0f;
+	char comport[128] = "COM6";
+	Frame * frame_00_null = NULL;	// (*frame_00_null) in PMD_params_to_Frame(...), to avoid this Frame meas. FRAME_00_CAPTURE else
+	Frame * frame_90_null = NULL;	// (*frame_90_null) in PMD_params_to_Frame(...), to avoid this Frame meas. FRAME_90_CAPTURE else
+	std::thread thread_PMD_params_to_Frame (PMD_params_to_Frame_anti_bug_thread, FRAME_00_CAPTURE, FRAME_90_CAPTURE, frequency, distance, shutter, comport, loop);
 	
 	// Set all the object3D of the corresponding scene
-	std::thread thread_set_scene (set_scene, scene, loop);
+	std::thread thread_set_scene (set_scene_direct_vision_wall, loop);
 	
 	// Render all the object3D of the scene
 	std::thread thread_render (render, argc, argv);
@@ -86,23 +100,27 @@ int main_direct_vision_wall(int argc, char** argv, bool loop = true, Scene scene
 	control_loop_pause();
 
 	// joins
-	thread_capturetoolDM2_main.join();
+	thread_PMD_params_to_Frame.join();
 	thread_set_scene.join();
 	thread_render.join();
 
-	return 0;
-	
 	return 0;
 }
 
 // main_diffused_mirror(...)
 int main_diffused_mirror(int argc, char** argv, bool loop = true, Scene scene = DIFFUSED_MIRROR) {
-
-	// capture data from PMD
-	std::thread thread_capturetoolDM2_main (capturetoolDM2_main, argc, argv, loop);
+	
+	// capture data directly from PMD to Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE)
+	float frequency = 100.0f;
+	float distance = 0.0f;
+	float shutter = 1920.0f;
+	char comport[128] = "COM6";
+	Frame * frame_00_null = NULL;	// (*frame_00_null) in PMD_params_to_Frame(...), to avoid this Frame meas. FRAME_00_CAPTURE else
+	Frame * frame_90_null = NULL;	// (*frame_90_null) in PMD_params_to_Frame(...), to avoid this Frame meas. FRAME_90_CAPTURE else
+	std::thread thread_PMD_params_to_Frame (PMD_params_to_Frame_anti_bug_thread, FRAME_00_CAPTURE, FRAME_90_CAPTURE, frequency, distance, shutter, comport, loop);
 	
 	// Set all the object3D of the corresponding scene
-	std::thread thread_set_scene (set_scene, scene, loop);
+	std::thread thread_set_scene (set_scene_diffused_mirror, loop);
 	
 	// Simulation
 	get_data_sim_diffused_mirror();
@@ -113,15 +131,26 @@ int main_diffused_mirror(int argc, char** argv, bool loop = true, Scene scene = 
 
 	// pause in main to allow control when the loops will finish
 	control_loop_pause();
+	
+	// joins
+	thread_PMD_params_to_Frame.join();
+	thread_set_scene.join();
+	thread_render.join();
 
 	return 0;
 }
 
-// main_direct_vision_any(...)
+// main_fov_measurement(...)
 int main_fov_measurement(int argc, char** argv, bool loop = true, Scene scene = FOV_MEASUREMENT) {
-
-	// capture data from PMD
-	std::thread thread_capturetoolDM2_main (capturetoolDM2_main, argc, argv, loop);
+	
+	// capture data directly from PMD to Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE)
+	float frequency = 100.0f;
+	float distance = 0.0f;
+	float shutter = 1920.0f;
+	char comport[128] = "COM6";
+	Frame * frame_00_null = NULL;	// (*frame_00_null) in PMD_params_to_Frame(...), to avoid this Frame meas. FRAME_00_CAPTURE else
+	Frame * frame_90_null = NULL;	// (*frame_90_null) in PMD_params_to_Frame(...), to avoid this Frame meas. FRAME_90_CAPTURE else
+	std::thread thread_PMD_params_to_Frame (PMD_params_to_Frame_anti_bug_thread, FRAME_00_CAPTURE, FRAME_90_CAPTURE, frequency, distance, shutter, comport, loop);
 	
 	// plot the frame_00
 	std::thread thread_plot_frame_fov_measurement (plot_frame_fov_measurement, loop);
@@ -130,8 +159,40 @@ int main_fov_measurement(int argc, char** argv, bool loop = true, Scene scene = 
 	control_loop_pause();
 
 	// joins
-	thread_capturetoolDM2_main.join();
+	thread_PMD_params_to_Frame.join();
 	thread_plot_frame_fov_measurement.join();
+
+	return 0;
+}
+
+// main_calibration_matrix(...)
+int main_calibration_matrix(int argc, char** argv, bool loop = true, Scene scene = CALIBRATION_MATRIX) {
+
+	// capture data from PMD
+	std::vector<float> frequencies;
+	float freq_res = 10.0f;
+	float freq_min = 10.0f;
+	float freq_max = 100.0f + freq_res/2.0f;	// (+ freq_res/2.0f) is due to avoid rounding problems
+	for (float fi = freq_min; fi <= freq_max; fi += freq_res)
+		frequencies.push_back(fi);
+	std::vector<float> delays;
+	float delay_res = 0.5f;
+	float delay_min = 0.0f;
+	float delay_max = 10.0f + delay_res/2.0f;	// (+ delay_res/2.0f) is due to avoid rounding problems
+	for (float di = delay_min; di <= delay_max; di += delay_res)
+		delays.push_back(di);
+	std::vector<float> shutters_float(1, 1920.0f);
+	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\test_00";
+	char file_name[1024] = "PMD_Calibration_Matrix";
+	char comport[128] = "COM6";
+	int numtakes = 1;
+	std::thread thread_PMD_params_to_file (PMD_params_to_file_anti_bug_thread, frequencies, delays, shutters_float, dir_name, file_name, comport, numtakes);
+
+	// pause in main to allow control when the loops will finish
+	//control_loop_pause();
+
+	// joins
+	thread_PMD_params_to_file.join();
 
 	return 0;
 }
@@ -155,14 +216,15 @@ int main(int argc, char** argv) {
 	//test();
 	//return 0;
 
-	Scene scene = DIRECT_VISION_WALL;	// DIRECT_VISION_WALL,    DIRECT_VISION_ANY,    DIFFUSED_MIRROR,    FOV_MEASUREMENT,    CALIBRATION_MATRIX,    UNKNOWN_SCENE
+	Scene scene = CALIBRATION_MATRIX;	// DIRECT_VISION_WALL,    DIRECT_VISION_ANY,    DIRECT_VISION_ANY_SIMULATION,    DIFFUSED_MIRROR,    FOV_MEASUREMENT,    CALIBRATION_MATRIX,    UNKNOWN_SCENE
 	bool loop = true;
 	
 	switch(scene) {
-		case DIRECT_VISION_WALL: main_direct_vision_wall(argc, argv, loop, scene); break;
-		case DIRECT_VISION_ANY : main_direct_vision_any (argc, argv, loop, scene); break;
-		case DIFFUSED_MIRROR   : main_diffused_mirror   (argc, argv, loop, scene); break;
-		case FOV_MEASUREMENT   : main_fov_measurement   (argc, argv, loop, scene); break;
+		case DIRECT_VISION_WALL : main_direct_vision_wall (argc, argv, loop, scene); break;
+		case DIRECT_VISION_ANY  : main_direct_vision_any  (argc, argv, loop, scene); break;
+		case DIFFUSED_MIRROR    : main_diffused_mirror    (argc, argv, loop, scene); break;
+		case FOV_MEASUREMENT    : main_fov_measurement    (argc, argv, loop, scene); break;
+		case CALIBRATION_MATRIX : main_calibration_matrix (argc, argv, loop, scene); break;
 	}
 
 	system("pause");

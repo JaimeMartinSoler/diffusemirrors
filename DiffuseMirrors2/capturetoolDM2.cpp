@@ -209,7 +209,7 @@ void hsv_to_rgb(float H, float S, float V, float &R, float &G, float &B){
     }
 }
 
-void process_data(int w, int h, vector<pair<int, unsigned short* > > &shutters, char* path, char* file_prefix, int pass = 0, FILE *rawdumpfile = NULL) {
+void process_data(int w, int h, vector<pair<int, unsigned short* > > &shutters, char* path, char* file_prefix, int pass, FILE *rawdumpfile) {
 
 	int capturecount = shutters.size();
 	int* int_img = new int[w*2*h];
@@ -296,6 +296,35 @@ void process_data(int w, int h, vector<pair<int, unsigned short* > > &shutters, 
 }
 
 // Author: Jaime Martin (modification of process_data())
+void process_data_no_cv(int w, int h, vector<pair<int, unsigned short* > > &shutters, FILE *rawdumpfile) {
+	
+	int capturecount = shutters.size();
+	unsigned short* ushort_img[2];
+	ushort_img[0] = new unsigned short[w*h*capturecount*2];
+	ushort_img[1] = new unsigned short[w*h*capturecount];
+
+	// Loop through all exposures
+	for (size_t i = 0; i < capturecount; ++i)  { 
+		int shuttertime = shutters[i].first;
+		unsigned short* ubuf = shutters[i].second + w * h; // (discard first subframe)
+
+		// Compute difference images between opposite phases
+		for (int x = 0; x < w; ++x) {
+			for (int y = 0; y < h; ++y) { 
+				for (int ph = 0; ph < 2; ++ph) { // 0: 0deg, 1: 90deg
+
+					int diff = (int) ubuf[x + y*w + (2+ph)*w*h] - ubuf[x + y*w +ph*w*h];
+					diff += 32768;	// Bias and clamp to 16-bit range
+					ushort_img[0][x + y*w + i*w*h + capturecount*ph*w*h] = (diff > 65535) ? 65535 : ((diff < 0) ? 0  : diff);
+	}	}	}	}
+
+	// store the data in the raw_file
+	dump_data(rawdumpfile, &(ushort_img[0][0]), w, capturecount*h*2, 65535, 1);
+	delete ushort_img[0];
+	delete ushort_img[1];
+}
+
+// Author: Jaime Martin (modification of process_data())
 void process_data_to_buffer(int w, int h, std::vector<std::pair<int, unsigned short* > > &shutters, unsigned short* ushort_img[2], int pass) {	// default: (int pass = 0)
 
 	int capturecount = shutters.size();
@@ -377,9 +406,8 @@ void process_data_to_buffer(int w, int h, std::vector<std::pair<int, unsigned sh
 	cvReleaseImageHeader(&img);
 }
 
-
 // Author: Jaime Martin (modification of process_data()). It does not plot frames with openCV
-void process_data_to_buffer_no_cv(int w, int h, std::vector<std::pair<int, unsigned short* > > &shutters, unsigned short* ushort_img[2], int pass) {	// default: (int pass = 0)
+void process_data_to_buffer_no_cv(int w, int h, std::vector<std::pair<int, unsigned short* > > &shutters, unsigned short* ushort_img[2]) {
 
 	int capturecount = shutters.size();
 	ushort_img[0] = new unsigned short[w*h*capturecount*2];
@@ -396,11 +424,7 @@ void process_data_to_buffer_no_cv(int w, int h, std::vector<std::pair<int, unsig
 				for (int ph = 0; ph < 2; ++ph) { // 0: 0deg, 1: 90deg
 
 					int diff = (int) ubuf[x + y*w + (2+ph)*w*h] - ubuf[x + y*w +ph*w*h];
-					float gammacorr = pow((double)(diff * 2+32768)/65536.f, 1/1);
-					unsigned char eightbitvalue = 255 * gammacorr;
-
-					// Bias and clamp to 16-bit range
-					diff += 32768;
+					diff += 32768;	// Bias and clamp to 16-bit range
 					ushort_img[0][x + y*w + i*w*h + capturecount*ph*w*h] = (diff > 65535) ? 65535 : ((diff < 0) ? 0  : diff);
 	}	}	}	}
 }
@@ -665,42 +689,18 @@ int PMD_charArray_to_file (int argc, char *argv[]) {
 // PMD_params_to_file
 int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* dir_name, char* file_name, char* comport, int & numtakes) {
 	
-	// ------------------------------------------------------------------------------------------------------------------------------
-	// DEBUGGING:
-	// Properties - Configuration Properties - Debugging - Command Arguments:
-	// "80 90 100" "0 1 2 3" "1920" f:\tmp\pmdtest2 PMD_test_meas COM6 1
-	//
-	// EXECUTING:
-	// cd C:\Users\transient\Documents\transient-code\CaptureTool2\x64\Release
-	// capturetool2.exe "80 90 100" "0 1 2 3" "1920" f:\tmp\pmdtest2 PMD_test_meas COM6 1
-	// ------------------------------------------------------------------------------------------------------------------------------
-
+	// Checking errors in parameters
 	int error_checking_parameters = check_parameters_vector (frequencies, delays, shutters_float, comport, numtakes);
 	if (error_checking_parameters == 1)
 		std::cout << endl << "Some parameters out of bounds modified. Continuing...\n";
 	else if (error_checking_parameters == 2)
 		return error_checking_parameters;
-		
+	// Shutters vector of pairs
 	std::vector<pair<int, unsigned short*>> shutters;
 	for (size_t i = 0; i < shutters_float.size(); i++)
 		shutters.push_back(pair<int, unsigned short*>((int)shutters_float[i], new unsigned short [PMD_WIDTH*PMD_HEIGTH*10]));
 
-	//char measurement_name[1024] = "default";
-
-
-	// Init devices
-
-	// Open PMD sensor
-	PMDHandle hnd;
-	int res;
-	int w, h, numframes;
-
-	res = pmdOpenSourcePlugin(&hnd, SOURCE_PLUGIN, SOURCE_PARAM);
-	pmd_handle_error(hnd, res, "Could not open device");
-
-	SerialPort port = control_init(comport_full_name);
-
-	// Check if if already exists
+	// Check if file already exists
 	char command[1024];
 	char full_file_name[1024];
 	char full_file_name_take[1024];
@@ -708,139 +708,181 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 	sprintf(full_file_name_take,"%s\\%s_%03d%s", dir_name, file_name, 0, FILE_DATA_NAME_SUFFIX);
 	sprintf(command,"%s", dir_name);
 	if (file_exists(full_file_name) || file_exists(full_file_name_take)) {
-		cout << "\nWarning: File \"" << full_file_name << "\" already exists and will be deleted. Sure? (y/n) ";
+		cout << "\nWarning: File \"" << full_file_name << "\" already exists and will be deleted. Sure? (y/n)\n";
 		string answer;
 		cin >> answer;
 		if (answer[0] != 'y' && answer[0] != 'Y') {
-			cout << "Okay - quitting." << endl;
-			pmdClose(hnd);
+			cout << "\nOkay - quitting.\n" << endl;
+			//pmdClose(hnd);	// I've changed the order of the code so the PMD is not open yet
 			return -2;
 		}
-		// these 2 lines would delete all the entire directory (and its content)
+		// these 2 lines would delete all the entire directory (and its content):
 		//sprintf(command,"rd /S /Q %s", dir_name);
 		//system(command);
 	}
 	sprintf(command,"md %s", dir_name);
 	system(command);
+	
+	// Check frames. In order to visualize the setup previously
+	Frame frame_00;
+	Frame frame_90;
+	PMD_params_to_Frame (frame_00, frame_90, frequencies[0], delays[0], shutters_float[shutters_float.size()-1], comport, false);
+	frame_00.plot_frame();
+	frame_90.plot_frame();
+
+	// Check time and file size
+	float time_h, time_m, time_s;
+	float time_tot_s = 0.0f;
+	float period_shutter_tot = 0.0f;
+	for (size_t si = 0; si < shutters.size(); si++)
+		period_shutter_tot +=  shutters_float[si] / (1000000.0f * DUTYCYCLE);
+	time_tot_s = period_shutter_tot * frequencies.size() * delays.size() * numtakes;
+	time_h = std::floor(time_tot_s / 3600.0f);
+	time_m = std::floor(((time_tot_s / 3600.0f) - time_h) * 60.0f);
+	time_s = std::floor(((((time_tot_s / 3600.0f) - time_h) * 60.0f) - time_m) * 60.0f);
+	int file_size = frequencies.size() * delays.size() * shutters.size() * 2 * PMD_WIDTH * PMD_HEIGTH * 2;	// Bytes
+	cout << "\nThe measurement will require: " << file_size << " Bytes for each take.";
+	cout << "\nThe measurement will take   : " << time_h << "h " << time_m << "' " << time_s << "''.";
+	cout << "\nAre you sure to continue? (y/n)\n";
+	string answer;
+	cin >> answer;
+	if (answer[0] != 'y' && answer[0] != 'Y') {
+		cout << "\nOkay - quitting.\n" << endl;
+		return -3;
+	}
+
+	// Init devices: Open PMD sensor
+	PMDHandle hnd;
+	int res;
+	int w, h, numframes;
+	res = pmdOpenSourcePlugin(&hnd, SOURCE_PLUGIN, SOURCE_PARAM);
+	pmd_handle_error(hnd, res, "Could not open device");
+	SerialPort port = control_init(comport_full_name);
 
 	// Init OpenCV
-	cvNamedWindow( WindowName, CV_WINDOW_AUTOSIZE );
-
+	if (CV_WHILE_CAPTURING)
+		cvNamedWindow(WindowName, CV_WINDOW_AUTOSIZE);
+	
+	float ms_time_loop;
+	int ms_extra_delay;
+	clock_t begin_time_loop, end_time_loop;
 	bool firstiter = true;
 
-	for (int take = 0; take < numtakes;++take) {
+	// Loop through takes
+	for (int take = 0; take < numtakes; take++) {
 		char fn[256];
 		if (numtakes > 1)
 			sprintf(fn,"%s\\%s_nt%03d%s", dir_name, file_name, take, FILE_DATA_NAME_SUFFIX);
 		else
 			sprintf(fn,"%s\\%s%s", dir_name, file_name, FILE_DATA_NAME_SUFFIX);
-		cout << "raw file name: ["<<fn<<"]"<<endl;
+		cout << "\nraw file name: ["<<fn<<"]"<<endl;
 		rawdumpfile = fopen(fn,"wb");
 
-	// Capture loop: Loop through delays
-	for (size_t di = 0; di < delays.size(); di += 1) {
-		cout << "delay = " << delays[di] << " m" << endl;
+		// Loop through delays
+		for (size_t di = 0; di < delays.size(); di++) {
+			//cout << "delay = " << delays[di] << " m" << endl;
 
-		// frequencies
-		for (size_t fi = 0; fi < frequencies.size(); fi += 1) {
-			
-			cout << "    freq = " << frequencies[fi] << " MHz" << endl << "        Exposure ";
-			char fnprefix[256];
-			sprintf_s<256> (fnprefix, FILENAME_FORMAT, take, frequencies[fi], delays[di]);
-			// and shutter times
-			double timed;
-			double freqd;
-			for (size_t ci = 0; ci < shutters.size(); ++ci) {
-				timed = get_cpu_time_cycles();
-				freqd = get_cpu_frequency();
-
-				int shutter = shutters[ci].first;
-				unsigned short* buffer = shutters[ci].second;
-
-				cout << " " << shutter << flush;
-
-				// ----- PMD CAPTURE ----------------------------------------------------------------------------------
-				pmd_capture(hnd, port, shutter, frequencies[fi], delays[di], buffer, w, h, numframes);
-
-				if (firstiter) {
-
-					char dateStr [256];
-					char timeStr [256];
-					_strdate( dateStr);
-					_strtime( timeStr );
-					
-					sprintf(command,"%s\\%s%s", dir_name, file_name, FILE_INFO_NAME_SUFFIX);
-					FILE *fp = fopen(command, "w"); 
-
-					fprintf(fp, "# Capture date: %s %s\r\n", dateStr, timeStr);
-					
-					fprintf(fp, "Bytes per measured value: 2\n");
-
-					fprintf(fp, "imagedims: %d %d\r\n", w, h);
-
-					fprintf(fp, "frequencies (MHz) [%d]:", frequencies.size());
-					for (size_t i = 0; i < frequencies.size(); ++i) 
-						fprintf(fp, " %.3f", frequencies[i]);
-					fprintf(fp, "\r\n");
-
-					fprintf(fp, "distances (m) [%d]:", delays.size());
-					for (size_t i = 0; i < delays.size(); ++i) 
-						fprintf(fp, " %.3f", delays[i]);
-					fprintf(fp, "\r\n");
-
-					fprintf(fp, "shutters (us) [%d]:", shutters.size());
-					for (size_t i = 0; i < shutters.size(); ++i) 
-						fprintf(fp, " %.d", shutters[i].first);
-					fprintf(fp, "\r\n");
-
-					fprintf(fp, "phases (degrees) [2]: 0 90\r\n");
-
-					fprintf(fp, "number_of_takes: %d\r\n", numtakes); 
-
-					fclose(fp);
-
-					firstiter = false;
-				}
-
-				// On last iteration, process data
-				if (ci == shutters.size() - 1) {
-					char measpath[1024];
-					sprintf(measpath, "%s", dir_name);
-					process_data(w, h, shutters, measpath, fnprefix, take, rawdumpfile);
-					cout << endl;
-				}
-
-				// ABSOLUTELY IMPORTANT for thermal stability: 
-				// add delay to ensure a duty cycle below 4%
+			// Loop through frequencies
+			for (size_t fi = 0; fi < frequencies.size(); fi++) {
+				//cout << "    freq = " << frequencies[fi] << " MHz" << endl << "        Exposure ";
+				char fnprefix[256];
+				sprintf_s<256> (fnprefix, FILENAME_FORMAT, take, frequencies[fi], delays[di]);
+				// and shutter times
+				double timed;
+				double freqd;
 				
-				timed = get_cpu_time_cycles() - timed;
-				int ms_elapsed = (int) get_cpu_time_ms(timed, freqd);
-				int extra_delay = 4L*DUTYCYCLE_INVERSE_OLD*shutter/1000 - ms_elapsed + 1;
-				if (extra_delay > 0)
-				Sleep( extra_delay );
+				// Loop through shutters
+				for (size_t ci = 0; ci < shutters.size(); ++ci) {
+					
+					begin_time_loop = clock();	// begin_time_loop for DUTYCYCLE Sleep
 
+					int shutter = shutters[ci].first;
+					unsigned short* buffer = shutters[ci].second;
+
+					//cout << " " << shutter << flush;
+
+					// ----- PMD CAPTURE ----------------------------------------------------------------------------------
+					pmd_capture(hnd, port, shutter, frequencies[fi], delays[di], buffer, w, h, numframes);
+
+					if (firstiter) {
+
+						char dateStr [256];
+						char timeStr [256];
+						_strdate( dateStr);
+						_strtime( timeStr );
+					
+						sprintf(command,"%s\\%s%s", dir_name, file_name, FILE_INFO_NAME_SUFFIX);
+						FILE *fp = fopen(command, "w"); 
+
+						fprintf(fp, "# Capture date: %s %s\r\n", dateStr, timeStr);
+					
+						fprintf(fp, "Bytes per measured value: 2\n");
+
+						fprintf(fp, "imagedims: %d %d\r\n", w, h);
+
+						fprintf(fp, "frequencies (MHz) [%d]:", frequencies.size());
+						for (size_t i = 0; i < frequencies.size(); ++i) 
+							fprintf(fp, " %.3f", frequencies[i]);
+						fprintf(fp, "\r\n");
+
+						fprintf(fp, "distances (m) [%d]:", delays.size());
+						for (size_t i = 0; i < delays.size(); ++i) 
+							fprintf(fp, " %.3f", delays[i]);
+						fprintf(fp, "\r\n");
+
+						fprintf(fp, "shutters (us) [%d]:", shutters.size());
+						for (size_t i = 0; i < shutters.size(); ++i) 
+							fprintf(fp, " %.d", shutters[i].first);
+						fprintf(fp, "\r\n");
+
+						fprintf(fp, "phases (degrees) [2]: 0 90\r\n");
+
+						fprintf(fp, "number_of_takes: %d\r\n", numtakes); 
+
+						fclose(fp);
+
+						firstiter = false;
+					}
+
+					// On last iteration, process data
+					if (ci == shutters.size() - 1) {
+						char measpath[1024];
+						sprintf(measpath, "%s", dir_name);
+						
+					if (CV_WHILE_CAPTURING)
+						process_data(w, h, shutters, measpath, fnprefix, take, rawdumpfile);
+					else
+						process_data_no_cv(w, h, shutters, rawdumpfile);
+					//cout << endl;
+					}
+
+					end_time_loop = clock();		// end_time_loop for DUTYCYCLE Sleep
+					ms_time_loop = 1000.0f * float(end_time_loop - begin_time_loop) / (float)CLOCKS_PER_SEC;
+					ms_extra_delay = ((float)shutter)/(DUTYCYCLE*1000.0f) - ms_time_loop + 1.0f;
+					if (ms_extra_delay > 0)
+						Sleep(ms_extra_delay);	// suspends the execution of the current thread until the time-out interval elapses
+					//std::cout << "ms_time_loop   : " << ms_time_loop << " ms\n";
+					//std::cout << "ms_extra_delay : " << ms_extra_delay << " ms\n\n";
+
+				}
 			}
-			//Sleep(2000);
-
-			int totalfreqs = frequencies.size() * delays.size();
-			int currentfreq = frequencies.size() * di + fi;
-			cout << "Progress: " << (float)(100 * (currentfreq+1)/totalfreqs) << "% of pass " << take <<endl;
 		}
-	}
-	fclose(rawdumpfile);
+		fclose(rawdumpfile);
 	}
 	// The aftermath
 	for (int i = 0; i < shutters.size(); ++i) {
 		delete shutters[i].second;
 	}
 	pmdClose (hnd);
-	cvDestroyWindow( WindowName );
+	if (CV_WHILE_CAPTURING)
+		cvDestroyWindow(WindowName);
 
-	// Exit program
-	//Sleep(2000);
 	return 0;
 }
-
+// there's a weird bug when calling directly to PMD_params_to_file from thread constructor. With this re-calling functtion the bug is avoided
+int PMD_params_to_file_anti_bug_thread (std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* dir_name, char* file_name, char* comport, int & numtakes) {
+	return PMD_params_to_file (frequencies, delays, shutters_float, dir_name, file_name, comport, numtakes);
+}
 
 // Author: Jaime Martin
 // copy_array (...)
@@ -990,7 +1032,7 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequ
 	std::vector<pair<int, unsigned short*>> shutters;	// process_data_to_buffer(...) deal with vectors of pairs
 	shutters.push_back(pair<int, unsigned short*>((int)shutter_, new unsigned short [PMD_WIDTH*PMD_HEIGTH*10]));
 	
-	// Buffer of the PMD data for the Frame
+	// Buffer of the PMD data
 	int ushort_img_buffer_size = PMD_WIDTH*PMD_HEIGTH*2;
 	unsigned short* ushort_img[2];
 
@@ -1002,6 +1044,7 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequ
 	SerialPort port = control_init(comport_full_name);
 	float ms_time_loop;
 	int ms_extra_delay;
+	clock_t begin_time_loop, end_time_loop;
 	// Init OpenCV
 	if (CV_WHILE_CAPTURING)
 		cvNamedWindow(WindowName, CV_WINDOW_AUTOSIZE);
@@ -1013,8 +1056,8 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequ
 	// --- CAPTURE LOOP --------------------------------------------------------------------------------------
 	bool first_iter = true;
 	while(loop || first_iter) {
-		
-		const clock_t begin_time_loop = clock();	// begin_time_loop for DUTYCYCLE Sleep
+
+		begin_time_loop = clock();	// begin_time_loop for DUTYCYCLE Sleep 
 
 		if (!PMD_LOOP_ENABLE && !first_iter)
 			break;
@@ -1036,7 +1079,7 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequ
 		if (CV_WHILE_CAPTURING)
 			process_data_to_buffer(w, h, shutters, ushort_img, 0);
 		else
-			process_data_to_buffer_no_cv(w, h, shutters, ushort_img, 0);
+			process_data_to_buffer_no_cv(w, h, shutters, ushort_img);
 				//const clock_t end_time_process_data_to_buffer = clock();
 				//float ms_time_process_data_to_buffer = 1000.0f * float(end_time_process_data_to_buffer - begin_time_process_data_to_buffer) / (float)CLOCKS_PER_SEC;
 				//std::cout << "data_to_buffer : time = " << ms_time_process_data_to_buffer << " ms\n";
@@ -1061,13 +1104,13 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequ
 				//float ms_time_buffer_to_frame = 1000.0f * float(end_time_buffer_to_frame - begin_time_buffer_to_frame) / (float)CLOCKS_PER_SEC;
 				//std::cout << "buffer_to_frame: time = " << ms_time_buffer_to_frame << " ms\n";
 
-		const clock_t end_time_loop = clock();		// end_time_loop for DUTYCYCLE Sleep
+		end_time_loop = clock();		// end_time_loop for DUTYCYCLE Sleep
 		ms_time_loop = 1000.0f * float(end_time_loop - begin_time_loop) / (float)CLOCKS_PER_SEC;
 		ms_extra_delay = ((float)shutter)/(DUTYCYCLE*1000.0f) - ms_time_loop + 1.0f;
 		if (ms_extra_delay > 0)
 			Sleep(ms_extra_delay);	// suspends the execution of the current thread until the time-out interval elapses
 				//std::cout << "ms_time_loop   : " << ms_time_loop << " ms\n";
-				//std::cout << "ms_extra_delay : " << ms_extra_delay << " ms\n";
+				//std::cout << "ms_extra_delay : " << ms_extra_delay << " ms\n\n";
 
 				//const clock_t end_time_loop_total = clock();
 				//float ms_time_loop_total = 1000.0f * float(end_time_loop_total - begin_time_loop) / (float)CLOCKS_PER_SEC;
@@ -1079,13 +1122,17 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequ
 	// closing, deleting, the aftermath
 	delete shutters[0].second;
 	pmdClose (hnd);
-	cvDestroyWindow(WindowName);
+	if (CV_WHILE_CAPTURING)
+		cvDestroyWindow(WindowName);
 
 	// Exit program
 	//Sleep(2000);
 	return 0;
 }
-
+// there's a weird bug when calling directly to PMD_params_to_Frame from thread constructor. With this re-calling functtion the bug is avoided
+int PMD_params_to_Frame_anti_bug_thread (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequency_, float distance_, float shutter_, char* comport, bool loop) {
+	return PMD_params_to_Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE, frequency_, distance_, shutter_, comport, loop);
+}
 
 
 

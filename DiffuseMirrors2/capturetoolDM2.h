@@ -7,11 +7,16 @@
 #include <vector>
 
 
+void process_data(int w, int h, std::vector<std::pair<int, unsigned short* > > &shutters, char* path, char* file_prefix, int pass = 0, FILE *rawdumpfile = NULL);
+
+// Author: Jaime Martin (modification of process_data())
+void process_data_no_cv(int w, int h, std::vector<std::pair<int, unsigned short* > > &shutters, FILE *rawdumpfile = NULL);
+
 // Author: Jaime Martin (modification of process_data())
 void process_data_to_buffer(int w, int h, std::vector<std::pair<int, unsigned short* > > &shutters, unsigned short* ushort_img[2], int pass = 0);
 
 // Author: Jaime Martin (modification of process_data()). It does not plot frames with openCV
-void process_data_to_buffer_no_cv(int w, int h, std::vector<std::pair<int, unsigned short* > > &shutters, unsigned short* ushort_img[2], int pass = 0);
+void process_data_to_buffer_no_cv(int w, int h, std::vector<std::pair<int, unsigned short* > > &shutters, unsigned short* ushort_img[2]);
 
 bool dir_exists(const std::string& dirName_in);
 
@@ -53,6 +58,8 @@ int PMD_charArray_to_file (int argc, char *argv[]);
 // Author: Jaime Martin (modification of previous function)
 // PMD_params_to_file
 int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* dir_name, char* file_name, char* comport, int & numtakes);
+// there's a weird bug when calling directly to PMD_params_to_file from thread constructor. With this re-calling functtion the bug is avoided
+int PMD_params_to_file_anti_bug_thread (std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* dir_name, char* file_name, char* comport, int & numtakes);
 
 // Author: Jaime Martin
 // copy_array (...)
@@ -67,6 +74,8 @@ int PMD_params_to_DataPMD (DataPMD & DataPMD_cap, std::vector<float> & frequenci
 // Author: Jaime Martin (modification of previous function)
 // PMD_params_to_Frame
 int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequency_, float distance_, float shutter_, char* comport, bool loop);
+// there's a weird bug when calling directly to PMD_params_to_Frame from thread constructor. With this re-calling functtion the bug is avoided
+int PMD_params_to_Frame_anti_bug_thread (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequency_, float distance_, float shutter_, char* comport, bool loop);
 
 // Author: Jaime Martin 
 // MAIN

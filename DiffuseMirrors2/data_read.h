@@ -38,6 +38,52 @@
 	// ------------------------------------------------------------------------------------------------------------------------------
 
 
+
+
+// CALIBRATION MATRIX
+class CalibrationMatrix {
+public:
+
+	// Parameters
+	float* data;
+	int data_size;	
+
+	std::vector<float> frequencies;
+	std::vector<float> distances;
+
+	int width;
+	int heigth;
+	int numtakes;
+	
+	Source src;
+	
+	int error_code;	// 0=no_error, !=0:error
+
+	char* dir_name;
+	char* file_name;
+	char* file_data_full_path_name;
+	char* file_info_full_path_name;
+
+
+	// Constructor
+	CalibrationMatrix::CalibrationMatrix(char* dir_name_, char* file_name_);
+	// Constructor
+	CalibrationMatrix::CalibrationMatrix(float* data_, int data_size_, std::vector<float> & frequencies_, std::vector<float> & distances_, int width_, int heigth_, int numtakes_, Source src_, int error_code_ = 0, char* dir_name_ = NULL, char* file_name_ = NULL);
+	// Constructor Default
+	CalibrationMatrix::CalibrationMatrix();
+
+	// Functions
+	// Returns the index in data[], corresponding to the parameter indices
+	int CalibrationMatrix::idx_in_data(int frequencies_idx, int distances_idx, int w, int h);
+	// Returns the value corresponding to the parameter indices = data[idx_in_data]
+	float CalibrationMatrix::at(int frequencies_idx, int distances_idx, int w, int h);
+	// Returns the value corresponding to the parameter values directly. In case the value is not stored, it automatically interpolates with the sourounding stored values
+	float CalibrationMatrix::at_value(int frequencies_idx, int distances_idx, int w, int h);
+};
+
+
+
+
 // DATA-PMD 
 class DataPMD {
 public:
@@ -91,7 +137,6 @@ public:
 	// matrix stores all cols, then next row and so on, from up to down
 	cv::Mat matrix;				// the opencv matrix with the values of the frame
 	DataPMD* DataPMD_src;		// a pointer to the DataPMD this Frame comes from
-	Scene ertwerg;
 	Pixels_storing pixels_storing;	// the kind of pixels it can store (PIXELS_TOTAL, PIXELS_VALID, UNKNOWN_PIXELS_STORING). See global.h
 
 	float distance;		// (m)
