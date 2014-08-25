@@ -16,7 +16,9 @@ void get_data_sim_diffused_mirror() {
 	// L_E;		// Le(l) in the paper. Radiance from the light point in the wall from the laser
 	
 	// Radiance from each volume patch. L(x) in the paper. 
+	std::cout << "\nHERE 00A: " << (*OBJECT3D_SET[VOLUME_PATCHES]).size();
 	int radiance_volume_patches_size = (*OBJECT3D_SET[VOLUME_PATCHES]).size();
+	std::cout << "\nHERE 00B";
 	std::vector<float> radiance_volume_patches(radiance_volume_patches_size);
 	get_radiance_volume_patches(radiance_volume_patches);
 	// (Radiance from each volume patch)·(Area of each volume patch). L(x)·Area(x)

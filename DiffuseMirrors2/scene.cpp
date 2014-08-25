@@ -26,6 +26,8 @@ void set_scene(Scene scene, bool loop) {	// by default: loop = false
 		set_scene_direct_vision_wall(loop);
 	else if (scene == DIFFUSED_MIRROR)
 		set_scene_diffused_mirror(loop);
+	else if (scene == CALIBRATION_MATRIX)
+		set_scene_calibration_matrix();
 }
 
 
@@ -262,6 +264,73 @@ void set_scene_direct_vision_any (bool loop) {	// by default: loop = false
 	if (loop)
 		update_pixel_patches(&camera_pos, &camera_rot, &camera_centre, screen_patches_corners_normals, screen_patches_centers_normals, loop);
 }
+
+// sets all the Calibration Matrix scene. Actually just the position of camera and laser
+void set_scene_calibration_matrix() {
+
+	// relevant variables:
+	float laser_camera_offset_x = -0.15f;
+	float laser_camera_offset_y = 0.0f;
+	float laser_camera_offset_z = 0.0f;
+	float wall_camera_dist = 2.0f;
+
+	// CAMERA (0)
+	Point camera_pos(0.0f, 0.75f, 0.0f);		// pos of the center of the camera
+	Point camera_rot(0.0f, 180.0f, 0.0f);		// rot from the center of the camera
+	Point camera_size(0.15f, 0.15f, 0.04f);
+	Point camera_centre(camera_size.x() / 2.0f, camera_size.y() / 2.0f, 0.0f);	// centre relative to the first point
+	set_camera(&camera_pos, &camera_rot, &camera_size, &camera_centre);
+
+	// LASER (1)
+	Point laser_pos(camera_pos.x() + laser_camera_offset_x,
+					camera_pos.y() + laser_camera_offset_y,
+					camera_pos.z() + laser_camera_offset_z);		// pos of the center of the laser
+	Point laser_rot(0.0f, 180.0f, 0.0f);		// rot from the center of the laser
+	Point laser_size(0.1f, 0.1f, 0.3f);
+	Point laser_centre(laser_size.x() / 2.0f, laser_size.y() / 2.0f, 0.0f);	// centre relative to the first point
+	set_laser(&laser_pos, &laser_rot, &laser_size, &laser_centre);
+
+	// WALL (2)
+	Point wall_pos(-1.625f, 0.0f, -wall_camera_dist);	// pos of the center of the wall
+	Point wall_rot(0.0f, 0.0f, 0.0f);					// rot from the center of the wall
+	Point wall_size(4.0f, 0.01f, 0.2f);
+	Point wall_centre(0.0f, 0.0f, 0.0f);				// centre relative to the first point
+	float wall_albedo = 0.5f;	// does not matter
+	set_box(&wall_pos, &wall_rot, &wall_size, &wall_centre, WALL, wall_albedo);
+
+	// OCCLUDER (3)
+	Object3D* occluder_obj3D = new Object3D(0);
+	OBJECT3D_SET[OCCLUDER] = occluder_obj3D;
+
+	// FLOOR (4)
+	Object3D* floor_obj3D = new Object3D(0);
+	OBJECT3D_SET[FLOOR] = floor_obj3D;
+
+	// VOLUME (5)
+	Object3D* volume_obj3D = new Object3D(0);
+	OBJECT3D_SET[VOLUME] = volume_obj3D;
+
+	// WALL_PATCHES (6)
+	Object3D* wall_patches_obj3D = new Object3D(0);
+	OBJECT3D_SET[WALL_PATCHES] = wall_patches_obj3D;
+
+	// CAMERA_FOV (7)
+	Object3D* camera_fov_obj3D = new Object3D(0);
+	OBJECT3D_SET[CAMERA_FOV] = camera_fov_obj3D;
+
+	// LASER_RAY (8)
+	Object3D* laser_ray_obj3D = new Object3D(0);
+	OBJECT3D_SET[LASER_RAY] = laser_ray_obj3D;
+
+	// VOLUME_PATCHES (9)
+	Object3D* volume_patches_obj3D = new Object3D(0);
+	OBJECT3D_SET[VOLUME_PATCHES] = volume_patches_obj3D;
+
+	// PIXEL_PATCHES (10) // empty
+	Object3D* pixel_patches_obj3D = new Object3D(0);
+	OBJECT3D_SET[PIXEL_PATCHES] = pixel_patches_obj3D;
+}
+
 
 
 // sets the Object3D camera

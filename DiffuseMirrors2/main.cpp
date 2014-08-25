@@ -111,6 +111,7 @@ int main_direct_vision_wall(int argc, char** argv, bool loop = true, Scene scene
 int main_diffused_mirror(int argc, char** argv, bool loop = true, Scene scene = DIFFUSED_MIRROR) {
 	
 	// capture data directly from PMD to Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE)
+	/*
 	float frequency = 100.0f;
 	float distance = 0.0f;
 	float shutter = 1920.0f;
@@ -118,12 +119,13 @@ int main_diffused_mirror(int argc, char** argv, bool loop = true, Scene scene = 
 	Frame * frame_00_null = NULL;	// (*frame_00_null) in PMD_params_to_Frame(...), to avoid this Frame meas. FRAME_00_CAPTURE else
 	Frame * frame_90_null = NULL;	// (*frame_90_null) in PMD_params_to_Frame(...), to avoid this Frame meas. FRAME_90_CAPTURE else
 	std::thread thread_PMD_params_to_Frame (PMD_params_to_Frame_anti_bug_thread, FRAME_00_CAPTURE, FRAME_90_CAPTURE, frequency, distance, shutter, comport, loop);
-	
+	*/
 	// Set all the object3D of the corresponding scene
-	std::thread thread_set_scene (set_scene_diffused_mirror, loop);
-	
+	std::thread thread_set_scene (set_scene_diffused_mirror, false);
+	std::cout << "\nHERE 000";
 	// Simulation
 	get_data_sim_diffused_mirror();
+	std::cout << "\nHERE 001";
 
 	// Render all the object3D of the scene
 	std::thread thread_render (render, argc, argv);
@@ -133,7 +135,7 @@ int main_diffused_mirror(int argc, char** argv, bool loop = true, Scene scene = 
 	control_loop_pause();
 	
 	// joins
-	thread_PMD_params_to_Frame.join();
+	//thread_PMD_params_to_Frame.join();
 	thread_set_scene.join();
 	thread_render.join();
 
@@ -167,6 +169,9 @@ int main_fov_measurement(int argc, char** argv, bool loop = true, Scene scene = 
 
 // main_calibration_matrix(...)
 int main_calibration_matrix(int argc, char** argv, bool loop = true, Scene scene = CALIBRATION_MATRIX) {
+	
+	// Set all the object3D of the corresponding scene (just camera and laser)
+	set_scene_calibration_matrix();
 
 	// capture data from PMD
 	std::vector<float> frequencies;
@@ -186,7 +191,7 @@ int main_calibration_matrix(int argc, char** argv, bool loop = true, Scene scene
 	char file_name[1024] = "PMD_Calibration_Matrix";
 	char comport[128] = "COM6";
 	int numtakes = 1;
-	std::thread thread_PMD_params_to_file (PMD_params_to_file_anti_bug_thread, frequencies, delays, shutters_float, dir_name, file_name, comport, numtakes);
+	std::thread thread_PMD_params_to_file (PMD_params_to_file_anti_bug_thread, frequencies, delays, shutters_float, dir_name, file_name, comport, numtakes, scene);
 
 	// pause in main to allow control when the loops will finish
 	//control_loop_pause();

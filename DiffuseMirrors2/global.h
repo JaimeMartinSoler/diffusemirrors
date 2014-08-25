@@ -32,10 +32,10 @@ enum Source {DATA_FILE, DATA_REAL_TIME, SIMULATION, UNKNOWN_SRC};
 #define PMD_WIDTH 165	// (MHz)
 #define PMD_HEIGTH 120	// (MHz)
 
-#define FREQUENCY_MIN 1.0	// (MHz)
-#define FREQUENCY_MAX 180.0	// (MHz)
-#define SHUTTER_MIN 3.0		// (us)
-#define SHUTTER_MAX 1920.0	// (us)
+#define FREQUENCY_MIN 1.0f		// (MHz)
+#define FREQUENCY_MAX 180.0f	// (MHz)
+#define SHUTTER_MIN 3.0f		// (us)
+#define SHUTTER_MAX 1920.0f		// (us)
 
 // TRANSIENTPMD SETTINGS
 #define COMPORT_FORMAT "\\\\.\\%s"

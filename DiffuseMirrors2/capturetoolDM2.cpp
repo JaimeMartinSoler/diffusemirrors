@@ -2,6 +2,7 @@
 #include "capturetoolDM2.h"
 #include "data_read.h"
 #include "global.h"
+#include "shapes.h"
 #include <stdio.h>
 #include <stdlib.h>     // atof
 #include <pmdsdk2.h>
@@ -578,7 +579,7 @@ int parser_main (int argc, char *argv[], std::vector<float> & frequencies, std::
 // return 0: all parameters OK
 // return 1: any parameter out of bounds, modified
 // return 2: unproper dimensions or size
-int check_parameters (float frequency_, float shutter_, char* comport) {
+int check_parameters (float & frequency_, float & shutter_, char* comport) {
 	
 	sprintf(comport_full_name, COMPORT_FORMAT, comport);	// configure comport_full_name
 
@@ -687,7 +688,7 @@ int PMD_charArray_to_file (int argc, char *argv[]) {
 
 // Author: Jaime Martin (modification of previous function)
 // PMD_params_to_file
-int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* dir_name, char* file_name, char* comport, int & numtakes) {
+int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* dir_name, char* file_name, char* comport, int & numtakes, Scene scene) {	// by default: scene = UNKNOWN_SCENE
 	
 	// Checking errors in parameters
 	int error_checking_parameters = check_parameters_vector (frequencies, delays, shutters_float, comport, numtakes);
@@ -747,9 +748,21 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 	string answer;
 	cin >> answer;
 	if (answer[0] != 'y' && answer[0] != 'Y') {
-		cout << "\nOkay - quitting.\n" << endl;
+		cout << "\nOK. Quitting.\n" << endl;
 		return -3;
 	}
+
+	// Check scene if scene == CALIBRATION_MATRIX (does NOT work like this...)
+	/*
+	cout << "\n(*OBJECT3D_SET[CAMERA]).size() = " << (*OBJECT3D_SET[LASER]).size() << "\n";
+	cout << "\n(*OBJECT3D_SET[LASER]).size()  = " << (*OBJECT3D_SET[LASER]).size()  << "\n";
+	if ((scene == CALIBRATION_MATRIX) && (((*OBJECT3D_SET[CAMERA]).size() == 0) || ((*OBJECT3D_SET[LASER]).size() == 0))) {
+		cout << "\nError, flor the Calibration Matrix is required to set the scene, and it has not been setted or it is wrong. Quitting\n";
+		return -4;
+	}
+	*/
+
+	cv::destroyAllWindows();
 
 	// Init devices: Open PMD sensor
 	PMDHandle hnd;
@@ -813,31 +826,52 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 					
 						sprintf(command,"%s\\%s%s", dir_name, file_name, FILE_INFO_NAME_SUFFIX);
 						FILE *fp = fopen(command, "w"); 
-
+						// line 0
 						fprintf(fp, "# Capture date: %s %s\r\n", dateStr, timeStr);
-					
-						fprintf(fp, "Bytes per measured value: 2\n");
-
+						// line 1
+						fprintf(fp, "\r\n");
+						// line 2
+						fprintf(fp, "# Raw Data measurements:\r\n");
+						// line	3
+						fprintf(fp, "Bytes per raw value: %d\r\n", sizeof(unsigned short));
+						// line	4
 						fprintf(fp, "imagedims: %d %d\r\n", w, h);
-
+						// line	5
 						fprintf(fp, "frequencies (MHz) [%d]:", frequencies.size());
 						for (size_t i = 0; i < frequencies.size(); ++i) 
 							fprintf(fp, " %.3f", frequencies[i]);
 						fprintf(fp, "\r\n");
-
+						// line	6
 						fprintf(fp, "distances (m) [%d]:", delays.size());
 						for (size_t i = 0; i < delays.size(); ++i) 
 							fprintf(fp, " %.3f", delays[i]);
 						fprintf(fp, "\r\n");
-
+						// line	7
 						fprintf(fp, "shutters (us) [%d]:", shutters.size());
 						for (size_t i = 0; i < shutters.size(); ++i) 
 							fprintf(fp, " %.d", shutters[i].first);
 						fprintf(fp, "\r\n");
-
+						// line	8
 						fprintf(fp, "phases (degrees) [2]: 0 90\r\n");
-
+						// line	9
 						fprintf(fp, "number_of_takes: %d\r\n", numtakes); 
+						
+						if (scene == CALIBRATION_MATRIX) {
+							// line 10
+							fprintf(fp, "\r\n");
+							// line 11
+							fprintf(fp, "# Calibration Matrix Data [camera_pos=(0,0,0), camera_n=(0,0,-1)]:\r\n");
+							// line	12
+							fprintf(fp, "Bytes per calibration matrix value: %d\r\n", sizeof(float));
+							// line	13
+							float lcx = (*(*(*OBJECT3D_SET[LASER])[0]).c).x() - (*(*(*OBJECT3D_SET[CAMERA])[0]).c).x();
+							float lcy = (*(*(*OBJECT3D_SET[LASER])[0]).c).y() - (*(*(*OBJECT3D_SET[CAMERA])[0]).c).y();
+							float lcz = (*(*(*OBJECT3D_SET[LASER])[0]).c).z() - (*(*(*OBJECT3D_SET[CAMERA])[0]).c).z();
+							fprintf(fp, "Laser position relative to camera (x,y,z): %.3f %.3f %.3f\r\n", lcx, lcy, lcz);
+							// line	14
+							float wcd = abs((*(*(*OBJECT3D_SET[WALL])[0]).c).z() - (*(*(*OBJECT3D_SET[CAMERA])[0]).c).z());
+							fprintf(fp, "Wall distance to camera: %.3f\r\n", wcd);
+						}
 
 						fclose(fp);
 
@@ -876,12 +910,15 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 	pmdClose (hnd);
 	if (CV_WHILE_CAPTURING)
 		cvDestroyWindow(WindowName);
-
+	
+	//if (scene == CALIBRATION_MATRIX) {
+	//	calibration_matrix_file(fn, command);
+	//}
 	return 0;
 }
 // there's a weird bug when calling directly to PMD_params_to_file from thread constructor. With this re-calling functtion the bug is avoided
-int PMD_params_to_file_anti_bug_thread (std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* dir_name, char* file_name, char* comport, int & numtakes) {
-	return PMD_params_to_file (frequencies, delays, shutters_float, dir_name, file_name, comport, numtakes);
+int PMD_params_to_file_anti_bug_thread (std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* dir_name, char* file_name, char* comport, int & numtakes, Scene scene) {	// by default: scene = UNKNOWN_SCENE
+	return PMD_params_to_file (frequencies, delays, shutters_float, dir_name, file_name, comport, numtakes, scene);
 }
 
 // Author: Jaime Martin

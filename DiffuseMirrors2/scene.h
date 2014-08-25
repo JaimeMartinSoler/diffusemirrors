@@ -11,8 +11,12 @@
 #include <highgui.h>
 
 
+
+
 // sets the scene depending on the Scene passed as argument
 void set_scene(Scene scene, bool loop = false);
+
+
 
 
 // sets all the Object3D (in OBJECT3D_SET) of the scene
@@ -23,6 +27,11 @@ void set_scene_direct_vision_wall(bool loop = false);
 
 // sets all the Direct Vision Any scene
 void set_scene_direct_vision_any(bool loop = false);
+
+// sets all the Calibration Matrix scene. Actually just the position of camera and laser
+void set_scene_calibration_matrix();
+
+
 
 
 // sets the Object3D camera
@@ -46,6 +55,7 @@ void set_laser_ray();
 // sets the Object3D with all the volume patches (volume patch = PointMesh with one rectangle)
 void set_volume_patches(Point* volume_pos_, Point* volume_rot_, Point* volume_size_, Point* volume_centre_,
 	std::vector<float> & volume_patches_albedo_, std::vector<Point*> & volume_patches_rot_, std::vector<bool> & volume_patches_bool_);
+
 
 
 

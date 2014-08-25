@@ -42,7 +42,7 @@ int parser_main (int argc, char *argv[], std::vector<float> & frequencies, std::
 // return 0: all parameters OK
 // return 1: any parameter out of bounds, modified
 // return 2: unproper dimensions or size
-int check_parameters (float frequency_, float shutter_, char* comport);
+int check_parameters (float & frequency_, float & shutter_, char* comport);
 
 // Author: Jaime Martin
 // check_parameters_vector(...)
@@ -57,9 +57,9 @@ int PMD_charArray_to_file (int argc, char *argv[]);
 
 // Author: Jaime Martin (modification of previous function)
 // PMD_params_to_file
-int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* dir_name, char* file_name, char* comport, int & numtakes);
+int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* dir_name, char* file_name, char* comport, int & numtakes, Scene scene = UNKNOWN_SCENE);
 // there's a weird bug when calling directly to PMD_params_to_file from thread constructor. With this re-calling functtion the bug is avoided
-int PMD_params_to_file_anti_bug_thread (std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* dir_name, char* file_name, char* comport, int & numtakes);
+int PMD_params_to_file_anti_bug_thread (std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* dir_name, char* file_name, char* comport, int & numtakes, Scene scene = UNKNOWN_SCENE);
 
 // Author: Jaime Martin
 // copy_array (...)

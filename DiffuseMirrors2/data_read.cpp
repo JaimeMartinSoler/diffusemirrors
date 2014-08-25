@@ -35,39 +35,39 @@ DataPMD::DataPMD(char* dir_name_, char* file_name_) {
 	}
 	int line_number = 0;
 	char delimiter = ':';
-	char file_info_line[1024];
+	char file_info_line[8192];	// this is aprox a max of 1600 "values" per line (considering 5 bytes/chars per value, such as "100.0")
 	
 	// Explore line by line, getting the vectors and width, heigth and numtakes
-	while (fgets(file_info_line, 1024, file_info)) {
+	while (fgets(file_info_line, 8192, file_info)) {
 		std::cout << file_info_line;
 		
 		// bytes_per_value
-		if (line_number == 1) {
+		if (line_number == 3) {
 			std::vector<float> bytes_per_value_vector;
 			char_array_to_float_vector_from_delimiter (file_info_line, bytes_per_value_vector, delimiter);
 			bytes_per_value = (int)bytes_per_value_vector[0];
 		}
 		// width and heigth
-		else if (line_number == 2) {
+		else if (line_number == 4) {
 			std::vector<float> width_and_heigth;
 			char_array_to_float_vector_from_delimiter (file_info_line, width_and_heigth, delimiter);
 			width = (int)width_and_heigth[0];
 			heigth = (int)width_and_heigth[1];
 		}
 		// frequencies
-		else if (line_number == 3)
+		else if (line_number == 5)
 			char_array_to_float_vector_from_delimiter (file_info_line, frequencies, delimiter);
 		// distances
-		else if (line_number == 4)
+		else if (line_number == 6)
 			char_array_to_float_vector_from_delimiter (file_info_line, distances, delimiter);
 		// shutters_
-		else if (line_number == 5)
+		else if (line_number == 7)
 			char_array_to_float_vector_from_delimiter (file_info_line, shutters, delimiter);
 		// phases
-		else if (line_number == 6)
+		else if (line_number == 8)
 			char_array_to_float_vector_from_delimiter (file_info_line, phases, delimiter);
 		// numtakes
-		else if (line_number == 7) {
+		else if (line_number == 9) {
 			std::vector<float> numtakes_vector;
 			char_array_to_float_vector_from_delimiter (file_info_line, numtakes_vector, delimiter);
 			numtakes = (int)numtakes_vector[0];
