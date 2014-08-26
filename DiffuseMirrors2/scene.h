@@ -28,8 +28,8 @@ void set_scene_direct_vision_wall(bool loop = false);
 // sets all the Direct Vision Any scene
 void set_scene_direct_vision_any(bool loop = false);
 
-// sets all the Calibration Matrix scene. Actually just the position of camera and laser
-void set_scene_calibration_matrix();
+// sets all the Raw Data scene. (Actually just the Camera, Laser and Wall).
+void set_scene_raw_data(float laser_to_cam_offset_x, float laser_to_cam_offset_y, float laser_to_cam_offset_z, float dist_wall_cam);
 
 
 
@@ -82,6 +82,9 @@ void set_volume_patches_params(std::vector<float> & volume_patches_albedo_, std:
 
 // sets the mean point of a vector of points floats
 void mean_vector_of_points (std::vector<Point> & vec, Point & pt);
+
+// sets a vector containing the distances from a Point to a vector of Point*
+void set_point_to_vector_distances (Point* p, std::vector<Point*> & vp, std::vector<float> & vd);
 
 #endif
 

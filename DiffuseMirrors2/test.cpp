@@ -29,8 +29,10 @@ int test_data_read_main() {
 	char dir_name[1024] = "f:\\tmp\\pmdtest2";
 	char file_name[1024] = "PMD_test_meas";
 
+	// Create instance of INFO
+	INFO = Info(dir_name, file_name);
 	// Create instance and store in DATAPMD_READ
-	DATAPMD_READ = DataPMD(dir_name, file_name);
+	DATAPMD_READ = RawData(&INFO);
 	// We have to check if there were errors while creating DATAPMD_READ
 	if (DATAPMD_READ.error_code)
 		return 1;	// error
@@ -80,8 +82,8 @@ int test_capturetoolDM2_main() {
 	if (PMD_params_to_file (frequencies,delays,shutters_float, dir_name, file_name, comport, numtakes))
 		error = 1;
 	
-	// Capture directly from PMD to DataPMD (DataPMD DATAPMD_CAPTURE)
-	if (PMD_params_to_DataPMD (DATAPMD_CAPTURE, frequencies, delays, shutters_float, comport, numtakes, false))
+	// Capture directly from PMD to RawData (RawData DATAPMD_CAPTURE)
+	if (PMD_params_to_RawData (DATAPMD_CAPTURE, frequencies, delays, shutters_float, comport, numtakes, false))
 		error = 1;
 	
 	// Capture directly from PMD to Frame (Frame FRAME_00_CAPTURE, Frame FRAME_90_CAPTURE)

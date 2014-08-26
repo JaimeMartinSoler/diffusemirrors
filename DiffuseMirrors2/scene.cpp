@@ -26,8 +26,8 @@ void set_scene(Scene scene, bool loop) {	// by default: loop = false
 		set_scene_direct_vision_wall(loop);
 	else if (scene == DIFFUSED_MIRROR)
 		set_scene_diffused_mirror(loop);
-	else if (scene == CALIBRATION_MATRIX)
-		set_scene_calibration_matrix();
+	//else if (scene == CALIBRATION_MATRIX)
+	//	set_scene_calibration_matrix();
 }
 
 
@@ -265,14 +265,8 @@ void set_scene_direct_vision_any (bool loop) {	// by default: loop = false
 		update_pixel_patches(&camera_pos, &camera_rot, &camera_centre, screen_patches_corners_normals, screen_patches_centers_normals, loop);
 }
 
-// sets all the Calibration Matrix scene. Actually just the position of camera and laser
-void set_scene_calibration_matrix() {
-
-	// relevant variables:
-	float laser_camera_offset_x = -0.15f;
-	float laser_camera_offset_y = 0.0f;
-	float laser_camera_offset_z = 0.0f;
-	float wall_camera_dist = 2.0f;
+// sets all the Raw Data scene. (Actually just the Camera, Laser and Wall).
+void set_scene_raw_data(float laser_to_cam_offset_x, float laser_to_cam_offset_y, float laser_to_cam_offset_z, float dist_wall_cam) {
 
 	// CAMERA (0)
 	Point camera_pos(0.0f, 0.75f, 0.0f);		// pos of the center of the camera
@@ -282,16 +276,16 @@ void set_scene_calibration_matrix() {
 	set_camera(&camera_pos, &camera_rot, &camera_size, &camera_centre);
 
 	// LASER (1)
-	Point laser_pos(camera_pos.x() + laser_camera_offset_x,
-					camera_pos.y() + laser_camera_offset_y,
-					camera_pos.z() + laser_camera_offset_z);		// pos of the center of the laser
+	Point laser_pos(camera_pos.x() + laser_to_cam_offset_x,
+					camera_pos.y() + laser_to_cam_offset_y,
+					camera_pos.z() + laser_to_cam_offset_z);		// pos of the center of the laser
 	Point laser_rot(0.0f, 180.0f, 0.0f);		// rot from the center of the laser
 	Point laser_size(0.1f, 0.1f, 0.3f);
 	Point laser_centre(laser_size.x() / 2.0f, laser_size.y() / 2.0f, 0.0f);	// centre relative to the first point
 	set_laser(&laser_pos, &laser_rot, &laser_size, &laser_centre);
 
 	// WALL (2)
-	Point wall_pos(-1.625f, 0.0f, -wall_camera_dist);	// pos of the center of the wall
+	Point wall_pos(-1.625f, 0.0f, -dist_wall_cam);	// pos of the center of the wall
 	Point wall_rot(0.0f, 0.0f, 0.0f);					// rot from the center of the wall
 	Point wall_size(4.0f, 0.01f, 0.2f);
 	Point wall_centre(0.0f, 0.0f, 0.0f);				// centre relative to the first point
@@ -303,8 +297,12 @@ void set_scene_calibration_matrix() {
 	OBJECT3D_SET[OCCLUDER] = occluder_obj3D;
 
 	// FLOOR (4)
-	Object3D* floor_obj3D = new Object3D(0);
-	OBJECT3D_SET[FLOOR] = floor_obj3D;
+	Point floor_pos(wall_pos.x(), 0.0f, 0.7f);
+	Point floor_rot(-90.0f, 0.0f, 0.0f);
+	Point floor_size(wall_size.x(), 6.0f, wall_size.z());
+	Point floor_centre(0.0f, 0.0f, 0.0f);
+	float floor_albedo = 0.5f;	// does not matter
+	set_box(&floor_pos, &floor_rot, &floor_size, &floor_centre, FLOOR, floor_albedo);
 
 	// VOLUME (5)
 	Object3D* volume_obj3D = new Object3D(0);
@@ -987,3 +985,15 @@ void mean_vector_of_points (std::vector<Point> & vec, Point & pt) {
 		pt += vec[i];
 	pt /= vec.size();
 }
+
+
+
+// sets a vector containing the distances from a Point to a vector of Point*
+void set_point_to_vector_distances (Point* p, std::vector<Point*> & vp, std::vector<float> & vd) {
+
+	vd.resize(vp.size());
+	for (size_t i = 0; i < vp.size(); i++)
+		vd[i] = dist_2(p,vp[i]);
+}
+
+

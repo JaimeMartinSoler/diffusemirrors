@@ -57,9 +57,13 @@ int PMD_charArray_to_file (int argc, char *argv[]);
 
 // Author: Jaime Martin (modification of previous function)
 // PMD_params_to_file
-int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* dir_name, char* file_name, char* comport, int & numtakes, Scene scene = UNKNOWN_SCENE);
+int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* dir_name, char* file_name, char* comport, int & numtakes, bool cmx_info = false, float* cmx_params = NULL);
 // there's a weird bug when calling directly to PMD_params_to_file from thread constructor. With this re-calling functtion the bug is avoided
-int PMD_params_to_file_anti_bug_thread (std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* dir_name, char* file_name, char* comport, int & numtakes, Scene scene = UNKNOWN_SCENE);
+int PMD_params_to_file_anti_bug_thread (std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* dir_name, char* file_name, char* comport, int & numtakes, bool cmx_info = false, float* cmx_params = NULL);
+
+// Author: Jaime Martin
+// create_cmx_from_raw (...)
+void create_cmx_from_raw(char* dir_name, char* file_name);
 
 // Author: Jaime Martin
 // copy_array (...)
@@ -68,8 +72,8 @@ int PMD_params_to_file_anti_bug_thread (std::vector<float> & frequencies, std::v
 int copy_array (unsigned short int* dst, unsigned short int* src, int dst_pos, int dst_size, int src_size);
 
 // Author: Jaime Martin (modification of previous function)
-// PMD_params_to_DataPMD
-int PMD_params_to_DataPMD (DataPMD & DataPMD_cap, std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* comport, int & numtakes, bool loop);
+// PMD_params_to_RawData
+int PMD_params_to_RawData (RawData & RawData_cap, std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* comport, int & numtakes, bool loop);
 
 // Author: Jaime Martin (modification of previous function)
 // PMD_params_to_Frame

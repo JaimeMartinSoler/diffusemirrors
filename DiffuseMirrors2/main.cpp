@@ -168,15 +168,20 @@ int main_fov_measurement(int argc, char** argv, bool loop = true, Scene scene = 
 }
 
 // main_calibration_matrix(...)
-int main_calibration_matrix(int argc, char** argv, bool loop = true, Scene scene = CALIBRATION_MATRIX) {
+int main_raw_data(int argc, char** argv, bool loop = true, Scene scene = RAW_DATA) {
 	
-	// Set all the object3D of the corresponding scene (just camera and laser)
-	set_scene_calibration_matrix();
+	// Set all the object3D of the corresponding scene (just camera, laser and wall)
+	bool cmx_info = true;
+	float laser_to_cam_offset_x = -0.15f;
+	float laser_to_cam_offset_y = 0.0f;
+	float laser_to_cam_offset_z = 0.0;
+	float dist_wall_cam = 2.0f;
+	float cmx_params[4] = {laser_to_cam_offset_x, laser_to_cam_offset_y, laser_to_cam_offset_z, dist_wall_cam};
 
 	// capture data from PMD
 	std::vector<float> frequencies;
-	float freq_res = 10.0f;
-	float freq_min = 10.0f;
+	float freq_res = 20.0f;
+	float freq_min = 20.0f;
 	float freq_max = 100.0f + freq_res/2.0f;	// (+ freq_res/2.0f) is due to avoid rounding problems
 	for (float fi = freq_min; fi <= freq_max; fi += freq_res)
 		frequencies.push_back(fi);
@@ -191,7 +196,7 @@ int main_calibration_matrix(int argc, char** argv, bool loop = true, Scene scene
 	char file_name[1024] = "PMD_Calibration_Matrix";
 	char comport[128] = "COM6";
 	int numtakes = 1;
-	std::thread thread_PMD_params_to_file (PMD_params_to_file_anti_bug_thread, frequencies, delays, shutters_float, dir_name, file_name, comport, numtakes, scene);
+	std::thread thread_PMD_params_to_file (PMD_params_to_file_anti_bug_thread, frequencies, delays, shutters_float, dir_name, file_name, comport, numtakes, cmx_info, cmx_params);
 
 	// pause in main to allow control when the loops will finish
 	//control_loop_pause();
@@ -221,7 +226,7 @@ int main(int argc, char** argv) {
 	//test();
 	//return 0;
 
-	Scene scene = CALIBRATION_MATRIX;	// DIRECT_VISION_WALL,    DIRECT_VISION_ANY,    DIRECT_VISION_ANY_SIMULATION,    DIFFUSED_MIRROR,    FOV_MEASUREMENT,    CALIBRATION_MATRIX,    UNKNOWN_SCENE
+	Scene scene = RAW_DATA;	// DIRECT_VISION_WALL,    DIRECT_VISION_ANY,    DIRECT_VISION_ANY_SIMULATION,    DIFFUSED_MIRROR,    FOV_MEASUREMENT,    CALIBRATION_MATRIX,    UNKNOWN_SCENE
 	bool loop = true;
 	
 	switch(scene) {
@@ -229,7 +234,7 @@ int main(int argc, char** argv) {
 		case DIRECT_VISION_ANY  : main_direct_vision_any  (argc, argv, loop, scene); break;
 		case DIFFUSED_MIRROR    : main_diffused_mirror    (argc, argv, loop, scene); break;
 		case FOV_MEASUREMENT    : main_fov_measurement    (argc, argv, loop, scene); break;
-		case CALIBRATION_MATRIX : main_calibration_matrix (argc, argv, loop, scene); break;
+		case RAW_DATA           : main_raw_data           (argc, argv, loop, scene); break;
 	}
 
 	system("pause");

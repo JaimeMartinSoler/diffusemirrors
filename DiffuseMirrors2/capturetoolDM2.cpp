@@ -688,7 +688,7 @@ int PMD_charArray_to_file (int argc, char *argv[]) {
 
 // Author: Jaime Martin (modification of previous function)
 // PMD_params_to_file
-int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* dir_name, char* file_name, char* comport, int & numtakes, Scene scene) {	// by default: scene = UNKNOWN_SCENE
+int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* dir_name, char* file_name, char* comport, int & numtakes, bool cmx_info, float* cmx_params) {	// by default: (bool cmx_info = false, float* cmx_params = NULL)
 	
 	// Checking errors in parameters
 	int error_checking_parameters = check_parameters_vector (frequencies, delays, shutters_float, comport, numtakes);
@@ -702,11 +702,12 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 		shutters.push_back(pair<int, unsigned short*>((int)shutters_float[i], new unsigned short [PMD_WIDTH*PMD_HEIGTH*10]));
 
 	// Check if file already exists
+	char fn[256];
 	char command[1024];
 	char full_file_name[1024];
 	char full_file_name_take[1024];
-	sprintf(full_file_name,"%s\\%s%s", dir_name, file_name, FILE_DATA_NAME_SUFFIX);
-	sprintf(full_file_name_take,"%s\\%s_%03d%s", dir_name, file_name, 0, FILE_DATA_NAME_SUFFIX);
+	sprintf(full_file_name,"%s\\%s%s", dir_name, file_name, RAW_FILENAME_SUFFIX);
+	sprintf(full_file_name_take,"%s\\%s_%03d%s", dir_name, file_name, 0, RAW_FILENAME_SUFFIX);
 	sprintf(command,"%s", dir_name);
 	if (file_exists(full_file_name) || file_exists(full_file_name_take)) {
 		cout << "\nWarning: File \"" << full_file_name << "\" already exists and will be deleted. Sure? (y/n)\n";
@@ -741,8 +742,9 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 	time_h = std::floor(time_tot_s / 3600.0f);
 	time_m = std::floor(((time_tot_s / 3600.0f) - time_h) * 60.0f);
 	time_s = std::floor(((((time_tot_s / 3600.0f) - time_h) * 60.0f) - time_m) * 60.0f);
-	int file_size = frequencies.size() * delays.size() * shutters.size() * 2 * PMD_WIDTH * PMD_HEIGTH * 2;	// Bytes
-	cout << "\nThe measurement will require: " << file_size << " Bytes for each take.";
+	float file_size_B = frequencies.size() * delays.size() * shutters.size() * 2 * PMD_WIDTH * PMD_HEIGTH * 2;	// Bytes
+	float file_size_MB = file_size_B / 1048576.0f;	// Bytes
+	cout << "\nThe measurement will require: " << file_size_B << " Bytes (" << (int)file_size_MB << " MB) for each take.";
 	cout << "\nThe measurement will take   : " << time_h << "h " << time_m << "' " << time_s << "''.";
 	cout << "\nAre you sure to continue? (y/n)\n";
 	string answer;
@@ -751,16 +753,6 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 		cout << "\nOK. Quitting.\n" << endl;
 		return -3;
 	}
-
-	// Check scene if scene == CALIBRATION_MATRIX (does NOT work like this...)
-	/*
-	cout << "\n(*OBJECT3D_SET[CAMERA]).size() = " << (*OBJECT3D_SET[LASER]).size() << "\n";
-	cout << "\n(*OBJECT3D_SET[LASER]).size()  = " << (*OBJECT3D_SET[LASER]).size()  << "\n";
-	if ((scene == CALIBRATION_MATRIX) && (((*OBJECT3D_SET[CAMERA]).size() == 0) || ((*OBJECT3D_SET[LASER]).size() == 0))) {
-		cout << "\nError, flor the Calibration Matrix is required to set the scene, and it has not been setted or it is wrong. Quitting\n";
-		return -4;
-	}
-	*/
 
 	cv::destroyAllWindows();
 
@@ -783,11 +775,10 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 
 	// Loop through takes
 	for (int take = 0; take < numtakes; take++) {
-		char fn[256];
 		if (numtakes > 1)
-			sprintf(fn,"%s\\%s_nt%03d%s", dir_name, file_name, take, FILE_DATA_NAME_SUFFIX);
+			sprintf(fn,"%s\\%s_nt%03d%s", dir_name, file_name, take, RAW_FILENAME_SUFFIX);
 		else
-			sprintf(fn,"%s\\%s%s", dir_name, file_name, FILE_DATA_NAME_SUFFIX);
+			sprintf(fn,"%s\\%s%s", dir_name, file_name, RAW_FILENAME_SUFFIX);
 		cout << "\nraw file name: ["<<fn<<"]"<<endl;
 		rawdumpfile = fopen(fn,"wb");
 
@@ -824,7 +815,7 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 						_strdate( dateStr);
 						_strtime( timeStr );
 					
-						sprintf(command,"%s\\%s%s", dir_name, file_name, FILE_INFO_NAME_SUFFIX);
+						sprintf(command,"%s\\%s%s", dir_name, file_name, INF_FILENAME_SUFFIX);
 						FILE *fp = fopen(command, "w"); 
 						// line 0
 						fprintf(fp, "# Capture date: %s %s\r\n", dateStr, timeStr);
@@ -856,7 +847,7 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 						// line	9
 						fprintf(fp, "number_of_takes: %d\r\n", numtakes); 
 						
-						if (scene == CALIBRATION_MATRIX) {
+						if (cmx_info == true) {
 							// line 10
 							fprintf(fp, "\r\n");
 							// line 11
@@ -864,12 +855,12 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 							// line	12
 							fprintf(fp, "Bytes per calibration matrix value: %d\r\n", sizeof(float));
 							// line	13
-							float lcx = (*(*(*OBJECT3D_SET[LASER])[0]).c).x() - (*(*(*OBJECT3D_SET[CAMERA])[0]).c).x();
-							float lcy = (*(*(*OBJECT3D_SET[LASER])[0]).c).y() - (*(*(*OBJECT3D_SET[CAMERA])[0]).c).y();
-							float lcz = (*(*(*OBJECT3D_SET[LASER])[0]).c).z() - (*(*(*OBJECT3D_SET[CAMERA])[0]).c).z();
+							float lcx = cmx_params[0];
+							float lcy = cmx_params[1];
+							float lcz = cmx_params[2];
 							fprintf(fp, "Laser position relative to camera (x,y,z): %.3f %.3f %.3f\r\n", lcx, lcy, lcz);
 							// line	14
-							float wcd = abs((*(*(*OBJECT3D_SET[WALL])[0]).c).z() - (*(*(*OBJECT3D_SET[CAMERA])[0]).c).z());
+							float wcd = cmx_params[3];
 							fprintf(fp, "Wall distance to camera: %.3f\r\n", wcd);
 						}
 
@@ -897,7 +888,6 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 						Sleep(ms_extra_delay);	// suspends the execution of the current thread until the time-out interval elapses
 					//std::cout << "ms_time_loop   : " << ms_time_loop << " ms\n";
 					//std::cout << "ms_extra_delay : " << ms_extra_delay << " ms\n\n";
-
 				}
 			}
 		}
@@ -910,16 +900,61 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 	pmdClose (hnd);
 	if (CV_WHILE_CAPTURING)
 		cvDestroyWindow(WindowName);
-	
-	//if (scene == CALIBRATION_MATRIX) {
-	//	calibration_matrix_file(fn, command);
-	//}
+
 	return 0;
 }
 // there's a weird bug when calling directly to PMD_params_to_file from thread constructor. With this re-calling functtion the bug is avoided
-int PMD_params_to_file_anti_bug_thread (std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* dir_name, char* file_name, char* comport, int & numtakes, Scene scene) {	// by default: scene = UNKNOWN_SCENE
-	return PMD_params_to_file (frequencies, delays, shutters_float, dir_name, file_name, comport, numtakes, scene);
+int PMD_params_to_file_anti_bug_thread (std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* dir_name, char* file_name, char* comport, int & numtakes, bool cmx_info, float* cmx_params) {	// by default: (bool cmx_info = false, float* cmx_params = NULL)
+	return PMD_params_to_file (frequencies, delays, shutters_float, dir_name, file_name, comport, numtakes, cmx_info, cmx_params);
 }
+
+// Author: Jaime Martin
+// create_cmx_from_raw (...)
+void create_cmx_from_raw(char* dir_name, char* file_name) {
+
+	RawData raw_data(&INFO);	// this will load into the memory all the data
+	
+	float raw_data_value;
+	int phase_idx = 0;								// always
+	int shutter_idx = raw_data.info->shutters.size() - 1;	//always, the calibration matrix is 1-shutter oriented
+	
+	// IMPORTANT:    cmx_value = c * Em * albedo = H * dist_src_pix_rc,    dist_src_pix_rc = |r_src - r_x0(r,c)|^2,
+	float dist_src_pix_rc;
+	float cmx_value;	
+	float* cmx_value_ptr = &cmx_value;
+	size_t cmx_bytes_per_value = sizeof(float);
+	size_t cmx_elements_per_write = 1;
+	char cmx_file_full_name[1024];
+	sprintf(cmx_file_full_name,"%s\\%s%s", dir_name, file_name, CMX_FILENAME_SUFFIX);
+	FILE* cmx_file = fopen(cmx_file_full_name,"wb");
+
+	// in data_read.h (about the raw_data ordering:
+	// So, the order of each measured unsigned value of 2 Bytes in the file is:
+	//     for(dist) { for(freq) { for(phase) { for(shutter){ for(heigth){ for(width){ // here... }}}}}}
+	for (size_t di = 0; di < raw_data.info->distances.size(); di++) {
+		for (size_t fi = 0; fi < raw_data.info->frequencies.size(); fi++) {
+			//for (phase_idx = 0, always) 
+			//for (shutter_idx = shutters.size() - 1, always, the calibration matrix is 1-shutter oriented) 
+			for (size_t r = 0; r < raw_data.info->heigth; r++) {
+				for (size_t c = 0; c < raw_data.info->width; c++) {
+
+					// Calculate the corresponding value of the Calibration Matrix
+					// data is not stored properly. -32768 fixes it thanks to short int over-run
+					// by default image is up-down-fliped so heigth_RawData = (heigth_Frame-1-h)
+					raw_data_value = (float)(raw_data.at(di, fi, shutter_idx, c, raw_data.info->heigth - 1 - r, phase_idx) - 32768);
+					
+					cmx_value = 0.0f;
+
+					// Store it in the Calibration Matrix
+					fwrite(cmx_value_ptr, cmx_bytes_per_value, cmx_elements_per_write, cmx_file);
+
+				}
+			}
+		}
+	}
+	fclose (cmx_file);
+}
+
 
 // Author: Jaime Martin
 // copy_array (...)
@@ -938,8 +973,8 @@ int copy_array (unsigned short int* dst, unsigned short int* src, int dst_pos, i
 
 
 // Author: Jaime Martin (modification of previous function)
-// PMD_params_to_DataPMD
-int PMD_params_to_DataPMD (DataPMD & DataPMD_cap, std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* comport, int & numtakes, bool loop) {
+// PMD_params_to_RawData
+int PMD_params_to_RawData (RawData & RawData_cap, std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* comport, int & numtakes, bool loop) {
 
 	// Checking errors in parameters
 	int error_checking_parameters = check_parameters_vector (frequencies, delays, shutters_float, comport, numtakes);
@@ -1036,8 +1071,8 @@ int PMD_params_to_DataPMD (DataPMD & DataPMD_cap, std::vector<float> & frequenci
 				}
 			}
 		}
-		// Save data_buffer_PMD to the DataPMD instance
-		DataPMD_cap = DataPMD(data_buffer_PMD, data_buffer_PMD_size, frequencies, delays, shutters_float, phases, w, h, numtakes, DATA_REAL_TIME);
+		// Save data_buffer_PMD to the RawData instance
+		//RawData_cap = RawData(data_buffer_PMD, data_buffer_PMD_size, frequencies, delays, shutters_float, phases, w, h, numtakes);
 	}
 	// --- END OF CAPTURE LOOP -------------------------------------------------------------------------------
 	
@@ -1129,9 +1164,9 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequ
 			cv_frame_object.wait(locker_frame_object);
 		}
 		if (&Frame_00_cap != NULL)
-			Frame_00_cap = Frame(ushort_img[0], h, w, distance_, frequency_, shutter_, phases[0], 0, DATA_REAL_TIME, PIXELS_STORING_GLOBAL);
+			Frame_00_cap = Frame(ushort_img[0], h, w, distance_, frequency_, shutter_, phases[0], 0, PIXELS_STORING_GLOBAL);
 		if (&Frame_90_cap != NULL)
-			Frame_90_cap = Frame(ushort_img[0], h, w, distance_, frequency_, shutter_, phases[1], 1, DATA_REAL_TIME, PIXELS_STORING_GLOBAL);
+			Frame_90_cap = Frame(ushort_img[0], h, w, distance_, frequency_, shutter_, phases[1], 1, PIXELS_STORING_GLOBAL);
 		//std::cout << "UPDATED_NEW_FRAME";
 		UPDATED_NEW_FRAME = true;
 		UPDATED_NEW_OBJECT = false;

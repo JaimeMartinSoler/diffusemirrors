@@ -60,7 +60,7 @@ void get_data_sim_diffused_mirror() {
 	//plot_transient_pixel(transient_image, pix_x, pix_y);
 
 	// Plot image pixels values with opencv, from pixels_value
-	Frame pixels_value_frame(pixels_value, CAMERA_PIX_Y, CAMERA_PIX_X, false, distance, frequency, phase, shutter, SIMULATION);
+	Frame pixels_value_frame(pixels_value, CAMERA_PIX_Y, CAMERA_PIX_X, false, distance, frequency, phase, shutter);
 	pixels_value_frame.plot_frame();
 }
 
@@ -85,7 +85,7 @@ void get_data_sim_direct_vision_wall() {
 	get_pixels_value(pixels_value_simple, transient_image_simple, distance, frequency, phase, shutter, Em);
 
 	// Plot image pixels values with opencv, from pixels_value
-	Frame pixels_value_simple_frame(pixels_value_simple, CAMERA_PIX_Y, CAMERA_PIX_X, false, distance, frequency, phase, shutter, SIMULATION);
+	Frame pixels_value_simple_frame(pixels_value_simple, CAMERA_PIX_Y, CAMERA_PIX_X, false, distance, frequency, phase, shutter);
 	pixels_value_simple_frame.plot_frame();
 }
 

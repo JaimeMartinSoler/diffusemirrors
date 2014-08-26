@@ -40,6 +40,46 @@
 
 
 
+// INFO
+class Info {
+public:
+
+	// External Parameters (file names):
+	char* dir_name;
+	char* file_name;
+	char* inf_full_file_name;
+	char* raw_full_file_name;
+	char* cmx_full_file_name;
+	char* cmd_full_file_name;
+
+	// Info Parameters:
+	int sizeof_value_raw;	// bytes
+	int width;
+	int heigth;
+	std::vector<float> frequencies;
+	std::vector<float> distances;
+	std::vector<float> shutters;
+	std::vector<float> phases;
+	int numtakes;
+	// Calibration Matrix parameters:
+	int sizeof_value_cmx;	// bytes
+	float laser_to_cam_offset_x;
+	float laser_to_cam_offset_y;
+	float laser_to_cam_offset_z;
+	float dist_wall_cam;
+	int error_code;	// 0=no_error, !=0:error
+	
+	// Constructor
+	Info::Info(char* dir_name_, char* file_name_);
+	// Constructor
+	Info::Info(	char* dir_name_, char* file_name_, int sizeof_value_raw_, int width_, int heigth_,
+				std::vector<float> & frequencies_, std::vector<float> & distances_, std::vector<float> & shutters_, std::vector<float> & phases_, int numtakes_, int error_code_ = 0,
+				int sizeof_value_cmx_ = -1, float laser_to_cam_offset_x_ = -1.0f, float laser_to_cam_offset_y_ = -1.0f, float laser_to_cam_offset_z_ = -1.0f, float dist_wall_cam_ = -1.0f);
+	// Constructor Default
+	Info::Info();
+};
+
+
 // CALIBRATION MATRIX
 class CalibrationMatrix {
 public:
@@ -47,6 +87,7 @@ public:
 	// Parameters
 	float* data;
 	int data_size;	
+	RawData* RawData_src;	// !!!!!!!!!!!!!!!!!!!!!!!!!!! a pointer to the RawData this Frame comes from !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 	std::vector<float> frequencies;
 	std::vector<float> distances;
@@ -54,8 +95,6 @@ public:
 	int width;
 	int heigth;
 	int numtakes;
-	
-	Source src;
 	
 	int error_code;	// 0=no_error, !=0:error
 
@@ -68,7 +107,7 @@ public:
 	// Constructor
 	CalibrationMatrix::CalibrationMatrix(char* dir_name_, char* file_name_);
 	// Constructor
-	CalibrationMatrix::CalibrationMatrix(float* data_, int data_size_, std::vector<float> & frequencies_, std::vector<float> & distances_, int width_, int heigth_, int numtakes_, Source src_, int error_code_ = 0, char* dir_name_ = NULL, char* file_name_ = NULL);
+	CalibrationMatrix::CalibrationMatrix(float* data_, int data_size_, std::vector<float> & frequencies_, std::vector<float> & distances_, int width_, int heigth_, int numtakes_, int error_code_ = 0, char* dir_name_ = NULL, char* file_name_ = NULL);
 	// Constructor Default
 	CalibrationMatrix::CalibrationMatrix();
 
@@ -85,45 +124,30 @@ public:
 
 
 // DATA-PMD 
-class DataPMD {
+class RawData {
 public:
 
-	// Parameters
+	// External Parameters
+	Info* info;		// Pointer to the info object
+
+	// RawData Parameters
 	unsigned short int* data;
 	int data_size;	
-
-	std::vector<float> frequencies;
-	std::vector<float> distances;
-	std::vector<float> shutters;
-	std::vector<float> phases;
-
-	int width;
-	int heigth;
-	int numtakes;
-	
-	Source src;
-	
-	int bytes_per_value;
 	int error_code;	// 0=no_error, !=0:error
 
-	char* dir_name;
-	char* file_name;
-	char* file_data_full_path_name;
-	char* file_info_full_path_name;
-
 
 	// Constructor
-	DataPMD::DataPMD(char* dir_name_, char* file_name_);
+	RawData::RawData(Info* info_);
 	// Constructor
-	DataPMD::DataPMD(unsigned short int* data_, int data_size_, std::vector<float> & frequencies_, std::vector<float> & distances_, std::vector<float> & shutters_, std::vector<float> & phases_, int width_, int heigth_, int numtakes_, Source src_, int bytes_per_value_ = 2, int error_code_ = 0, char* dir_name_ = NULL, char* file_name_ = NULL);
+	RawData::RawData(Info* info_, unsigned short int* data_, int data_size_, int error_code_ = 0);
 	// Constructor Default
-	DataPMD::DataPMD();
+	RawData::RawData();
 
 	// Functions
 	// Returns the index in data[], corresponding to the parameter indices
-	int DataPMD::idx_in_data(int distances_idx, int frequencies_idx, int shutters_idx, int w, int h, int phases_idx);
+	int RawData::idx_in_data(int distances_idx, int frequencies_idx, int shutters_idx, int w, int h, int phases_idx);
 	// Returns the value corresponding to the parameter indices = data[idx_in_data]
-	unsigned short int DataPMD::at(int distances_idx, int frequencies_idx, int shutters_idx, int w, int h, int phases_idx);
+	unsigned short int RawData::at(int distances_idx, int frequencies_idx, int shutters_idx, int w, int h, int phases_idx);
 };
 
 
@@ -133,35 +157,31 @@ public:
 class Frame {
 public:
 
-	// Parameters
-	// matrix stores all cols, then next row and so on, from up to down
-	cv::Mat matrix;				// the opencv matrix with the values of the frame
-	DataPMD* DataPMD_src;		// a pointer to the DataPMD this Frame comes from
-	Pixels_storing pixels_storing;	// the kind of pixels it can store (PIXELS_TOTAL, PIXELS_VALID, UNKNOWN_PIXELS_STORING). See global.h
-
-	float distance;		// (m)
-	float frequency;	// (MHz)
-	float shutter;		// (us)
-	float phase;		// (degrees)
-
-	int distance_idx;
+	// External Parameters (RawData, Info)
+	Info* info;
+	RawData* RawData_src;		// a pointer to the RawData this Frame comes from
 	int frequency_idx;
+	int distance_idx;
 	int shutter_idx;
 	int phase_idx;
 
+	// Frame Parameters
+	// matrix stores all cols, then next row and so on, from up to down
+	cv::Mat matrix;				// the opencv matrix with the values of the frame
+	Pixels_storing pixels_storing;	// the kind of pixels it can store (PIXELS_TOTAL, PIXELS_VALID, UNKNOWN_PIXELS_STORING). See global.h
 	int width;
 	int heigth;
-	int numtakes;
-	int bytes_per_value;
+	float frequency;	// (MHz)
+	float distance;		// (m)
+	float shutter;		// (us)
+	float phase;		// (degrees)
 
-	Source src;
-	
-	// Constructor. DataPMD oriented
-	Frame::Frame(DataPMD & DataPMD_src_, int distance_idx_, int frequency_idx_, int shutter_idx_, int phase_idx_, Pixels_storing pixels_storing_ = PIXELS_VALID);
-	// Constructor from vector. SIMULATION oriented. For any Pixels_storing it considered the vector matrix_vector properly arranged
-	Frame::Frame(std::vector<float> & matrix_vector, int heigth_, int width_, bool rows_up2down = true, float distance_ = 0.0f, float frequency_ = 0.0f, float shutter_ = 0.0f, float phase_ = 0.0f, Source src_ = SIMULATION, Pixels_storing pixels_storing_ = PIXELS_VALID);
-	// Constructor from vector. DATA_REAL_TIME oriented
-	Frame::Frame(unsigned short int* data_, int heigth_, int width_, float distance_, float frequency_, float shutter_, float phase_, int phase_idx_, Source src_ = DATA_REAL_TIME, Pixels_storing pixels_storing_ = PIXELS_VALID);
+	// Constructor. RawData oriented
+	Frame::Frame(Info* info_, RawData* RawData_src_, int distance_idx_, int frequency_idx_, int shutter_idx_, int phase_idx_, Pixels_storing pixels_storing_ = PIXELS_VALID);
+	// Constructor from vector. Simulation oriented. For any Pixels_storing it considers the vector matrix_vector properly arranged
+	Frame::Frame(std::vector<float> & matrix_vector, int heigth_, int width_, bool rows_up2down = true, float distance_ = 0.0f, float frequency_ = 0.0f, float shutter_ = 0.0f, float phase_ = 0.0f, Pixels_storing pixels_storing_ = PIXELS_VALID);
+	// Constructor from vector. Data real time capture oriented. heigth_ and width_ must be refered to the sizes of the total frame, regerdingless to the Pixels_storing
+	Frame::Frame(unsigned short int* data_, int heigth_, int width_, float distance_, float frequency_, float shutter_, float phase_, int phase_idx_, Pixels_storing pixels_storing_ = PIXELS_VALID);
 	// Constructor Default
 	Frame::Frame();
 

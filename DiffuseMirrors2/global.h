@@ -7,10 +7,10 @@
 #include <condition_variable> // std::condition_variable
 
 // enums
-enum Scene {DIRECT_VISION_WALL, DIRECT_VISION_ANY, DIRECT_VISION_ANY_SIMULATION, DIFFUSED_MIRROR, FOV_MEASUREMENT, CALIBRATION_MATRIX, UNKNOWN_SCENE};
+enum Scene {DIRECT_VISION_WALL, DIRECT_VISION_ANY, DIRECT_VISION_ANY_SIMULATION, DIFFUSED_MIRROR, FOV_MEASUREMENT, RAW_DATA, CALIBRATION_MATRIX, UNKNOWN_SCENE};
 // The PMD camera stores 165x120 pixels but some of them in the edges can not be considered as valid pixel measurements
 enum Pixels_storing {PIXELS_TOTAL, PIXELS_VALID, UNKNOWN_PIXELS_STORING};
-enum Source {DATA_FILE, DATA_REAL_TIME, SIMULATION, UNKNOWN_SRC};
+//enum Source {DATA_FILE, DATA_REAL_TIME, SIMULATION, UNKNOWN_SRC};
 
 
 #define PIXELS_STORING_GLOBAL PIXELS_VALID		// PIXELS_TOTAL,    PIXELS_VALID,    UNKNOWN_PIXELS_STORING
@@ -26,8 +26,11 @@ enum Source {DATA_FILE, DATA_REAL_TIME, SIMULATION, UNKNOWN_SRC};
 #define DUTYCYCLE 0.04f // ABSOLUTELY IMPORTANT for thermal stability: add delay to ensure a duty cycle below 4%
 #define FILENAME_FORMAT "capture_take%02d_f%06.2f_d%05.2f" // Filename prefix: Frequency, delay in m
 #define FILENAME_APPEND "_p%03d.%s"         // Append phase, shutter (=0 for HDR) and suffix to filename
-#define FILE_DATA_NAME_SUFFIX ".dat"
-#define FILE_INFO_NAME_SUFFIX "_info.txt"
+#define INF_FILENAME_SUFFIX ".inf"	// Info file
+#define RAW_FILENAME_SUFFIX ".raw"	// Raw Data file
+#define CMX_FILENAME_SUFFIX ".cmx"	// Calibration Matrix file
+#define CMD_FILENAME_SUFFIX ".cmd"	// Calibration Matrix Direct Vision file
+
 
 #define PMD_WIDTH 165	// (MHz)
 #define PMD_HEIGTH 120	// (MHz)
@@ -102,11 +105,13 @@ typedef std::vector<PointMesh*> Object3D;
 typedef std::vector<Object3D*> Object3D_Set;
 extern Object3D_Set OBJECT3D_SET;
 
-// DataPMD and FrameObjects
-class DataPMD;
+// RawData and FrameObjects
+class Info;
+class RawData;
 class Frame;
-extern DataPMD DATAPMD_READ;	// DataPMD Read from a File (.dat)
-extern DataPMD DATAPMD_CAPTURE;	// DataPMD Captured (directly from the PMD to this object)
+extern Info INFO;				// Info with the parameters of the .inf file
+extern RawData DATAPMD_READ;	// RawData Read from a File (.dat)
+extern RawData DATAPMD_CAPTURE;	// RawData Captured (directly from the PMD to this object)
 extern Frame FRAME_00_CAPTURE;	// Frame (phase=00) Captured (directly from the PMD to this object)
 extern Frame FRAME_90_CAPTURE;	// Frame (phase=90) Captured (directly from the PMD to this object)
 
