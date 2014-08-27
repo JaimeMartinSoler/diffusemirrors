@@ -265,8 +265,8 @@ void set_scene_direct_vision_any (bool loop) {	// by default: loop = false
 		update_pixel_patches(&camera_pos, &camera_rot, &camera_centre, screen_patches_corners_normals, screen_patches_centers_normals, loop);
 }
 
-// sets all the Raw Data scene. (Actually just the Camera, Laser and Wall).
-void set_scene_raw_data(float laser_to_cam_offset_x, float laser_to_cam_offset_y, float laser_to_cam_offset_z, float dist_wall_cam) {
+// sets all the Calibration Matrix scene. (Actually just the Camera, Laser, Wall and Wall_Patches).
+void set_scene_calibration_matrix (Info* info_, Pixels_storing pixel_storing_) { // by default: pixel_storing_ = PIXELS_VALID
 
 	// CAMERA (0)
 	Point camera_pos(0.0f, 0.75f, 0.0f);		// pos of the center of the camera
@@ -274,18 +274,23 @@ void set_scene_raw_data(float laser_to_cam_offset_x, float laser_to_cam_offset_y
 	Point camera_size(0.15f, 0.15f, 0.04f);
 	Point camera_centre(camera_size.x() / 2.0f, camera_size.y() / 2.0f, 0.0f);	// centre relative to the first point
 	set_camera(&camera_pos, &camera_rot, &camera_size, &camera_centre);
+	// Get the screen normals:
+	// Ordering: 1st row: col, col, col... 2nd row: col, col, col... from left to right, from bottom to top
+	std::vector<Point*> screen_patches_corners_normals((CAMERA_PIX_X + 1) * (CAMERA_PIX_Y + 1));	// size is always (CAMERA_PIX_X + 1) * (CAMERA_PIX_Y + 1), regardingless the value of PIXELS_STORING_GLOBAL
+	std::vector<Point*> screen_patches_centers_normals(CAMERA_PIX_X * CAMERA_PIX_Y);				// size is always (CAMERA_PIX_X)     * (CAMERA_PIX_Y)    , regardingless the value of PIXELS_STORING_GLOBAL
+	set_screen_normals_pixel_patches(screen_patches_corners_normals, screen_patches_centers_normals, &camera_pos, &camera_rot, &camera_centre);
 
 	// LASER (1)
-	Point laser_pos(camera_pos.x() + laser_to_cam_offset_x,
-					camera_pos.y() + laser_to_cam_offset_y,
-					camera_pos.z() + laser_to_cam_offset_z);		// pos of the center of the laser
+	Point laser_pos(camera_pos.x() + info_->laser_to_cam_offset_x,
+					camera_pos.y() + info_->laser_to_cam_offset_y,
+					camera_pos.z() + info_->laser_to_cam_offset_z);		// pos of the center of the laser
 	Point laser_rot(0.0f, 180.0f, 0.0f);		// rot from the center of the laser
 	Point laser_size(0.1f, 0.1f, 0.3f);
 	Point laser_centre(laser_size.x() / 2.0f, laser_size.y() / 2.0f, 0.0f);	// centre relative to the first point
 	set_laser(&laser_pos, &laser_rot, &laser_size, &laser_centre);
 
 	// WALL (2)
-	Point wall_pos(-1.625f, 0.0f, -dist_wall_cam);	// pos of the center of the wall
+	Point wall_pos(-1.625f, 0.0f, -info_->dist_wall_cam);	// pos of the center of the wall
 	Point wall_rot(0.0f, 0.0f, 0.0f);					// rot from the center of the wall
 	Point wall_size(4.0f, 0.01f, 0.2f);
 	Point wall_centre(0.0f, 0.0f, 0.0f);				// centre relative to the first point
@@ -303,6 +308,55 @@ void set_scene_raw_data(float laser_to_cam_offset_x, float laser_to_cam_offset_y
 	Point floor_centre(0.0f, 0.0f, 0.0f);
 	float floor_albedo = 0.5f;	// does not matter
 	set_box(&floor_pos, &floor_rot, &floor_size, &floor_centre, FLOOR, floor_albedo);
+
+	// VOLUME (5)
+	Object3D* volume_obj3D = new Object3D(0);
+	OBJECT3D_SET[VOLUME] = volume_obj3D;
+
+	// WALL_PATCHES (6)
+	std::vector<float> wall_patches_albedo(CAMERA_PIX_X * CAMERA_PIX_Y);	// size is always (CAMERA_PIX_X) * (CAMERA_PIX_Y), regardingless the value of PIXELS_STORING_GLOBAL
+	set_wall_patches_albedo(wall_patches_albedo);
+	set_wall_patches(&camera_pos, &camera_rot, &camera_size, &camera_centre, screen_patches_corners_normals, screen_patches_centers_normals, wall_patches_albedo, pixel_storing_);
+
+	// CAMERA_FOV (7)
+	Object3D* camera_fov_obj3D = new Object3D(0);
+	OBJECT3D_SET[CAMERA_FOV] = camera_fov_obj3D;
+
+	// LASER_RAY (8)
+	Object3D* laser_ray_obj3D = new Object3D(0);
+	OBJECT3D_SET[LASER_RAY] = laser_ray_obj3D;
+
+	// VOLUME_PATCHES (9)
+	Object3D* volume_patches_obj3D = new Object3D(0);
+	OBJECT3D_SET[VOLUME_PATCHES] = volume_patches_obj3D;
+
+	// PIXEL_PATCHES (10) // empty
+	Object3D* pixel_patches_obj3D = new Object3D(0);
+	OBJECT3D_SET[PIXEL_PATCHES] = pixel_patches_obj3D;
+}
+
+// clears all the scenes, setting empty Objects
+void clear_scene() {
+	
+	// CAMERA (0)
+	Object3D* camera_obj3D = new Object3D(0);
+	OBJECT3D_SET[CAMERA] = camera_obj3D;
+
+	// LASER (1)
+	Object3D* laser_obj3D = new Object3D(0);
+	OBJECT3D_SET[LASER] = laser_obj3D;
+
+	// WALL (2)
+	Object3D* wall_obj3D = new Object3D(0);
+	OBJECT3D_SET[WALL] = wall_obj3D;
+
+	// OCCLUDER (3)
+	Object3D* occluder_obj3D = new Object3D(0);
+	OBJECT3D_SET[OCCLUDER] = occluder_obj3D;
+
+	// FLOOR (4)
+	Object3D* floor_obj3D = new Object3D(0);
+	OBJECT3D_SET[FLOOR] = floor_obj3D;
 
 	// VOLUME (5)
 	Object3D* volume_obj3D = new Object3D(0);
@@ -328,7 +382,6 @@ void set_scene_raw_data(float laser_to_cam_offset_x, float laser_to_cam_offset_y
 	Object3D* pixel_patches_obj3D = new Object3D(0);
 	OBJECT3D_SET[PIXEL_PATCHES] = pixel_patches_obj3D;
 }
-
 
 
 // sets the Object3D camera
@@ -437,7 +490,7 @@ void set_box(Point* box_pos_, Point* box_rot_, Point* box_size_, Point* box_cent
 
 
 // sets the Object3D with all the wall patches (wall patch = PointMesh with one rectangle)
-void set_wall_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_size_, Point* camera_centre_, std::vector<Point*> & screen_patches_corners_normals_, std::vector<Point*> & screen_patches_centers_normals_, std::vector<float> & wall_patches_albedo_) {
+void set_wall_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_size_, Point* camera_centre_, std::vector<Point*> & screen_patches_corners_normals_, std::vector<Point*> & screen_patches_centers_normals_, std::vector<float> & wall_patches_albedo_, Pixels_storing pixel_storing_) { // by default: pixel_storing_ = PIXELS_VALID
 
 	// setting the intersections
 	std::vector<Point*> wall_patches_corners((CAMERA_PIX_X + 1) * (CAMERA_PIX_Y + 1));
@@ -452,11 +505,11 @@ void set_wall_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_size
 	Object3D* wall_patches;
 	int size_Object3D, y_begin, y_end, x_begin, x_end;
 	int pos_in_Object3D = 0;
-	if (PIXELS_STORING_GLOBAL == PIXELS_TOTAL) {
+	if (pixel_storing_ == PIXELS_TOTAL) {
 		size_Object3D = CAMERA_PIX_X * CAMERA_PIX_Y;
 		y_begin = 0;	y_end = CAMERA_PIX_Y;
 		x_begin = 0;	x_end = CAMERA_PIX_X;
-	} else if (PIXELS_STORING_GLOBAL == PIXELS_VALID) {
+	} else if (pixel_storing_ == PIXELS_VALID) {
 		size_Object3D = CAMERA_PIX_X_VALID * CAMERA_PIX_Y_VALID;
 		y_begin = CAMERA_PIX_Y_BAD_BOTTOM;	y_end = CAMERA_PIX_Y - CAMERA_PIX_Y_BAD_TOP;
 		x_begin = CAMERA_PIX_X_BAD_LEFT;	x_end = CAMERA_PIX_X - CAMERA_PIX_X_BAD_RIGHT;
@@ -818,19 +871,19 @@ void set_depth_map(cv::Mat & depth_map_, Frame & Frame_00_cap, Frame & Frame_90_
 }
 
 // sets the Object3D with the lines representing the camera FoV and its intersection with the wall
-void set_camera_fov(Point* camera_pos_, std::vector<Point*> & screen_patches_corners_normals_) {
+void set_camera_fov(Point* camera_pos_, std::vector<Point*> & screen_patches_corners_normals_, Pixels_storing pixel_storing_) { // by default: pixel_storing_ = PIXELS_VALID
 
 	// face of the wall
 	PointMesh* wall_face = (*OBJECT3D_SET[WALL])[0];
 	
 	// wall patch points
 	int p0_pos, p1_pos, p2_pos, p3_pos;
-	if (PIXELS_STORING_GLOBAL == PIXELS_TOTAL) {
+	if (pixel_storing_ == PIXELS_TOTAL) {
 		p0_pos = 0;
 		p1_pos = CAMERA_PIX_X;
 		p2_pos = (CAMERA_PIX_X+1) * (CAMERA_PIX_Y+1) - 1;
 		p3_pos = (CAMERA_PIX_X+1) * CAMERA_PIX_Y;
-	} else if (PIXELS_STORING_GLOBAL == PIXELS_VALID) {
+	} else if (pixel_storing_ == PIXELS_VALID) {
 		p0_pos = (CAMERA_PIX_X+1) * CAMERA_PIX_Y_BAD_BOTTOM + CAMERA_PIX_X_BAD_LEFT;
 		p1_pos = (CAMERA_PIX_X+1) * (CAMERA_PIX_Y_BAD_BOTTOM+1) - CAMERA_PIX_X_BAD_RIGHT - 1;
 		p2_pos = (CAMERA_PIX_X+1) * (CAMERA_PIX_Y+1-CAMERA_PIX_Y_BAD_TOP) - CAMERA_PIX_X_BAD_RIGHT - 1;
@@ -988,12 +1041,5 @@ void mean_vector_of_points (std::vector<Point> & vec, Point & pt) {
 
 
 
-// sets a vector containing the distances from a Point to a vector of Point*
-void set_point_to_vector_distances (Point* p, std::vector<Point*> & vp, std::vector<float> & vd) {
-
-	vd.resize(vp.size());
-	for (size_t i = 0; i < vp.size(); i++)
-		vd[i] = dist_2(p,vp[i]);
-}
 
 

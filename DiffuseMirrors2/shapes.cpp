@@ -68,6 +68,16 @@ void get_normal(Point p0, Point p1, Point p2, Point & p_out) {
 	p_out = Point(u.cross(v));
 	p_out.normalize();
 }
+float dist_2_pow2(Point* p0, Point* p1) {
+	Point p_diff = (*p0) - (*p1);
+	return p_diff.dot(p_diff);
+}
+// sets a vector containing the distances from a Point to a vector of Point*
+void dist_2_pow2_vec (Point* p, std::vector<Point*> & vp, std::vector<float> & vd) {
+	vd.resize(vp.size());
+	for (size_t i = 0; i < vp.size(); i++)
+		vd[i] = dist_2_pow2(p,vp[i]);
+}
 
 // returns the intersection point between a line given by 2 points (p0 and p1)
 // and the Object3D obj
@@ -485,4 +495,17 @@ void rot_from_c_to_normal(Object3D* obj, Point* n_, Point scale_axis) {
 	rot_to_normal(obj, n_, (*obj)[0]->c, scale_axis);
 }
 
+// sets a vector containing the distances from a Point all the centers of all the Pointmeshes of an Object3D
+void dist_2_centers (Point* p, Object3D & obj3D, std::vector<float> & vd) {
+	vd.resize(obj3D.size());
+	for (size_t i = 0; i < obj3D.size(); i++)
+		vd[i] = dist_2(p,(*obj3D[i]).c);
+}
+
+// sets a vector containing the distances^2 from a Point all the centers of all the Pointmeshes of an Object3D
+void dist_2_pow2_centers (Point* p, Object3D & obj3D, std::vector<float> & vd) {
+	vd.resize(obj3D.size());
+	for (size_t i = 0; i < obj3D.size(); i++)
+		vd[i] = dist_2_pow2(p,(*obj3D[i]).c);
+}
 

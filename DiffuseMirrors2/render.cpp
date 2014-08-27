@@ -414,4 +414,8 @@ int render(int argc, char** argv) {
 	glutMainLoop();                 // Enter the infinite event-processing loop
 	return 0;
 }
+// there's a weird bug when calling directly to PMD_params_to_file from thread constructor. With this re-calling functtion the bug is avoided
+int render_anti_bug_thread (int argc, char** argv) {
+	return render(argc, argv);
+}
 

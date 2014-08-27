@@ -3,6 +3,7 @@
 #include "data_read.h"
 #include "global.h"
 #include "shapes.h"
+#include "scene.h"
 #include <stdio.h>
 #include <stdlib.h>     // atof
 #include <pmdsdk2.h>
@@ -754,6 +755,7 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 		return -3;
 	}
 
+	// close cv Frame window
 	cv::destroyAllWindows();
 
 	// Init devices: Open PMD sensor
@@ -779,7 +781,7 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 			sprintf(fn,"%s\\%s_nt%03d%s", dir_name, file_name, take, RAW_FILENAME_SUFFIX);
 		else
 			sprintf(fn,"%s\\%s%s", dir_name, file_name, RAW_FILENAME_SUFFIX);
-		cout << "\nraw file name: ["<<fn<<"]"<<endl;
+		cout << "\nraw file name: ["<<fn<<"]\n\n";
 		rawdumpfile = fopen(fn,"wb");
 
 		// Loop through delays
@@ -910,29 +912,35 @@ int PMD_params_to_file_anti_bug_thread (std::vector<float> & frequencies, std::v
 
 // Author: Jaime Martin
 // create_cmx_from_raw (...)
-void create_cmx_from_raw(char* dir_name, char* file_name) {
-
-	RawData raw_data(&INFO);	// this will load into the memory all the data
+void create_cmx_from_raw(Info* info_) {
 	
+	RawData raw_data(info_);	// this will load all the data into the memory
+	
+	// IMPORTANT:    cmx_data_value = c * Em * albedo = H * dist_src_pix_rc,    dist_src_pix_rc = |r_src - r_x0(r,c)|^2,
+	float cmx_data_value;
 	float raw_data_value;
-	int phase_idx = 0;								// always
+	int phase_idx = 0;										// always
 	int shutter_idx = raw_data.info->shutters.size() - 1;	//always, the calibration matrix is 1-shutter oriented
-	
-	// IMPORTANT:    cmx_value = c * Em * albedo = H * dist_src_pix_rc,    dist_src_pix_rc = |r_src - r_x0(r,c)|^2,
-	float dist_src_pix_rc;
-	float cmx_value;	
-	float* cmx_value_ptr = &cmx_value;
+	// dist_src_pix_rc vector
+	std::vector<float> dist_src_pix_pow2_rc, v_aux;
+	set_scene_calibration_matrix (info_, PIXELS_TOTAL);	// set the corresponding scene (camera, laser, wall and wall_patches)
+	dist_2_pow2_centers( (*(*OBJECT3D_SET[LASER])[0]).c, (*OBJECT3D_SET[WALL_PATCHES]), v_aux);
+	clear_scene();										// clear scene
+	dist_src_pix_pow2_rc.resize(v_aux.size());	// v_aux is ordered as WALL_PATCHES and it is, by rows, from down to top, we want it from top to down
+	for (size_t r = 0; r < raw_data.info->heigth; r++) {		// should be: raw_data.info->heigth = CAMERA_PIX_Y
+		for (size_t c = 0; c < raw_data.info->width; c++) {		// should be: raw_data.info->width  = CAMERA_PIX_X
+			dist_src_pix_pow2_rc[r*raw_data.info->width + c] = v_aux[(raw_data.info->heigth-1-r)*raw_data.info->width + c];
+	}	}
+	// fwrite parameters
+	float* cmx_data_value_ptr = &cmx_data_value;
 	size_t cmx_bytes_per_value = sizeof(float);
 	size_t cmx_elements_per_write = 1;
-	char cmx_file_full_name[1024];
-	sprintf(cmx_file_full_name,"%s\\%s%s", dir_name, file_name, CMX_FILENAME_SUFFIX);
-	FILE* cmx_file = fopen(cmx_file_full_name,"wb");
-
-	// in data_read.h (about the raw_data ordering:
-	// So, the order of each measured unsigned value of 2 Bytes in the file is:
-	//     for(dist) { for(freq) { for(phase) { for(shutter){ for(heigth){ for(width){ // here... }}}}}}
-	for (size_t di = 0; di < raw_data.info->distances.size(); di++) {
-		for (size_t fi = 0; fi < raw_data.info->frequencies.size(); fi++) {
+	FILE* cmx_file = fopen(raw_data.info->cmx_full_file_name,"wb");
+	
+	// in data_read.h (about the .cmx ordering):
+	// data ordereing: for(freq) { for(dist) { for(heigth){ for(width){ // here... }}}}
+	for (size_t fi = 0; fi < raw_data.info->frequencies.size(); fi++) {
+		for (size_t di = 0; di < raw_data.info->distances.size(); di++) {
 			//for (phase_idx = 0, always) 
 			//for (shutter_idx = shutters.size() - 1, always, the calibration matrix is 1-shutter oriented) 
 			for (size_t r = 0; r < raw_data.info->heigth; r++) {
@@ -943,16 +951,17 @@ void create_cmx_from_raw(char* dir_name, char* file_name) {
 					// by default image is up-down-fliped so heigth_RawData = (heigth_Frame-1-h)
 					raw_data_value = (float)(raw_data.at(di, fi, shutter_idx, c, raw_data.info->heigth - 1 - r, phase_idx) - 32768);
 					
-					cmx_value = 0.0f;
+					//cmx_data_value = c * Em * albedo = H * dist_src_pix_rc,    dist_src_pix_rc = |r_src - r_x0(r,c)|^2,
+					cmx_data_value = raw_data_value * dist_src_pix_pow2_rc[r*raw_data.info->width + c];
 
-					// Store it in the Calibration Matrix
-					fwrite(cmx_value_ptr, cmx_bytes_per_value, cmx_elements_per_write, cmx_file);
-
-				}
-			}
-		}
-	}
+					// Store cmx_data_value in the Calibration Matrix
+					fwrite(cmx_data_value_ptr, cmx_bytes_per_value, cmx_elements_per_write, cmx_file);
+	}	}	}	}
 	fclose (cmx_file);
+}
+// there's a weird bug when calling directly to PMD_params_to_file from thread constructor. With this re-calling functtion the bug is avoided
+void create_cmx_from_raw_anti_bug_thread (Info* info_) {
+	create_cmx_from_raw(info_);
 }
 
 

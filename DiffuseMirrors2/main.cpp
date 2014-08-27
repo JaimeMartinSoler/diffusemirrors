@@ -63,7 +63,7 @@ int main_direct_vision_any(int argc, char** argv, bool loop = true, Scene scene 
 	std::thread thread_set_scene (set_scene_direct_vision_any, loop);
 	
 	// Render all the object3D of the scene
-	std::thread thread_render (render, argc, argv);
+	std::thread thread_render (render_anti_bug_thread, argc, argv);
 	std::cout << "\n\nDo NOT close the openGL window while the PMD loop is runnung.\n(it wouldn't be the end of the world, but it's better not to)\n\n";
 
 	// pause in main to allow control when the loops will finish
@@ -93,7 +93,7 @@ int main_direct_vision_wall(int argc, char** argv, bool loop = true, Scene scene
 	std::thread thread_set_scene (set_scene_direct_vision_wall, loop);
 	
 	// Render all the object3D of the scene
-	std::thread thread_render (render, argc, argv);
+	std::thread thread_render (render_anti_bug_thread, argc, argv);
 	std::cout << "\n\nDo NOT close the openGL window while the PMD loop is runnung.\n(it wouldn't be the end of the world, but it's better not to)\n\n";
 
 	// pause in main to allow control when the loops will finish
@@ -128,7 +128,7 @@ int main_diffused_mirror(int argc, char** argv, bool loop = true, Scene scene = 
 	std::cout << "\nHERE 001";
 
 	// Render all the object3D of the scene
-	std::thread thread_render (render, argc, argv);
+	std::thread thread_render (render_anti_bug_thread, argc, argv);
 	std::cout << "\n\nDo NOT close the openGL window while the PMD loop is runnung.\n(it wouldn't be the end of the world, but it's better not to)\n\n";
 
 	// pause in main to allow control when the loops will finish
@@ -167,10 +167,10 @@ int main_fov_measurement(int argc, char** argv, bool loop = true, Scene scene = 
 	return 0;
 }
 
-// main_calibration_matrix(...)
+// main_raw_data(...)
 int main_raw_data(int argc, char** argv, bool loop = true, Scene scene = RAW_DATA) {
 	
-	// Set all the object3D of the corresponding scene (just camera, laser and wall)
+	// set all the object3D of the corresponding scene (just camera, laser and wall)
 	bool cmx_info = true;
 	float laser_to_cam_offset_x = -0.15f;
 	float laser_to_cam_offset_y = 0.0f;
@@ -178,7 +178,7 @@ int main_raw_data(int argc, char** argv, bool loop = true, Scene scene = RAW_DAT
 	float dist_wall_cam = 2.0f;
 	float cmx_params[4] = {laser_to_cam_offset_x, laser_to_cam_offset_y, laser_to_cam_offset_z, dist_wall_cam};
 
-	// capture data from PMD
+	// create the .raw file, capturing data from the PMD
 	std::vector<float> frequencies;
 	float freq_res = 20.0f;
 	float freq_min = 20.0f;
@@ -208,6 +208,27 @@ int main_raw_data(int argc, char** argv, bool loop = true, Scene scene = RAW_DAT
 }
 
 
+// main_calibration_matrix(...)
+// It builds a .cmx file from a .raw file with the parameters stored in the .inf file
+int main_calibration_matrix (int argc, char** argv, bool loop = true, Scene scene = CALIBRATION_MATRIX) {
+	
+	// built the global Info instance INFO
+	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\test_00";
+	char file_name[1024] = "PMD_Calibration_Matrix";
+	Info info = Info(dir_name, file_name);
+
+	// create the .cmx file, dealing with the .inf and .raw files. It internally creates the corresponding scene
+	std::thread thread_create_cmx_from_raw (create_cmx_from_raw_anti_bug_thread, &info);
+
+	// pause in main to allow control when the loops will finish
+	//control_loop_pause();
+
+	// joins
+	thread_create_cmx_from_raw.join();
+
+	return 0;
+}
+
 
 
 // MAIN
@@ -222,11 +243,7 @@ int main(int argc, char** argv) {
 	// DiffuseMirrors2.exe "80 90 100" "0 1 2 3" "1920" f:\tmp\pmdtest2 PMD_test_meas COM6 1
 	// ------------------------------------------------------------------------------------------------------------------------------
 
-	// tests some functions
-	//test();
-	//return 0;
-
-	Scene scene = RAW_DATA;	// DIRECT_VISION_WALL,    DIRECT_VISION_ANY,    DIRECT_VISION_ANY_SIMULATION,    DIFFUSED_MIRROR,    FOV_MEASUREMENT,    CALIBRATION_MATRIX,    UNKNOWN_SCENE
+	Scene scene = TEST;	// DIRECT_VISION_WALL,    DIRECT_VISION_ANY,    DIRECT_VISION_ANY_SIMULATION,    DIFFUSED_MIRROR,    FOV_MEASUREMENT,    CALIBRATION_MATRIX,    UNKNOWN_SCENE
 	bool loop = true;
 	
 	switch(scene) {
@@ -235,6 +252,8 @@ int main(int argc, char** argv) {
 		case DIFFUSED_MIRROR    : main_diffused_mirror    (argc, argv, loop, scene); break;
 		case FOV_MEASUREMENT    : main_fov_measurement    (argc, argv, loop, scene); break;
 		case RAW_DATA           : main_raw_data           (argc, argv, loop, scene); break;
+		case CALIBRATION_MATRIX : main_calibration_matrix (argc, argv, loop, scene); break;
+		case TEST				: test();                                            break;
 	}
 
 	system("pause");

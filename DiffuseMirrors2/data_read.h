@@ -80,47 +80,6 @@ public:
 };
 
 
-// CALIBRATION MATRIX
-class CalibrationMatrix {
-public:
-
-	// Parameters
-	float* data;
-	int data_size;	
-	RawData* RawData_src;	// !!!!!!!!!!!!!!!!!!!!!!!!!!! a pointer to the RawData this Frame comes from !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-	std::vector<float> frequencies;
-	std::vector<float> distances;
-
-	int width;
-	int heigth;
-	int numtakes;
-	
-	int error_code;	// 0=no_error, !=0:error
-
-	char* dir_name;
-	char* file_name;
-	char* file_data_full_path_name;
-	char* file_info_full_path_name;
-
-
-	// Constructor
-	CalibrationMatrix::CalibrationMatrix(char* dir_name_, char* file_name_);
-	// Constructor
-	CalibrationMatrix::CalibrationMatrix(float* data_, int data_size_, std::vector<float> & frequencies_, std::vector<float> & distances_, int width_, int heigth_, int numtakes_, int error_code_ = 0, char* dir_name_ = NULL, char* file_name_ = NULL);
-	// Constructor Default
-	CalibrationMatrix::CalibrationMatrix();
-
-	// Functions
-	// Returns the index in data[], corresponding to the parameter indices
-	int CalibrationMatrix::idx_in_data(int frequencies_idx, int distances_idx, int w, int h);
-	// Returns the value corresponding to the parameter indices = data[idx_in_data]
-	float CalibrationMatrix::at(int frequencies_idx, int distances_idx, int w, int h);
-	// Returns the value corresponding to the parameter values directly. In case the value is not stored, it automatically interpolates with the sourounding stored values
-	float CalibrationMatrix::at_value(int frequencies_idx, int distances_idx, int w, int h);
-};
-
-
 
 
 // DATA-PMD 
@@ -131,12 +90,14 @@ public:
 	Info* info;		// Pointer to the info object
 
 	// RawData Parameters
-	unsigned short int* data;
+	// data ordereing: for(dist) { for(freq) { for(phase) { for(shutter){ for(heigth){ for(width){ // here... }}}}}}
+	// inside each frame, data stores all cols, then next row and so on, from down to top, unlike Frame and any Matrix
+	unsigned short int* data; // always takes w=165, h=120 indep of PIXEL_STORING, as long as it's raw data
 	int data_size;	
 	int error_code;	// 0=no_error, !=0:error
 
 
-	// Constructor
+	// Constructor. It creates a CalibrationMatrix object from the .raw file noted in the info object
 	RawData::RawData(Info* info_);
 	// Constructor
 	RawData::RawData(Info* info_, unsigned short int* data_, int data_size_, int error_code_ = 0);
@@ -148,6 +109,45 @@ public:
 	int RawData::idx_in_data(int distances_idx, int frequencies_idx, int shutters_idx, int w, int h, int phases_idx);
 	// Returns the value corresponding to the parameter indices = data[idx_in_data]
 	unsigned short int RawData::at(int distances_idx, int frequencies_idx, int shutters_idx, int w, int h, int phases_idx);
+};
+
+
+
+
+// CALIBRATION MATRIX
+class CalibrationMatrix {
+public:
+	
+	// External Parameters (RawData, Info)
+	Info* info;				// Pointer to the info object
+	RawData* RawData_src;	// a pointer to the RawData this Frame comes from
+
+	// Calibration Matrix Parameters
+	// data ordereing: for(freq) { for(dist) { for(heigth){ for(width){ // here... }}}}
+	// inside each frame, data stores all cols, then next row and so on, from top to down, like Frame and any Matrix
+	float* data;		// data size is NOT pixels_storing-dependent (always considers w=165, h=120). It is arranged in the accessing
+	int data_size;		// data_size is NOT pixels_storing-dependent (always considers w=165, h=120). It is arranged in the accessing
+	cv::Mat path_dist_0;			// matrix wih the path distances of the original path src-pix-cam. Dimensions are pixels_storing-dependent
+	Pixels_storing pixels_storing;	// the kind of pixels it can store (PIXELS_TOTAL, PIXELS_VALID, UNKNOWN_PIXELS_STORING). See global.h
+	int width;			// it is info->width or CAMERA_PIX_X_VALID depending on pixels_storing_
+	int heigth;			// it is info->heigth or CAMERA_PIX_Y_VALID depending on pixels_storing_
+	int error_code;	// 0=no_error, !=0:error
+
+	// Constructor. It creates a CalibrationMatrix object from the .cmx file noted in the info object
+ 	CalibrationMatrix::CalibrationMatrix(Info* info_, Pixels_storing pixels_storing_ = PIXELS_VALID);
+	// Constructor
+	CalibrationMatrix::CalibrationMatrix(Info* info_, RawData* RawData_src_, float* data_, int data_size_, cv::Mat & path_dist_0_, Pixels_storing pixels_storing_, int width_, int heigth_, int error_code_ = 0);
+	// Constructor Default
+	CalibrationMatrix::CalibrationMatrix();
+
+	// Functions
+	// Returns the index in data[], corresponding to the parameter indices. Takes care of the pixels_storing internally
+	int CalibrationMatrix::idx_in_data(int frequencies_idx, int distances_idx, int w, int h);
+	// Returns the value corresponding to the parameter indices = data[idx_in_data]
+	float CalibrationMatrix::at(int frequencies_idx, int distances_idx, int w, int h);
+	// Returns the value at any path distance interpolating with the closest path distances. Path distances have to be equidistant
+	float CalibrationMatrix::at_any_path_dist(int frequencies_idx, float path_dist, int w, int h);
+
 };
 
 
@@ -166,11 +166,11 @@ public:
 	int phase_idx;
 
 	// Frame Parameters
-	// matrix stores all cols, then next row and so on, from up to down
+	// matrix stores all cols, then next row and so on, from up to down, like any Matrix
 	cv::Mat matrix;				// the opencv matrix with the values of the frame
 	Pixels_storing pixels_storing;	// the kind of pixels it can store (PIXELS_TOTAL, PIXELS_VALID, UNKNOWN_PIXELS_STORING). See global.h
-	int width;
-	int heigth;
+	int width;			// it is info->width or CAMERA_PIX_X_VALID depending on pixels_storing_
+	int heigth;			// it is info->heigth or CAMERA_PIX_Y_VALID depending on pixels_storing_
 	float frequency;	// (MHz)
 	float distance;		// (m)
 	float shutter;		// (us)

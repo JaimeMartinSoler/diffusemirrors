@@ -28,9 +28,11 @@ void set_scene_direct_vision_wall(bool loop = false);
 // sets all the Direct Vision Any scene
 void set_scene_direct_vision_any(bool loop = false);
 
-// sets all the Raw Data scene. (Actually just the Camera, Laser and Wall).
-void set_scene_raw_data(float laser_to_cam_offset_x, float laser_to_cam_offset_y, float laser_to_cam_offset_z, float dist_wall_cam);
+// sets all the Calibration Matrix scene. (Actually just the Camera, Laser, Wall and Wall_Patches).
+void set_scene_calibration_matrix (Info* info_, Pixels_storing pixel_storing_ = PIXELS_VALID);
 
+// clears all the scenes, setting empty Objects
+void clear_scene();
 
 
 
@@ -44,10 +46,10 @@ void set_laser(Point* laser_pos_, Point* laser_rot_, Point* laser_size_, Point* 
 void set_box(Point* box_pos_, Point* box_rot_, Point* box_size_, Point* box_centre_, int Obj3D_idx, float albedo);
 
 // sets the Object3D with all the wall patches (wall patch = PointMesh with one rectangle)
-void set_wall_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_size_, Point* camera_centre_, std::vector<Point*> & screen_patches_corners_normals_, std::vector<Point*> & screen_patches_centers_normals_, std::vector<float> & wall_patches_albedo_);
+void set_wall_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_size_, Point* camera_centre_, std::vector<Point*> & screen_patches_corners_normals_, std::vector<Point*> & screen_patches_centers_normals_, std::vector<float> & wall_patches_albedo_, Pixels_storing pixel_storing_ = PIXELS_VALID);
 
 // sets the Object3D with the lines representing the camera FoV and its intersection with the wall
-void set_camera_fov(Point* camera_pos_, std::vector<Point*> & screen_patches_corners_normals_);
+void set_camera_fov(Point* camera_pos_, std::vector<Point*> & screen_patches_corners_normals_, Pixels_storing pixel_storing_ = PIXELS_VALID);
 
 // sets the Object3D with a line representing the laser ray and its intersection with the wall
 void set_laser_ray();

@@ -5,6 +5,9 @@
 // test function for testing
 void test();
 
+// test_calibration_matrix()
+void test_calibration_matrix();
+
 // Reads data from a .dat and info.txt file setting the DATAPMD_READ variable
 int test_data_read_main();
 

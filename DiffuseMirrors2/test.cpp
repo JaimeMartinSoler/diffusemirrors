@@ -20,7 +20,30 @@ using namespace Eigen;
 
 // test function for testing
 void test() {
-	test_capturetoolDM2_main();
+
+	test_calibration_matrix();
+
+	std::cout << "\n\nTest done...\n\n";
+}
+
+// test_calibration_matrix()
+void test_calibration_matrix() {
+
+	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\test_00";
+	char file_name[1024] = "PMD_Calibration_Matrix";
+	Info info = Info(dir_name, file_name);
+
+	CalibrationMatrix cm(&info, PIXELS_VALID);
+	
+	std::cout << "\ndata_size        = " << cm.data_size;
+	std::cout << "\npath_dist_0.cols = " << cm.path_dist_0.cols;
+	std::cout << "\npath_dist_0.rows = " << cm.path_dist_0.rows;
+	std::cout << "\nwidth            = " << cm.width;
+	std::cout << "\nheigth           = " << cm.heigth;
+	std::cout << "\nerror_code       = " << cm.error_code;
+	std::cout << "\npath_dist_0(0,0) = " << cm.path_dist_0.at<float>(0,0);
+	std::cout << "\npath_dist_0(cen) = " << cm.path_dist_0.at<float>(cm.heigth/2,cm.width/2);
+	std::cout << "\npath_dist_0(cor) = " << cm.path_dist_0.at<float>(cm.heigth-1,cm.width-1);
 }
 
 // Reads data from a .dat and info.txt file setting the DATAPMD_READ variable
@@ -39,10 +62,10 @@ int test_data_read_main() {
 
 	// Tests
 	// DATAPMD_READ
-	Frame frame_read (DATAPMD_READ, 0, 0, 0, 0);
+	Frame frame_read (&INFO, &DATAPMD_READ, 0, 0, 0, 0);
 	frame_read.plot_frame();
 	// DATAPMD_CAPTURE
-	Frame frame_captured (DATAPMD_CAPTURE, 0, 0, 0, 0);
+	Frame frame_captured (&INFO, &DATAPMD_CAPTURE, 0, 0, 0, 0);
 	frame_captured.plot_frame();
 	// FRAME_00_CAPTURE, FRAME_90_CAPTURE
 	FRAME_00_CAPTURE.plot_frame();

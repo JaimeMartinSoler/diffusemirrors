@@ -79,6 +79,8 @@ void mouseMotion(int x, int y);
 
 // rendering MAIN function
 int render(int argc, char** argv);
+// there's a weird bug when calling directly to PMD_params_to_file from thread constructor. With this re-calling functtion the bug is avoided
+int render_anti_bug_thread (int argc, char** argv);
 
 #endif
 

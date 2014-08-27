@@ -26,6 +26,8 @@ float dist_2(Point* p0, Point* p1);
 float dist_3(Point* p0, Point* p1, Point* p2);
 float dist_4(Point* p0, Point* p1, Point* p2, Point* p3);
 float dist_5(Point* p0, Point* p1, Point* p2, Point* p3, Point* p4);
+float dist_2_pow2(Point* p0, Point* p1);
+void dist_2_pow2_vec (Point* p, std::vector<Point*> & vp, std::vector<float> & vd);
 void get_normal(Point p0, Point p1, Point p2, Point & p_out);
 
 // Functions to be used in the constructor:
@@ -107,6 +109,9 @@ void rot_from_c(Object3D* obj, Point* r_, bool degrees);
 void rot_to_normal(Object3D* obj, Point* n_, Point* cr_, Point scale_axis);
 void rot_to_normal(Object3D* obj, Point* n_, Point scale_axis);
 void rot_from_c_to_normal(Object3D* obj, Point* n_, Point scale_axis);
+
+void dist_2_centers (Point* p, Object3D & obj3D, std::vector<float> & vd);
+void dist_2_pow2_centers (Point* p, Object3D & obj3D, std::vector<float> & vd);
 
 
 // OBJECT3D_SET class

@@ -63,7 +63,9 @@ int PMD_params_to_file_anti_bug_thread (std::vector<float> & frequencies, std::v
 
 // Author: Jaime Martin
 // create_cmx_from_raw (...)
-void create_cmx_from_raw(char* dir_name, char* file_name);
+void create_cmx_from_raw (Info* info_);
+// there's a weird bug when calling directly to PMD_params_to_file from thread constructor. With this re-calling functtion the bug is avoided
+void create_cmx_from_raw_anti_bug_thread (Info* info_);
 
 // Author: Jaime Martin
 // copy_array (...)
