@@ -51,6 +51,7 @@ public:
 	char* raw_full_file_name;
 	char* cmx_full_file_name;
 	char* cmd_full_file_name;
+	std::vector<char*> raw_take_full_file_name;
 
 	// Info Parameters:
 	int sizeof_value_raw;	// bytes
@@ -93,14 +94,15 @@ public:
 	// data ordereing: for(dist) { for(freq) { for(phase) { for(shutter){ for(heigth){ for(width){ // here... }}}}}}
 	// inside each frame, data stores all cols, then next row and so on, from down to top, unlike Frame and any Matrix
 	unsigned short int* data; // always takes w=165, h=120 indep of PIXEL_STORING, as long as it's raw data
-	int data_size;	
+	int data_size;
+	int take;		// number of the raw_numtake file this is referencing to. take = -1 if refers to the normal raw file
 	int error_code;	// 0=no_error, !=0:error
 
 
 	// Constructor. It creates a CalibrationMatrix object from the .raw file noted in the info object
-	RawData::RawData(Info* info_);
+	RawData::RawData(Info* info_, int take_ = -1);
 	// Constructor
-	RawData::RawData(Info* info_, unsigned short int* data_, int data_size_, int error_code_ = 0);
+	RawData::RawData(Info* info_, unsigned short int* data_, int data_size_, int take_ = -1, int error_code_ = 0);
 	// Constructor Default
 	RawData::RawData();
 
@@ -191,6 +193,8 @@ public:
 	// Plot frame with opencv
 	void Frame::plot_frame();
 };
+// plot frame amplitude with sinusoidal assumption
+void plot_frame(Frame & frame_00, Frame & frame_90);
 // For FoV measurement scene. Plot frame with opencv with syncronization
 void plot_frame_fov_measurement(bool loop = false);
 

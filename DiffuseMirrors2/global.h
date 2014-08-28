@@ -7,7 +7,7 @@
 #include <condition_variable> // std::condition_variable
 
 // enums
-enum Scene {DIRECT_VISION_WALL, DIRECT_VISION_ANY, DIRECT_VISION_ANY_SIMULATION, DIFFUSED_MIRROR, FOV_MEASUREMENT, RAW_DATA, CALIBRATION_MATRIX, UNKNOWN_SCENE, TEST};
+enum Scene {DIRECT_VISION_WALL, DIRECT_VISION_ANY, DIRECT_VISION_ANY_SIMULATION, DIFFUSED_MIRROR, FOV_MEASUREMENT, RAW_DATA, CALIBRATION_MATRIX, UNKNOWN_SCENE, TEST, RAW_DATA_AND_CALIBRATION_MATRIX};
 // The PMD camera stores 165x120 pixels but some of them in the edges can not be considered as valid pixel measurements
 enum Pixels_storing {PIXELS_TOTAL, PIXELS_VALID, UNKNOWN_PIXELS_STORING};
 //enum Source {DATA_FILE, DATA_REAL_TIME, SIMULATION, UNKNOWN_SRC};
@@ -24,9 +24,10 @@ enum Pixels_storing {PIXELS_TOTAL, PIXELS_VALID, UNKNOWN_PIXELS_STORING};
 #define SPEEDOFLIGHT_AIR 299705000	// (m/s)
 #define DUTYCYCLE_INVERSE_OLD 10 // 1 us exposure, 9 us delay
 #define DUTYCYCLE 0.04f // ABSOLUTELY IMPORTANT for thermal stability: add delay to ensure a duty cycle below 4%
-#define FILENAME_FORMAT "capture_take%02d_f%06.2f_d%05.2f" // Filename prefix: Frequency, delay in m
-#define FILENAME_APPEND "_p%03d.%s"         // Append phase, shutter (=0 for HDR) and suffix to filename
-#define INF_FILENAME_SUFFIX ".inf"	// Info file
+#define FILENAME_FORMAT "capture_take%02d_f%06.2f_d%05.2f" // Filename prefix: Frequency, delay in m // For temporal files for CV_WHILE_CAPTURING
+#define FILENAME_APPEND "_p%03d.%s"         // Append phase, shutter (=0 for HDR) and suffix to filename // For temporal files for CV_WHILE_CAPTURING
+#define NUMTAKE_FILENAME_APPEND "_nt"	// Info file 
+#define INF_FILENAME_SUFFIX ".inf"	// Info file 
 #define RAW_FILENAME_SUFFIX ".raw"	// Raw Data file
 #define CMX_FILENAME_SUFFIX ".cmx"	// Calibration Matrix file
 #define CMD_FILENAME_SUFFIX ".cmd"	// Calibration Matrix Direct Vision file

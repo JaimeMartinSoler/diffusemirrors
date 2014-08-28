@@ -168,7 +168,7 @@ int main_fov_measurement(int argc, char** argv, bool loop = true, Scene scene = 
 }
 
 // main_raw_data(...)
-int main_raw_data(int argc, char** argv, bool loop = true, Scene scene = RAW_DATA) {
+int main_raw_data(int argc, char** argv, char* dir_name_, char* file_name_, Scene scene = RAW_DATA) {
 	
 	// set all the object3D of the corresponding scene (just camera, laser and wall)
 	bool cmx_info = true;
@@ -187,16 +187,14 @@ int main_raw_data(int argc, char** argv, bool loop = true, Scene scene = RAW_DAT
 		frequencies.push_back(fi);
 	std::vector<float> delays;
 	float delay_res = 0.5f;
-	float delay_min = 0.0f;
+	float delay_min = -2.0f;
 	float delay_max = 10.0f + delay_res/2.0f;	// (+ delay_res/2.0f) is due to avoid rounding problems
 	for (float di = delay_min; di <= delay_max; di += delay_res)
 		delays.push_back(di);
 	std::vector<float> shutters_float(1, 1920.0f);
-	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\test_00";
-	char file_name[1024] = "PMD_Calibration_Matrix";
 	char comport[128] = "COM6";
-	int numtakes = 1;
-	std::thread thread_PMD_params_to_file (PMD_params_to_file_anti_bug_thread, frequencies, delays, shutters_float, dir_name, file_name, comport, numtakes, cmx_info, cmx_params);
+	int numtakes = 3;
+	std::thread thread_PMD_params_to_file (PMD_params_to_file_anti_bug_thread, frequencies, delays, shutters_float, dir_name_, file_name_, comport, numtakes, cmx_info, cmx_params);
 
 	// pause in main to allow control when the loops will finish
 	//control_loop_pause();
@@ -210,12 +208,10 @@ int main_raw_data(int argc, char** argv, bool loop = true, Scene scene = RAW_DAT
 
 // main_calibration_matrix(...)
 // It builds a .cmx file from a .raw file with the parameters stored in the .inf file
-int main_calibration_matrix (int argc, char** argv, bool loop = true, Scene scene = CALIBRATION_MATRIX) {
+int main_calibration_matrix (int argc, char** argv, char* dir_name_, char* file_name_, Scene scene = CALIBRATION_MATRIX) {
 	
 	// built the global Info instance INFO
-	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\test_00";
-	char file_name[1024] = "PMD_Calibration_Matrix";
-	Info info = Info(dir_name, file_name);
+	Info info = Info(dir_name_, file_name_);
 
 	// create the .cmx file, dealing with the .inf and .raw files. It internally creates the corresponding scene
 	std::thread thread_create_cmx_from_raw (create_cmx_from_raw_anti_bug_thread, &info);
@@ -243,17 +239,21 @@ int main(int argc, char** argv) {
 	// DiffuseMirrors2.exe "80 90 100" "0 1 2 3" "1920" f:\tmp\pmdtest2 PMD_test_meas COM6 1
 	// ------------------------------------------------------------------------------------------------------------------------------
 
-	Scene scene = TEST;	// DIRECT_VISION_WALL,    DIRECT_VISION_ANY,    DIRECT_VISION_ANY_SIMULATION,    DIFFUSED_MIRROR,    FOV_MEASUREMENT,    CALIBRATION_MATRIX,    UNKNOWN_SCENE
+	Scene scene = RAW_DATA_AND_CALIBRATION_MATRIX;	// DIRECT_VISION_WALL, DIRECT_VISION_ANY, DIRECT_VISION_ANY_SIMULATION, DIFFUSED_MIRROR, FOV_MEASUREMENT, RAW_DATA, CALIBRATION_MATRIX, UNKNOWN_SCENE, TEST, RAW_DATA_AND_CALIBRATION_MATRIX
+	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\test_03";
+	char file_name[1024] = "PMD";
 	bool loop = true;
 	
 	switch(scene) {
-		case DIRECT_VISION_WALL : main_direct_vision_wall (argc, argv, loop, scene); break;
-		case DIRECT_VISION_ANY  : main_direct_vision_any  (argc, argv, loop, scene); break;
-		case DIFFUSED_MIRROR    : main_diffused_mirror    (argc, argv, loop, scene); break;
-		case FOV_MEASUREMENT    : main_fov_measurement    (argc, argv, loop, scene); break;
-		case RAW_DATA           : main_raw_data           (argc, argv, loop, scene); break;
-		case CALIBRATION_MATRIX : main_calibration_matrix (argc, argv, loop, scene); break;
-		case TEST				: test();                                            break;
+		case DIRECT_VISION_WALL : main_direct_vision_wall (argc, argv, loop, scene);                break;
+		case DIRECT_VISION_ANY  : main_direct_vision_any  (argc, argv, loop, scene);                break;
+		case DIFFUSED_MIRROR    : main_diffused_mirror    (argc, argv, loop, scene);                break;
+		case FOV_MEASUREMENT    : main_fov_measurement    (argc, argv, loop, scene);                break;
+		case RAW_DATA           : main_raw_data           (argc, argv, dir_name, file_name, scene); break;
+		case CALIBRATION_MATRIX : main_calibration_matrix (argc, argv, dir_name, file_name, scene); break;
+		case RAW_DATA_AND_CALIBRATION_MATRIX: main_raw_data (argc, argv, dir_name, file_name, scene);
+			                                  main_calibration_matrix (argc, argv, dir_name, file_name, scene); break;
+		case TEST				: test();                                                           break;
 	}
 
 	system("pause");

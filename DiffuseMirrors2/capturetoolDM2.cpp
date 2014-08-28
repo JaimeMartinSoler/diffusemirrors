@@ -576,32 +576,108 @@ int parser_main (int argc, char *argv[], std::vector<float> & frequencies, std::
 
 
 // Author: Jaime Martin
+// check_input_data(...)
+// return    0, 1:     !continue / continue
+int check_input_data(float frequency_, float distance_, float shutter_, char* comport, bool loop, bool show_text, bool ask_to_continue_) { // by default: show_text = true, ask_to_continue_ = true
+	
+	if (show_text) {
+
+		cout << "\nThe input parameters are:";
+		cout << "\n  Frequency (MHz): " << frequency_;
+		cout << "\n  Disatance (m)  : " << distance_;
+		cout << "\n  Shutter   (us) : " << shutter_;
+		cout << "\n  comport        : " << comport;
+		cout << "\n  loop           : " << loop << "\n";
+	}
+	
+	if (ask_to_continue_) {
+		if(ask_to_continue() == 0)
+			return 0;	// !continue
+	}
+
+	return 1; 			// continue
+}
+
+
+// Author: Jaime Martin
+// check_input_data_vectors(...)
+// return    0, 1:     !continue / continue
+int check_input_data_vectors (std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* dir_name, char* file_name, char* comport, int & numtakes, bool show_text, bool ask_to_continue_) { // by default: show_text = true, ask_to_continue_ = true
+
+	if (show_text) {
+
+		cout << "\nThe input parameters are:";
+		// Frequencies
+		cout << "\n\n  Frequencies (MHz) (" << frequencies.size() << "):\n    ";
+		for (size_t fi = 0; fi < frequencies.size()-1; fi++) {
+			cout << frequencies[fi] << ", ";
+		}	cout << frequencies[frequencies.size()-1];
+		// Delays
+		cout << "\n\n  Delays (m) (" << delays.size() << "):\n   ";
+		for (size_t di = 0; di < delays.size()-1; di++) {
+			cout << delays[di] << ", ";
+		}	cout << delays[delays.size()-1];
+		// Shutters
+		cout << "\n\n  Shutters (us) (" << shutters_float.size() << "):\n   ";
+		for (size_t si = 0; si < shutters_float.size()-1; si++) {
+			cout << shutters_float[si] << ", ";
+		}	cout << shutters_float[shutters_float.size()-1];
+		// numtakes
+		cout << "\n\n  numtakes  : " << numtakes;
+		// comport
+		cout << "\n  comport   : " << comport;
+		// dir_name
+		cout << "\n  dir_name  : " << dir_name;
+		// file_name
+		cout << "\n  file_name : " << file_name << "\n";
+	}
+	
+	if (ask_to_continue_) {
+		if(ask_to_continue() == 0)
+			return 0;	// !continue
+	}
+
+	return 1; 			// continue
+
+}
+
+
+
+// Author: Jaime Martin
 // check_parameters(...)
-// return 0: all parameters OK
-// return 1: any parameter out of bounds, modified
-// return 2: unproper dimensions or size
-int check_parameters (float & frequency_, float & shutter_, char* comport) {
+// return 0: any parameter out of bounds, modified, !continue
+// return 1: any parameter out of bounds, modified, continue
+// return 2: all parameters OK                    , continue
+int check_parameters (float & frequency_, float & shutter_, char* comport, bool show_text, bool ask_to_continue_) { // by default: show_text = true, ask_to_continue_ = true
 	
 	sprintf(comport_full_name, COMPORT_FORMAT, comport);	// configure comport_full_name
 
 	// checking all parameter in bounds, otherwise modify them
-	int return_value = 0;
+	int return_value = 2;	// all parameters OK, continue
 	if (frequency_ < FREQUENCY_MIN) {
 			frequency_ = FREQUENCY_MIN;
-			return_value = 1;
+			return_value = 1;	// any parameter out of bounds, modified, continue
 	}
 	else if (frequency_ > FREQUENCY_MAX) {
 			frequency_ = FREQUENCY_MAX;
-			return_value = 1;
+			return_value = 1;	// any parameter out of bounds, modified, continue
 	}
 	if (shutter_ < SHUTTER_MIN) {
 			shutter_ = SHUTTER_MIN;
-			return_value = 1;
+			return_value = 1;	// any parameter out of bounds, modified, continue
 	}
 	else if (shutter_ > SHUTTER_MAX) {
 			shutter_ = SHUTTER_MAX;
-			return_value = 1;
+			return_value = 1;	// any parameter out of bounds, modified, continue
 	}
+	
+	// show text, ask to continue
+	if ((show_text) && (return_value == 1)) {
+		std::cout << endl << "\nWarning: Some parameters out of bounds have been modified.";
+		if (ask_to_continue_) {
+			if(ask_to_continue() == 0)
+				return 0;	// any parameter out of bounds, modified, !continue
+	}	}
 
 	return return_value;
 }
@@ -610,53 +686,62 @@ int check_parameters (float & frequency_, float & shutter_, char* comport) {
 
 // Author: Jaime Martin
 // check_parameters_vector(...)
-// return 0: all parameters OK
-// return 1: any parameter out of bounds, modified
-// return 2: unproper dimensions or size
-int check_parameters_vector (std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* comport, int & numtakes) {
+// return 0: any parameter out of bounds, modified, !continue
+// return 1: any parameter out of bounds, modified, continue
+// return 2: all parameters OK                    , continue
+// return 3: unproper dimensions or size          , !continue
+int check_parameters_vector (std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* comport, int & numtakes, bool show_text, bool ask_to_continue_) { // by default: show_text = true, ask_to_continue_ = true
 	
 	sprintf(comport_full_name, COMPORT_FORMAT, comport);	// configure comport_full_name
 
 	// ckecking unproper dimensions or size
 	if (frequencies.size() < 1) {
-		std::cout << endl << "Frequencies array empty or wrong. Quitting.";
-		return 2;
+		std::cout << endl << "\nFrequencies array empty or wrong. Quitting.";
+		return 3;	// unproper dimensions or size
 	}
 	if (delays.size() < 1) {
-		std::cout << endl << "Delays array empty or wrong. Quitting.";
-		return 2;
+		std::cout << endl << "\nDelays array empty or wrong. Quitting.";
+		return 3;	// unproper dimensions or size
 	}
 	if (shutters_float.size() < 1) {
-		std::cout << endl << "Shutters/Exposures array empty or wrong. Quitting.";
-		return 2;
+		std::cout << endl << "\nShutters/Exposures array empty or wrong. Quitting.";
+		return 3;	// unproper dimensions or size
 	}
 	if (numtakes < 1) {
-		std::cout << endl << "Numtakes (=" << numtakes << ") must be > 0. Quitting.";
-		return 2;
+		std::cout << endl << "\nNumtakes (=" << numtakes << ") must be > 0. Quitting.";
+		return 3;	// unproper dimensions or size
 	}
 
 	// checking all parameter in bounds, otherwise modify them
-	int return_value = 0;
+	int return_value = 2;	// all parameters OK, continue
 	for (size_t i = 0; i < frequencies.size(); i++) {
 		if (frequencies[i] < FREQUENCY_MIN) {
 			frequencies[i] = FREQUENCY_MIN;
-			return_value = 1;
+			return_value = 1;	// any parameter out of bounds, modified, continue
 		}
 		else if (frequencies[i] > FREQUENCY_MAX) {
 			frequencies[i] = FREQUENCY_MAX;
-			return_value = 1;
+			return_value = 1;	// any parameter out of bounds, modified, continue
 		}
 	}
 	for (size_t i = 0; i < shutters_float.size(); i++) {
 		if (shutters_float[i] < SHUTTER_MIN) {
 			shutters_float[i] = SHUTTER_MIN;
-			return_value = 1;
+			return_value = 1;	// any parameter out of bounds, modified, continue
 		}
 		else if (shutters_float[i] > SHUTTER_MAX) {
 			shutters_float[i] = SHUTTER_MAX;
-			return_value = 1;
+			return_value = 1;	// any parameter out of bounds, modified, continue
 		}
 	}
+
+	// show text, ask to continue
+	if ((show_text) && (return_value == 1)) {
+		std::cout << endl << "\nWarning: Some parameters out of bounds have been modified.";
+		if (ask_to_continue_) {
+			if(ask_to_continue() == 0)
+				return 0;	// any parameter out of bounds, modified, !continue
+	}	}
 
 	return return_value;
 }
@@ -686,23 +771,161 @@ int PMD_charArray_to_file (int argc, char *argv[]) {
 }
 
 
+// Author: Jaime Martin
+// ask_to_continue()
+// return    0, 1:     !continue / continue
+int ask_to_continue() {
+
+	std::cout << "\nAre you sure you want to continue? (y/n)\n";
+	std::string answer;
+	std::cin >> answer;
+	if ((answer[0] != 'y') && (answer[0] != 'Y')) {
+		std::cout << "\nOkay. Quitting.\n" << endl;
+		return 0;	// !continue
+	}
+	return 1;		// continue
+}
+
+
+// Author: Jaime Martin
+// check_overwrite(...)
+// return    0, 1, 2:    file_exists(...)+!continue, file_exists(...)+continue, !file_exists(...)+continue
+int check_overwrite(char* file_name, bool show_text, bool ask_to_continue_) { // by default: show_text = true, ask_to_continue_ = true
+
+	if (file_exists(file_name)) {	
+		if (show_text)
+			std::cout << "\nWarning: File \"" << file_name << "\" already exists and will be deleted.";
+		if (ask_to_continue_) {
+			if(ask_to_continue() == 0)
+				return 0;	// file_exists(...)+!continue
+		}
+		// these 2 lines would delete all the entire directory (and its content):
+		//sprintf(command,"rd /S /Q %s", dir_name);
+		//system(command);
+		return 1;	// file_exists(...)+continue
+	} else {
+		return 2;	// !file_exists(...)+continue
+	}
+}
+
+
+// Author: Jaime Martin
+// check_frame(...)
+// return    0, 1:     !continue / continue
+int check_frame(float freq, float dist, float shutter, char* comport, bool show_text, bool ask_to_continue_) { // by default: show_text = true, ask_to_continue_ = true
+
+	if (show_text)
+		std::cout << "\nA frame is being shown to let you check the scene before the measurement.";
+	Frame frame_00;
+	Frame frame_90;
+	PMD_params_to_Frame (frame_00, frame_90, freq, dist, shutter, comport, false);
+	plot_frame (frame_00, frame_90);
+	if (ask_to_continue_) {
+		if(ask_to_continue() == 0)
+			return 0;	// !continue
+	}
+	return 1;			// continue
+}
+
+
+// Author: Jaime Martin
+// check_file_size(...)
+// return    0, 1:     !continue / continue
+// if (numtakes > 1) : the text shows file_size_MB_take, file_size_MB_tot, numtakes
+// if (numtakes == 1): the text shows file_size_MB_take, numtakes
+// if (numtakes <= 0): the text shows file_size_MB_take
+int check_file_size(float file_size_B_take, int numtakes, bool show_text, bool ask_to_continue_) { // by default: show_text = true, ask_to_continue_ = true
+	
+	float file_size_MB_take = file_size_B_take / 1048576.0f;	// Bytes
+	float file_size_MB_tot  = file_size_MB_take * numtakes;		// Bytes
+	if (show_text) {
+		if (numtakes > 1)
+			cout << "\nThe size required will be: " << (int)file_size_MB_take << " MB for each take, " << (int)file_size_MB_tot << " MB in total (" << numtakes << " takes)";
+		else if (numtakes == 1)
+			cout << "\nThe size required will be: " << (int)file_size_MB_take << " MB for each take, " << (int)file_size_MB_tot << " MB in total (1 take)";
+		else
+			cout << "\nThe size required will be: " << (int)file_size_MB_take << " MB";
+	}
+	if (ask_to_continue_) {
+		if(ask_to_continue() == 0)
+			return 0;	// !continue
+	}
+	return 1;			// continue
+}
+
+
+// Author: Jaime Martin
+// check_time(...)
+// return    0, 1:     !continue / continue
+int check_time(float time_tot_s, bool show_text, bool ask_to_continue_) { // by default: show_text = true, ask_to_continue_ = true
+	
+	float time_h, time_m, time_s;
+	seconds_to_hms (time_tot_s, time_h, time_m, time_s);
+
+	if (show_text)
+		cout << "\nThe measurement will take   : " << time_h << "h " << time_m << "' " << time_s << "''.";
+	if (ask_to_continue_) {
+		if(ask_to_continue() == 0)
+			return 0;	// !continue
+	}
+	return 1;			// continue
+}
+
+// Converts time in seconds to time in hours, minutes and seconds
+void seconds_to_hms (float time_tot_s, float & time_h, float & time_m, float & time_s) {
+	time_h = std::floor(time_tot_s / 3600.0f);
+	time_m = std::floor(((time_tot_s / 3600.0f) - time_h) * 60.0f);
+	time_s = std::floor(((((time_tot_s / 3600.0f) - time_h) * 60.0f) - time_m) * 60.0f);
+}
+
+// Author: Jaime Martin
+// countdown(...)
+void countdown(bool ask_number, int default_time, bool show_text) { // by default: ask_number = false, default_time = 10, bool show_text = true
+	 
+	if (default_time <= 0) {
+		if (show_text)
+			cout << "\nThe program will start right now.";
+		return;
+	}
+	
+	if (show_text)
+		cout << "\nThe program will start after the countdown.";
+	int countdown_time = default_time;
+
+	if (ask_number) {
+		std::string number = "";
+		while (!str_is_number(number)) {
+			std::cout << "\nEnter a valid number for the countdown (seconds), and press ENTER to start it:\n  ";
+			std::cin >> number;
+		}
+		countdown_time = (int)(atof(number.c_str()));
+	}
+
+	for (int i = countdown_time-1; i >= 0; i--) {
+		Sleep(1000);
+		if (show_text)
+			cout << "\n  " << i;
+	}
+}
 
 // Author: Jaime Martin (modification of previous function)
 // PMD_params_to_file
 int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* dir_name, char* file_name, char* comport, int & numtakes, bool cmx_info, float* cmx_params) {	// by default: (bool cmx_info = false, float* cmx_params = NULL)
 	
+	// Checking the input data
+	if (check_input_data_vectors (frequencies,delays, shutters_float, dir_name, file_name, comport, numtakes, true, true) == 0)
+		return -3;
+
 	// Checking errors in parameters
-	int error_checking_parameters = check_parameters_vector (frequencies, delays, shutters_float, comport, numtakes);
-	if (error_checking_parameters == 1)
-		std::cout << endl << "Some parameters out of bounds modified. Continuing...\n";
-	else if (error_checking_parameters == 2)
-		return error_checking_parameters;
+	int check_parameters_vector_error = check_parameters_vector (frequencies, delays, shutters_float, comport, numtakes, true, true);
+	if ((check_parameters_vector_error == 0) || (check_parameters_vector_error == 3))
+			return -3;
 	// Shutters vector of pairs
 	std::vector<pair<int, unsigned short*>> shutters;
 	for (size_t i = 0; i < shutters_float.size(); i++)
 		shutters.push_back(pair<int, unsigned short*>((int)shutters_float[i], new unsigned short [PMD_WIDTH*PMD_HEIGTH*10]));
 
-	// Check if file already exists
+	// Check if file already exists and if overwrite
 	char fn[256];
 	char command[1024];
 	char full_file_name[1024];
@@ -710,50 +933,32 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 	sprintf(full_file_name,"%s\\%s%s", dir_name, file_name, RAW_FILENAME_SUFFIX);
 	sprintf(full_file_name_take,"%s\\%s_%03d%s", dir_name, file_name, 0, RAW_FILENAME_SUFFIX);
 	sprintf(command,"%s", dir_name);
-	if (file_exists(full_file_name) || file_exists(full_file_name_take)) {
-		cout << "\nWarning: File \"" << full_file_name << "\" already exists and will be deleted. Sure? (y/n)\n";
-		string answer;
-		cin >> answer;
-		if (answer[0] != 'y' && answer[0] != 'Y') {
-			cout << "\nOkay - quitting.\n" << endl;
-			//pmdClose(hnd);	// I've changed the order of the code so the PMD is not open yet
-			return -2;
-		}
-		// these 2 lines would delete all the entire directory (and its content):
-		//sprintf(command,"rd /S /Q %s", dir_name);
-		//system(command);
-	}
+	// Check overwrite
+	if (check_overwrite(full_file_name, true, true) == 0)
+		return -2;	// if did not want to continue
 	sprintf(command,"md %s", dir_name);
 	system(command);
 	
 	// Check frames. In order to visualize the setup previously
-	Frame frame_00;
-	Frame frame_90;
-	PMD_params_to_Frame (frame_00, frame_90, frequencies[0], delays[0], shutters_float[shutters_float.size()-1], comport, false);
-	frame_00.plot_frame();
-	frame_90.plot_frame();
+	if (check_frame(frequencies[0], delays[0], shutters_float[shutters_float.size()-1], comport, true, false) == 0)
+		return -2;	// if did not want to continue
 
-	// Check time and file size
-	float time_h, time_m, time_s;
-	float time_tot_s = 0.0f;
+	// Check file size
+	float file_size_B_take = frequencies.size() * delays.size() * shutters.size() * 2 * PMD_WIDTH * PMD_HEIGTH * sizeof(unsigned short);	// Bytes
+	if (check_file_size(file_size_B_take, numtakes, true, false) == 0)
+		return -2;	// if did not want to continue
+
+	// Check time
+	float time_tot_s, time_h, time_m, time_s;
 	float period_shutter_tot = 0.0f;
 	for (size_t si = 0; si < shutters.size(); si++)
 		period_shutter_tot +=  shutters_float[si] / (1000000.0f * DUTYCYCLE);
 	time_tot_s = period_shutter_tot * frequencies.size() * delays.size() * numtakes;
-	time_h = std::floor(time_tot_s / 3600.0f);
-	time_m = std::floor(((time_tot_s / 3600.0f) - time_h) * 60.0f);
-	time_s = std::floor(((((time_tot_s / 3600.0f) - time_h) * 60.0f) - time_m) * 60.0f);
-	float file_size_B = frequencies.size() * delays.size() * shutters.size() * 2 * PMD_WIDTH * PMD_HEIGTH * 2;	// Bytes
-	float file_size_MB = file_size_B / 1048576.0f;	// Bytes
-	cout << "\nThe measurement will require: " << file_size_B << " Bytes (" << (int)file_size_MB << " MB) for each take.";
-	cout << "\nThe measurement will take   : " << time_h << "h " << time_m << "' " << time_s << "''.";
-	cout << "\nAre you sure to continue? (y/n)\n";
-	string answer;
-	cin >> answer;
-	if (answer[0] != 'y' && answer[0] != 'Y') {
-		cout << "\nOK. Quitting.\n" << endl;
-		return -3;
-	}
+	if (check_time(time_tot_s, true, true) == 0)
+		return -2;	// if did not want to continue
+	
+	// Start countdown
+	countdown (true, 10, true);
 
 	// close cv Frame window
 	cv::destroyAllWindows();
@@ -767,18 +972,29 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 	SerialPort port = control_init(comport_full_name);
 
 	// Init OpenCV
+	char measpath[1024];	// For temporal files for CV_WHILE_CAPTURING
+	char fnprefix[256];		// For temporal files for CV_WHILE_CAPTURING
 	if (CV_WHILE_CAPTURING)
 		cvNamedWindow(WindowName, CV_WINDOW_AUTOSIZE);
 	
+	// timing: loop
 	float ms_time_loop;
 	int ms_extra_delay;
 	clock_t begin_time_loop, end_time_loop;
-	bool firstiter = true;
+	// timing: timer
+	bool set_timer = true;
+	float ms_time_timer;
+	float ms_time_timer_max = 5000.0f;
+	clock_t begin_time_timer, end_time_timer;
+	float time_tot_s_rem, time_h_rem, time_m_rem, time_s_rem;
+	seconds_to_hms (time_tot_s, time_h, time_m, time_s);
+	begin_time_timer = clock();	// begin_time_timer for the timer
 
 	// Loop through takes
+	bool firstiter = true;
 	for (int take = 0; take < numtakes; take++) {
 		if (numtakes > 1)
-			sprintf(fn,"%s\\%s_nt%03d%s", dir_name, file_name, take, RAW_FILENAME_SUFFIX);
+			sprintf(fn,"%s\\%s%s%03d%s", dir_name, file_name, NUMTAKE_FILENAME_APPEND, take, RAW_FILENAME_SUFFIX);
 		else
 			sprintf(fn,"%s\\%s%s", dir_name, file_name, RAW_FILENAME_SUFFIX);
 		cout << "\nraw file name: ["<<fn<<"]\n\n";
@@ -791,12 +1007,20 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 			// Loop through frequencies
 			for (size_t fi = 0; fi < frequencies.size(); fi++) {
 				//cout << "    freq = " << frequencies[fi] << " MHz" << endl << "        Exposure ";
-				char fnprefix[256];
-				sprintf_s<256> (fnprefix, FILENAME_FORMAT, take, frequencies[fi], delays[di]);
-				// and shutter times
-				double timed;
-				double freqd;
+				if (CV_WHILE_CAPTURING)
+					sprintf_s<256> (fnprefix, FILENAME_FORMAT, take, frequencies[fi], delays[di]);
 				
+				if (set_timer) {
+					end_time_timer = clock();	// end_time_timer for the timer
+					ms_time_timer = 1000.0f * float(end_time_timer - begin_time_timer) / (float)CLOCKS_PER_SEC;
+					if ((ms_time_timer >= ms_time_timer_max) || (firstiter)) {
+						begin_time_timer = clock();	// begin_time_timer for the timer
+						time_tot_s_rem = time_tot_s - period_shutter_tot * (take * delays.size() * frequencies.size() + di * frequencies.size() + fi);
+						seconds_to_hms (time_tot_s_rem, time_h_rem, time_m_rem, time_s_rem);
+						cout << "\nRemaning time: " << time_h_rem << "h " << time_m_rem << "' " << time_s_rem << "'', of a total of : " << time_h << "h " << time_m << "' " << time_s << "''.";
+					}
+				}
+
 				// Loop through shutters
 				for (size_t ci = 0; ci < shutters.size(); ++ci) {
 					
@@ -873,14 +1097,12 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 
 					// On last iteration, process data
 					if (ci == shutters.size() - 1) {
-						char measpath[1024];
-						sprintf(measpath, "%s", dir_name);
-						
-					if (CV_WHILE_CAPTURING)
-						process_data(w, h, shutters, measpath, fnprefix, take, rawdumpfile);
-					else
-						process_data_no_cv(w, h, shutters, rawdumpfile);
-					//cout << endl;
+						if (CV_WHILE_CAPTURING) {
+							sprintf(measpath, "%s", dir_name);
+							process_data(w, h, shutters, measpath, fnprefix, take, rawdumpfile);
+						} else
+							process_data_no_cv(w, h, shutters, rawdumpfile);
+						//cout << endl;
 					}
 
 					end_time_loop = clock();		// end_time_loop for DUTYCYCLE Sleep
@@ -903,6 +1125,14 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 	if (CV_WHILE_CAPTURING)
 		cvDestroyWindow(WindowName);
 
+	// Build the averaged raw file if many takes were made
+	if (numtakes > 1) {
+		Info info (dir_name, file_name);
+		create_raw_from_raw_takes(&info);
+	}
+	else
+		cout << "\nRaw Data done in [" << full_file_name << "]\n";
+
 	return 0;
 }
 // there's a weird bug when calling directly to PMD_params_to_file from thread constructor. With this re-calling functtion the bug is avoided
@@ -910,10 +1140,59 @@ int PMD_params_to_file_anti_bug_thread (std::vector<float> & frequencies, std::v
 	return PMD_params_to_file (frequencies, delays, shutters_float, dir_name, file_name, comport, numtakes, cmx_info, cmx_params);
 }
 
+// creates a the corresponding averaged raw file from the raw takes files
+void create_raw_from_raw_takes (Info* info) {
+
+	int elements = info->frequencies.size() * info->distances.size() * info->shutters.size() * info->phases.size() * info->width * info->heigth;
+	float* raw_float_store = new float[elements];	// this will temporally store the sum of the corresponding values. We need float as long as with short int may cause overload
+	for (int pos = 0; pos < elements; pos++)
+		raw_float_store[pos] = 0.0f;
+
+	// store all the data
+	for (int take = 0; take < info->numtakes; take++) {
+		RawData raw_data(info, take);	// we load .raw files them one by one for memory efficiency reasons
+		if (elements != raw_data.data_size) {
+			std::cout << "\nError in: create_raw_from_raw_takes(Info* info), elements = " << elements <<" != raw_data.data_size = " << raw_data.data_size;
+			return;
+		}
+		for (int pos = 0; pos < elements; pos++) {
+			raw_float_store[pos] += (float)raw_data.data[pos];
+	}	}
+
+	// average all the data
+	float numtakes_float = (float)info->numtakes;
+	for (int pos = 0; pos < elements; pos++) {
+		raw_float_store[pos] /= numtakes_float;
+	}
+
+	// store the data in the raw_store of unsigned short int
+	unsigned short int* raw_store = new unsigned short int[elements];
+	for (int pos = 0; pos < elements; pos++) {
+		raw_store[pos] = (unsigned short int)raw_float_store[pos];
+	}
+
+	// fwrite parameters
+	size_t raw_bytes_per_value = sizeof(unsigned short int);
+	size_t raw_elements_per_write = elements;
+	FILE* raw_file = fopen(info->raw_full_file_name,"wb");
+	fwrite(raw_store, raw_bytes_per_value, raw_elements_per_write, raw_file);
+	fclose (raw_file);
+
+	cout << "\nRaw Data done in [" << info->raw_full_file_name << "]\n";
+}
+
 // Author: Jaime Martin
 // create_cmx_from_raw (...)
 void create_cmx_from_raw(Info* info_) {
 	
+	// Check overwrite
+	if(check_overwrite(info_->cmx_full_file_name, true, true) == 0)
+		return;	// if did not want to overwrite
+	// Check file size
+	float file_size_B = info_->frequencies.size() * info_->distances.size() * info_->width * info_->heigth * info_->sizeof_value_cmx;	// Bytes
+	if (check_file_size(file_size_B, 0, true, true) == 0)
+		return;	// if did not want to continue
+
 	RawData raw_data(info_);	// this will load all the data into the memory
 	
 	// IMPORTANT:    cmx_data_value = c * Em * albedo = H * dist_src_pix_rc,    dist_src_pix_rc = |r_src - r_x0(r,c)|^2,
@@ -958,6 +1237,7 @@ void create_cmx_from_raw(Info* info_) {
 					fwrite(cmx_data_value_ptr, cmx_bytes_per_value, cmx_elements_per_write, cmx_file);
 	}	}	}	}
 	fclose (cmx_file);
+	cout << "\nCalibration Matrix done in [" << info_->cmx_full_file_name << "]\n";
 }
 // there's a weird bug when calling directly to PMD_params_to_file from thread constructor. With this re-calling functtion the bug is avoided
 void create_cmx_from_raw_anti_bug_thread (Info* info_) {
@@ -1102,12 +1382,13 @@ int PMD_params_to_RawData (RawData & RawData_cap, std::vector<float> & frequenci
 // PMD_params_to_Frame
 int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequency_, float distance_, float shutter_, char* comport, bool loop) {
 
+	// Checking input data
+	if (check_input_data(frequency_, distance_, shutter_, comport, loop, false, false) == 0)
+		return -3;
+
 	// Checking errors in parameters
-	int error_checking_parameters = check_parameters (frequency_, shutter_, comport);
-	if (error_checking_parameters == 1)
-		std::cout << endl << "Some parameters out of bounds modified. Continuing...\n";
-	else if (error_checking_parameters == 2)
-		return error_checking_parameters;
+	if (check_parameters (frequency_, shutter_, comport, true, true) == 0)
+		return -3;
 	std::vector<float> phases(2);	phases[0] = 0.0f;	phases[1] = 90.0f; 
 	// Shutters vector of pairs
 	std::vector<pair<int, unsigned short*>> shutters;	// process_data_to_buffer(...) deal with vectors of pairs

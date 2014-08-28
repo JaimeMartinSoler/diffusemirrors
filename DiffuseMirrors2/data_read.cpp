@@ -32,6 +32,7 @@ Info::Info(char* dir_name_, char* file_name_) {
 	raw_full_file_name = raw_full_file_name_;
 	cmx_full_file_name = cmx_full_file_name_;
 	cmd_full_file_name = cmd_full_file_name_;
+	// std::vector<char*> raw_take_full_file_name; is built below
 
 	// INFO FILE. Open with read permissions
 	FILE* inf_file = fopen(inf_full_file_name, "r");
@@ -112,6 +113,15 @@ Info::Info(char* dir_name_, char* file_name_) {
 	}
 	//std::cout << "\n";
 	fclose(inf_file);
+
+	// std::vector<char*> raw_take_full_file_name
+	raw_take_full_file_name.resize(numtakes);
+	for (int i = 0; i < numtakes; i++) {
+		char raw_take_full_file_name_i[1024];
+		sprintf (raw_take_full_file_name_i,"%s\\%s%s%03d%s", dir_name, file_name, NUMTAKE_FILENAME_APPEND, i, RAW_FILENAME_SUFFIX);
+		raw_take_full_file_name[i] = raw_take_full_file_name_i;
+	}
+
 	error_code = 0;	// no errors
 }
 // Constructor
@@ -135,12 +145,21 @@ Info::Info(	char* dir_name_, char* file_name_, int sizeof_value_raw_, int width_
 		raw_full_file_name = raw_full_file_name_;
 		cmx_full_file_name = cmx_full_file_name_;
 		cmd_full_file_name = cmd_full_file_name_;
+		raw_take_full_file_name.resize(numtakes_);
+		for (int i = 0; i < numtakes_; i++) {
+			char raw_take_full_file_name_i[1024];
+			sprintf (raw_take_full_file_name_i,"%s\\%s%s%03d%s", dir_name, file_name, NUMTAKE_FILENAME_APPEND, i, RAW_FILENAME_SUFFIX);
+			raw_take_full_file_name[i] = raw_take_full_file_name_i;
+		}
 	}
 	else {
 		inf_full_file_name = NULL;
 		raw_full_file_name = NULL;
 		cmx_full_file_name = NULL;
 		cmd_full_file_name = NULL;
+		raw_take_full_file_name.resize(numtakes_);
+		for (int i = 0; i < numtakes_; i++)
+			raw_take_full_file_name[i] = NULL;
 	}
 
 	// Info Parameters:
@@ -172,6 +191,7 @@ Info::Info() {
 	raw_full_file_name = NULL;
 	cmx_full_file_name = NULL;
 	cmd_full_file_name = NULL;
+	raw_take_full_file_name.resize(0);
 
 	// Info Parameters:
 	sizeof_value_raw = 0;
@@ -195,17 +215,23 @@ Info::Info() {
 
 // ----- RAW DATA -------------------------------------------------------------------------------------------------------------------------
 // Constructor
-RawData::RawData(Info* info_) {
+RawData::RawData(Info* info_, int take_) { // by default: take = -1
 
-	// Info object pointer
-	info = info_;
+	// External Parameters (Info) and take
+	info = info_;	// Info object pointer
+	take = take_;	// number of the raw_numtake file this is referencing to. take = -1 if refers to the normal raw file
+	char* raw_fn;	// the file name this instance refers to
+	if (take == -1)
+		raw_fn = (*info).raw_full_file_name;
+	else
+		raw_fn = (*info).raw_take_full_file_name[take];
 
 	int file_data_size_expected = (*info).frequencies.size() * (*info).distances.size() * (*info).shutters.size() * (*info).phases.size() * (*info).width * (*info).heigth;
 
 	// DATA FILE. Open with read permissions
-	FILE* raw_file = fopen((*info).raw_full_file_name, "rb");	// open in binary/raw mode
+	FILE* raw_file = fopen(raw_fn, "rb");	// open in binary/raw mode
 	if (raw_file == NULL) {
-		std::cout << "\n\nError Reading \""<< (*info).raw_full_file_name << "\"\n\n";
+		std::cout << "\n\nError Reading \""<< raw_fn << "\"\n\n";
 		error_code = 1;
 		return;
 	}
@@ -216,7 +242,7 @@ RawData::RawData(Info* info_) {
 	data_size = ftell (raw_file) / (*info).sizeof_value_raw;
 	rewind (raw_file);
 	if (data_size != file_data_size_expected) {
-		std::cout << "\n\nSize Incoherence Error while getting size of \""<< (*info).raw_full_file_name << "\"\n\n";
+		std::cout << "\n\nSize Incoherence Error while getting size of \""<< raw_fn << "\"\n\n";
 		error_code = 4;
 		return;
 	}
@@ -224,7 +250,7 @@ RawData::RawData(Info* info_) {
 	// allocate memory to contain the whole file
 	data = (unsigned short int*) malloc((*info).sizeof_value_raw*data_size);
 	if (data == NULL) {
-		std::cout << "\n\nMemory Error while allocating \""<< (*info).raw_full_file_name << "\"\n\n";
+		std::cout << "\n\nMemory Error while allocating \""<< raw_fn << "\"\n\n";
 		error_code = 2;
 		return;
 	}
@@ -232,18 +258,20 @@ RawData::RawData(Info* info_) {
 	// copy the file into the buffer:
 	fread_output_size = fread (data, (*info).sizeof_value_raw, data_size, raw_file);
 	if (fread_output_size != data_size) {
-		std::cout << "\n\nSize Error while reading \""<< (*info).raw_full_file_name << "\"\n\n";
+		std::cout << "\n\nSize Error while reading \""<< raw_fn << "\"\n\n";
 		error_code = 3;
 		return;
 	}
 
 	fclose (raw_file);
 	//free (data_size_);
+
+
 	error_code = 0;		// no errors
 
 }
 // Constructor
-RawData::RawData(Info* info_, unsigned short int* data_, int data_size_, int error_code_) {
+RawData::RawData(Info* info_, unsigned short int* data_, int data_size_, int take_, int error_code_) { // by default: take_ = -1, error_code_ = 0
 	
 	// External Parameters
 	info = info_;
@@ -251,6 +279,7 @@ RawData::RawData(Info* info_, unsigned short int* data_, int data_size_, int err
 	// RawData Parameters
 	data = data_;
 	data_size = data_size_;	
+	take = take_;	
 	error_code = error_code_;
 }
 // Constructor Default
@@ -262,6 +291,7 @@ RawData::RawData() {
 	// RawData Parameters
 	data = NULL;
 	data_size = 0;	
+	take = -1;
 	error_code = 0;
 }
 
@@ -411,13 +441,37 @@ float CalibrationMatrix::at_any_path_dist(int frequencies_idx, float path_dist, 
 
 	float dist_offset = path_dist - path_dist_0.at<float>(h,w);
 	float dist_res = (info->distances[1] - info->distances[0]);
-	// dist_idx
-	int dist_idx_floor = (dist_offset - info->distances[0]) / dist_res + 0.5f;	// + 0.5f, to let int truncate properly
-	int dist_idx_ceil = dist_idx_floor + 1;
-	// dist_scales
-	float dist_scale_ceil = fmodf(dist_offset, dist_res) / dist_res;
-	float dist_scale_floor = 1.0f - dist_scale_ceil;
 
+	// dist_idx
+	int dist_idx_floor = (dist_offset - info->distances[0]) / dist_res;
+	if (dist_idx_floor < 0) {
+		std::cout << "\n\npath_dist = " << path_dist << " out of .cmx min bound, path_dist = min\n";
+		return at(frequencies_idx, 0, w, h);
+	} else if (dist_idx_floor >= info->distances.size() - 1) {
+		std::cout << "\n\npath_dist = " << path_dist << " out of .cmx max bound, path_dist = max\n";
+		return at(frequencies_idx, info->distances.size()-1, w, h);
+	}
+	int dist_idx_ceil = dist_idx_floor + 1;
+
+	// dist_scales
+	float dist_scale_ceil = fmodf(dist_offset-info->distances[0], dist_res) / dist_res;	// -info->distances[0] to avoid bad negative behaviour of fmodf(...)
+	float dist_scale_floor = 1.0f - dist_scale_ceil;
+	/*
+	std::cout << "\n\ndist_offset      = " << dist_offset;
+	std::cout << "\ndist_res         = " << dist_res;
+	std::cout << "\ndist_idx_floor   = " << dist_idx_floor;
+	std::cout << "\ndist_idx_ceil    = " << dist_idx_ceil;
+	std::cout << "\ndist_scale_floor = " << dist_scale_floor;
+	std::cout << "\ndist_scale_ceil  = " << dist_scale_ceil;
+
+	std::cout << "\n\npath_dist_0.at("<< h << "," << w << ") = " << path_dist_0.at<float>(h,w);
+	std::cout << "\npath_dist_floor  = " << path_dist_0.at<float>(h,w) + info->distances[dist_idx_floor];
+	std::cout << "\npath_dist_ceil   = " << path_dist_0.at<float>(h,w) + info->distances[dist_idx_ceil];
+	std::cout << "\ndist[di="<< dist_idx_floor << "] = " << info->distances[dist_idx_floor];
+	std::cout << "\ndist[di="<< dist_idx_ceil << "] = " << info->distances[dist_idx_ceil];
+	std::cout << "\nat(fi_max, di=" << dist_idx_floor << ", cen) = " << at(info->frequencies.size()-1, dist_idx_floor, w, h);
+	std::cout << "\nat(fi_max, di=" << dist_idx_ceil << ", cen) = " << at(info->frequencies.size()-1, dist_idx_ceil, w, h);
+	*/
 	return (dist_scale_floor * at(frequencies_idx, dist_idx_floor, w, h)) + (dist_scale_ceil * at(frequencies_idx, dist_idx_ceil, w, h));
 
 }
@@ -588,6 +642,37 @@ void Frame::plot_frame() {
 	cv::waitKey(1000);
 }
 
+
+// plot frame amplitude with sinusoidal assumption
+void plot_frame(Frame & frame_00, Frame & frame_90) {
+
+	if ((frame_00.width <= 0) || (frame_00.heigth <= 0) || (frame_90.width <= 0) || (frame_90.heigth <= 0))
+		return;
+
+	// Get a the module matrix
+	cv::Mat M_out = frame_00.matrix.clone();
+	for(int h = 0; h < M_out.rows; h++) {
+		for(int w = 0; w < M_out.cols; w++) {
+			M_out.at<float>(h,w) = frame_00.matrix.at<float>(h,w) * frame_00.matrix.at<float>(h,w) +
+								   frame_90.matrix.at<float>(h,w) * frame_90.matrix.at<float>(h,w);
+	}	}
+
+	// Get a normalized matrix (min=0.0, max=1.0)
+	double min, max, new_value;
+	cv::minMaxLoc(M_out, &min, &max);
+	max -= min;
+	cv::MatIterator_<float> it, end;
+	for(it = M_out.begin<float>(), end = M_out.end<float>(); it != end; ++it) {
+		(*it) = ((*it)-min) / max;
+	}
+	
+	// show the image
+	cv::namedWindow("Frame", cv::WINDOW_AUTOSIZE);	// WINDOW_NORMAL, WINDOW_AUTOSIZE
+	cv::imshow("Frame", M_out);
+	cv::waitKey(1000);
+
+}
+
 // For FoV measurement scene. Plot frame with opencv with syncronization
 void plot_frame_fov_measurement(bool loop) {		// by default: loop = false
 
@@ -595,9 +680,8 @@ void plot_frame_fov_measurement(bool loop) {		// by default: loop = false
 	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
 	locker_frame_object = std::unique_lock<std::mutex>(mutex_frame_object,std::defer_lock);
 
-	
 	// show the image
-	cv::Mat M_norm;
+	cv::Mat M_00, M_90;
 	int scale = 10;
 	bool first_iter = true;
 	cv::namedWindow("Frame", cv::WINDOW_AUTOSIZE);	// WINDOW_NORMAL, WINDOW_AUTOSIZE
@@ -615,29 +699,42 @@ void plot_frame_fov_measurement(bool loop) {		// by default: loop = false
 			cv_frame_object.wait(locker_frame_object);
 		}
 
-		// this three lines are the only critical zone
+		// this 4 lines are the only critical zone
+		/*
 		if ((FRAME_90_CAPTURE.width <= 0) || (FRAME_90_CAPTURE.heigth <= 0)) {
 			return;
 		}
-		M_norm = FRAME_90_CAPTURE.matrix.clone();		
+		M_norm = FRAME_90_CAPTURE.matrix.clone();
+		*/
+		if ((FRAME_00_CAPTURE.width <= 0) || (FRAME_00_CAPTURE.heigth <= 0) || (FRAME_90_CAPTURE.width <= 0) || (FRAME_90_CAPTURE.heigth <= 0))
+			return;
+		M_00 = FRAME_00_CAPTURE.matrix.clone();	// M_00 will also store the module: M_00 * M_00 + M_90 * M_90
+		M_90 = FRAME_90_CAPTURE.matrix.clone();
 		
 		// Syncronization
 		UPDATED_NEW_FRAME = false;
 		UPDATED_NEW_OBJECT = true;
 		cv_frame_object.notify_all();	// Notify all cv_frame_object. All threads waiting for cv_frame_object will break the wait after waking up
 		locker_frame_object.unlock();	// Unlock mutex_frame_object, now threads which used mutex_frame_object can continue
-
+		
+		// Get a the module matrix
+		for(int h = 0; h < M_00.rows; h++) {
+			for(int w = 0; w < M_00.cols; w++) {
+				M_00.at<float>(h,w) = M_00.at<float>(h,w) * M_00.at<float>(h,w) +
+									  M_90.at<float>(h,w) * M_90.at<float>(h,w);
+		}	}
+		
 		// Get a normalized matrix (min=0.0, max=1.0)
 		double min, max, new_value;
-		cv::minMaxLoc(M_norm, &min, &max);
+		cv::minMaxLoc(M_00, &min, &max);
 		max -= min;
 		cv::MatIterator_<float> it, end;
-		for(it = M_norm.begin<float>(), end = M_norm.end<float>(); it != end; ++it)
+		for(it = M_00.begin<float>(), end = M_00.end<float>(); it != end; ++it)
 			(*it) = ((*it)-min) / max;
-		cv::resize(M_norm, M_norm, cv::Size(), scale, scale, cv::INTER_NEAREST);
+		cv::resize(M_00, M_00, cv::Size(), scale, scale, cv::INTER_NEAREST);
 
 		// show window
-		cv::imshow("Frame", M_norm);
+		cv::imshow("Frame", M_00);
 		cv::waitKey(20);
 	}
 }

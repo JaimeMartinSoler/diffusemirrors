@@ -20,6 +20,11 @@ using namespace Eigen;
 
 // test function for testing
 void test() {
+	
+	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\test_03";
+	char file_name[1024] = "PMD_Calibration_Matrix";
+	Info info = Info(dir_name, file_name);
+	Frame frame(info, RawData* RawData_src_, int distance_idx_, int frequency_idx_, int shutter_idx_, int phase_idx_, Pixels_storing pixels_storing_ = PIXELS_VALID);
 
 	test_calibration_matrix();
 
@@ -29,7 +34,7 @@ void test() {
 // test_calibration_matrix()
 void test_calibration_matrix() {
 
-	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\test_00";
+	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\test_01";
 	char file_name[1024] = "PMD_Calibration_Matrix";
 	Info info = Info(dir_name, file_name);
 
@@ -44,6 +49,12 @@ void test_calibration_matrix() {
 	std::cout << "\npath_dist_0(0,0) = " << cm.path_dist_0.at<float>(0,0);
 	std::cout << "\npath_dist_0(cen) = " << cm.path_dist_0.at<float>(cm.heigth/2,cm.width/2);
 	std::cout << "\npath_dist_0(cor) = " << cm.path_dist_0.at<float>(cm.heigth-1,cm.width-1);
+	
+	int di_floor = 8;
+	float path_dist = info.distances[di_floor] + 0.6f * (info.distances[di_floor+1] - info.distances[di_floor]);
+	std::cout << "\npath_dist = " << path_dist;
+	std::cout << "\nat_any_path_dist(fi_max, " << path_dist << ", cen) = " << cm.at_any_path_dist(info.frequencies.size()-1, path_dist, cm.width/2, cm.heigth/2);
+
 }
 
 // Reads data from a .dat and info.txt file setting the DATAPMD_READ variable
