@@ -117,7 +117,7 @@ Info::Info(char* dir_name_, char* file_name_) {
 	// std::vector<char*> raw_take_full_file_name
 	raw_take_full_file_name.resize(numtakes);
 	for (int i = 0; i < numtakes; i++) {
-		char raw_take_full_file_name_i[1024];
+		char* raw_take_full_file_name_i = new char[1024];
 		sprintf (raw_take_full_file_name_i,"%s\\%s%s%03d%s", dir_name, file_name, NUMTAKE_FILENAME_APPEND, i, RAW_FILENAME_SUFFIX);
 		raw_take_full_file_name[i] = raw_take_full_file_name_i;
 	}
@@ -215,6 +215,7 @@ Info::Info() {
 
 // ----- RAW DATA -------------------------------------------------------------------------------------------------------------------------
 // Constructor
+// take: number of the raw_numtake file this is referencing to. take = -1 if refers to the normal raw file
 RawData::RawData(Info* info_, int take_) { // by default: take = -1
 
 	// External Parameters (Info) and take
@@ -436,8 +437,9 @@ float CalibrationMatrix::at(int frequencies_idx, int distances_idx, int w, int h
 	return data[idx_in_data(frequencies_idx, distances_idx, w, h)];
 }
 
-// Returns the value at any distance interpolating with the closest distances. Distance have to be equidistant
-float CalibrationMatrix::at_any_path_dist(int frequencies_idx, float path_dist, int w, int h) {
+	// This is the Calibtration Matrix coefficient: c_{\omega}^{r,c}(\tau^{r,c}) in the Master Thesis document
+	// Returns the value from the Calibration Matrix data at any path distance interpolating with the closest path distances. Path distances have to be equidistant in vector
+float CalibrationMatrix::c(int frequencies_idx, float path_dist, int w, int h) {
 
 	float dist_offset = path_dist - path_dist_0.at<float>(h,w);
 	float dist_res = (info->distances[1] - info->distances[0]);
@@ -476,14 +478,27 @@ float CalibrationMatrix::at_any_path_dist(int frequencies_idx, float path_dist, 
 
 }
 
+// This is the Simulation term for the direct vision problem: S_{i\;\omega}^{r,c}(\tau^{r,c}) in the Master Thesis document
+// Returns the value of the Simulation from the Calibration Matrix data at any path distance interpolating with the closest path distances. Path distances have to be equidistant in vector
+// Uses c(...)
+float CalibrationMatrix::S_direct_vision (int frequencies_idx, Point* r_src, Point* r_x,  Point* r_cam, int w, int h, float relative_albedo) { // by default: relative_albedo = 1.0f
+
+	float dist_src_x = dist_2(r_src, r_x);
+	float dist_cam_x = dist_2(r_cam, r_x);
+	float path_dist = dist_src_x + dist_cam_x;
+
+	return c(frequencies_idx, path_dist, w, h) * relative_albedo / (dist_src_x * dist_src_x);
+}
 
 
 // ----- FRAME ----------------------------------------------------------------------------------------------------------------------------
 // Constructor from RawData oriented
 Frame::Frame(Info* info_, RawData* RawData_src_, int distance_idx_, int frequency_idx_, int shutter_idx_, int phase_idx_, Pixels_storing pixels_storing_) {
 	
-	// External Parameters (RawData, Info)
-	Info* info = info_;
+	// External Parameters (RawData, Info, idices)
+	// if ((info_ != NULL) && (RawData_src_ == NULL))	// This would make no sense as long as this Frame comes from a RawData and Info doesn't stores RawData objects
+	if (info_ == NULL)	{ info = RawData_src_->info;}
+	else				{ info = info_;}
 	RawData_src = RawData_src_;
 	frequency_idx = frequency_idx_;
 	distance_idx = distance_idx_;

@@ -5,6 +5,10 @@
 // test function for testing
 void test();
 
+
+// test_create_raw_from_raw_takes()
+void test_create_raw_from_raw_takes();
+
 // test_calibration_matrix()
 void test_calibration_matrix();
 

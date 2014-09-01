@@ -100,6 +100,7 @@ public:
 
 
 	// Constructor. It creates a CalibrationMatrix object from the .raw file noted in the info object
+	// take: number of the raw_numtake file this is referencing to. take = -1 if refers to the normal raw file
 	RawData::RawData(Info* info_, int take_ = -1);
 	// Constructor
 	RawData::RawData(Info* info_, unsigned short int* data_, int data_size_, int take_ = -1, int error_code_ = 0);
@@ -144,12 +145,16 @@ public:
 
 	// Functions
 	// Returns the index in data[], corresponding to the parameter indices. Takes care of the pixels_storing internally
-	int CalibrationMatrix::idx_in_data(int frequencies_idx, int distances_idx, int w, int h);
-	// Returns the value corresponding to the parameter indices = data[idx_in_data]
-	float CalibrationMatrix::at(int frequencies_idx, int distances_idx, int w, int h);
-	// Returns the value at any path distance interpolating with the closest path distances. Path distances have to be equidistant
-	float CalibrationMatrix::at_any_path_dist(int frequencies_idx, float path_dist, int w, int h);
-
+	int CalibrationMatrix::idx_in_data (int frequencies_idx, int distances_idx, int w, int h);
+	// Returns the value from the Calibration Matrix data corresponding to the parameter indices = data[idx_in_data]
+	float CalibrationMatrix::at (int frequencies_idx, int distances_idx, int w, int h);
+	// This is the Calibtration Matrix coefficient: c_{\omega}^{r,c}(\tau^{r,c}) in the Master Thesis document
+	// Returns the value from the Calibration Matrix data at any path distance interpolating with the closest path distances. Path distances have to be equidistant in vector
+	float CalibrationMatrix::c (int frequencies_idx, float path_dist, int w, int h);
+	// This is the Simulation term for the direct vision problem: S_{i\;\omega}^{r,c}(\tau^{r,c}) in the Master Thesis document
+	// Returns the value of the Simulation from the Calibration Matrix data at any path distance interpolating with the closest path distances. Path distances have to be equidistant in vector
+	// Uses c(...)
+	float CalibrationMatrix::S_direct_vision (int frequencies_idx, Point* r_src, Point* r_x,  Point* r_cam, int w, int h, float relative_albedo = 1.0f);
 };
 
 

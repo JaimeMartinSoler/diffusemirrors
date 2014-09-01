@@ -7,8 +7,9 @@
 #include <stdio.h>
 #include <stdlib.h>     // atof
 #include <pmdsdk2.h>
-#include <Windows.h> // For timing calculations
+#include <Windows.h>	// For timing calculations
 #include <algorithm>
+#include <math.h>		// std::round
 #include <assert.h>
 //#include "CImg.h"
 #include "SerialPort.h"
@@ -913,7 +914,7 @@ void countdown(bool ask_number, int default_time, bool show_text) { // by defaul
 int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & delays, std::vector<float> & shutters_float, char* dir_name, char* file_name, char* comport, int & numtakes, bool cmx_info, float* cmx_params) {	// by default: (bool cmx_info = false, float* cmx_params = NULL)
 	
 	// Checking the input data
-	if (check_input_data_vectors (frequencies,delays, shutters_float, dir_name, file_name, comport, numtakes, true, true) == 0)
+	if (check_input_data_vectors (frequencies,delays, shutters_float, dir_name, file_name, comport, numtakes, true, false) == 0)
 		return -3;
 
 	// Checking errors in parameters
@@ -940,8 +941,8 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 	system(command);
 	
 	// Check frames. In order to visualize the setup previously
-	if (check_frame(frequencies[0], delays[0], shutters_float[shutters_float.size()-1], comport, true, false) == 0)
-		return -2;	// if did not want to continue
+	//if (check_frame(frequencies[0], delays[0], shutters_float[shutters_float.size()-1], comport, true, false) == 0)
+	//	return -2;	// if did not want to continue
 
 	// Check file size
 	float file_size_B_take = frequencies.size() * delays.size() * shutters.size() * 2 * PMD_WIDTH * PMD_HEIGTH * sizeof(unsigned short);	// Bytes
@@ -954,11 +955,11 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 	for (size_t si = 0; si < shutters.size(); si++)
 		period_shutter_tot +=  shutters_float[si] / (1000000.0f * DUTYCYCLE);
 	time_tot_s = period_shutter_tot * frequencies.size() * delays.size() * numtakes;
-	if (check_time(time_tot_s, true, true) == 0)
+	if (check_time(time_tot_s, true, false) == 0)
 		return -2;	// if did not want to continue
 	
 	// Start countdown
-	countdown (true, 10, true);
+	countdown (false, 0, false);
 
 	// close cv Frame window
 	cv::destroyAllWindows();
@@ -1156,6 +1157,8 @@ void create_raw_from_raw_takes (Info* info) {
 			return;
 		}
 		for (int pos = 0; pos < elements; pos++) {
+			if (pos == elements/2)
+				cout << "\nFor take " << take << " raw_data.data[" << pos << "] = " << raw_data.data[pos];
 			raw_float_store[pos] += (float)raw_data.data[pos];
 	}	}
 
@@ -1164,20 +1167,24 @@ void create_raw_from_raw_takes (Info* info) {
 	for (int pos = 0; pos < elements; pos++) {
 		raw_float_store[pos] /= numtakes_float;
 	}
+	cout << "\nAvg value float = raw_float_store.data[" << elements/2 << "] = " << raw_float_store[elements/2];
 
 	// store the data in the raw_store of unsigned short int
-	unsigned short int* raw_store = new unsigned short int[elements];
+	unsigned short int* raw_store_ushort = new unsigned short int[elements];
 	for (int pos = 0; pos < elements; pos++) {
-		raw_store[pos] = (unsigned short int)raw_float_store[pos];
+		raw_store_ushort[pos] = (unsigned short int)(floor(raw_float_store[pos]+0.5f));	// floor(x+0.5) = round(x)
 	}
+	cout << "\nAvg value ushort int = raw_store_ushort[" << elements/2 << "] = " << raw_store_ushort[elements/2];
 
 	// fwrite parameters
 	size_t raw_bytes_per_value = sizeof(unsigned short int);
 	size_t raw_elements_per_write = elements;
 	FILE* raw_file = fopen(info->raw_full_file_name,"wb");
-	fwrite(raw_store, raw_bytes_per_value, raw_elements_per_write, raw_file);
+	fwrite(raw_store_ushort, raw_bytes_per_value, raw_elements_per_write, raw_file);
 	fclose (raw_file);
-
+	
+	delete [] raw_float_store;
+	delete [] raw_store_ushort;
 	cout << "\nRaw Data done in [" << info->raw_full_file_name << "]\n";
 }
 
@@ -1190,7 +1197,7 @@ void create_cmx_from_raw(Info* info_) {
 		return;	// if did not want to overwrite
 	// Check file size
 	float file_size_B = info_->frequencies.size() * info_->distances.size() * info_->width * info_->heigth * info_->sizeof_value_cmx;	// Bytes
-	if (check_file_size(file_size_B, 0, true, true) == 0)
+	if (check_file_size(file_size_B, 0, true, false) == 0)
 		return;	// if did not want to continue
 
 	RawData raw_data(info_);	// this will load all the data into the memory

@@ -179,21 +179,21 @@ int main_raw_data(int argc, char** argv, char* dir_name_, char* file_name_, Scen
 	float cmx_params[4] = {laser_to_cam_offset_x, laser_to_cam_offset_y, laser_to_cam_offset_z, dist_wall_cam};
 
 	// create the .raw file, capturing data from the PMD
-	std::vector<float> frequencies;
-	float freq_res = 20.0f;
-	float freq_min = 20.0f;
+	std::vector<float> frequencies;	// (MHz)
+	float freq_res = 20;
+	float freq_min = 100.0f;
 	float freq_max = 100.0f + freq_res/2.0f;	// (+ freq_res/2.0f) is due to avoid rounding problems
 	for (float fi = freq_min; fi <= freq_max; fi += freq_res)
 		frequencies.push_back(fi);
-	std::vector<float> delays;
-	float delay_res = 0.5f;
+	std::vector<float> delays;		// (m)
+	float delay_res = 1.0f;
 	float delay_min = -2.0f;
 	float delay_max = 10.0f + delay_res/2.0f;	// (+ delay_res/2.0f) is due to avoid rounding problems
 	for (float di = delay_min; di <= delay_max; di += delay_res)
 		delays.push_back(di);
-	std::vector<float> shutters_float(1, 1920.0f);
+	std::vector<float> shutters_float(1, 1920.0f);	// (us)
 	char comport[128] = "COM6";
-	int numtakes = 3;
+	int numtakes = 20;
 	std::thread thread_PMD_params_to_file (PMD_params_to_file_anti_bug_thread, frequencies, delays, shutters_float, dir_name_, file_name_, comport, numtakes, cmx_info, cmx_params);
 
 	// pause in main to allow control when the loops will finish

@@ -20,16 +20,36 @@ using namespace Eigen;
 
 // test function for testing
 void test() {
-	
-	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\test_03";
-	char file_name[1024] = "PMD_Calibration_Matrix";
-	Info info = Info(dir_name, file_name);
-	Frame frame(info, RawData* RawData_src_, int distance_idx_, int frequency_idx_, int shutter_idx_, int phase_idx_, Pixels_storing pixels_storing_ = PIXELS_VALID);
 
-	test_calibration_matrix();
+	test_create_raw_from_raw_takes();
 
 	std::cout << "\n\nTest done...\n\n";
 }
+
+
+// test_create_raw_from_raw_takes()
+void test_create_raw_from_raw_takes() {
+	
+	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\test_03";
+	char file_name[1024] = "PMD";
+	Info info(dir_name, file_name);
+
+	RawData raw_data_take_0 (&info, 0);
+	RawData raw_data_take_1 (&info, 1);
+	RawData raw_data_take_2 (&info, 2);
+	RawData raw_data		(&info);
+	
+	Frame frame_take_0	(&info, &raw_data_take_0, 0, 0, 0, 0);
+	Frame frame_take_1	(&info, &raw_data_take_1, 0, 0, 0, 0);
+	Frame frame_take_2	(&info, &raw_data_take_2, 0, 0, 0, 0);
+	Frame frame			(&info, &raw_data, 0, 0, 0, 0);
+	
+	frame_take_0.plot_frame();
+	frame_take_1.plot_frame();
+	frame_take_2.plot_frame();
+	frame.plot_frame();
+}
+
 
 // test_calibration_matrix()
 void test_calibration_matrix() {
@@ -53,7 +73,7 @@ void test_calibration_matrix() {
 	int di_floor = 8;
 	float path_dist = info.distances[di_floor] + 0.6f * (info.distances[di_floor+1] - info.distances[di_floor]);
 	std::cout << "\npath_dist = " << path_dist;
-	std::cout << "\nat_any_path_dist(fi_max, " << path_dist << ", cen) = " << cm.at_any_path_dist(info.frequencies.size()-1, path_dist, cm.width/2, cm.heigth/2);
+	std::cout << "\nc(fi_max, " << path_dist << ", cen) = " << cm.c(info.frequencies.size()-1, path_dist, cm.width/2, cm.heigth/2);
 
 }
 
