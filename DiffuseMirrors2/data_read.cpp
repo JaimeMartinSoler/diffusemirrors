@@ -3,6 +3,7 @@
 #include <stdlib.h>     // atof
 
 #include "global.h"
+#include "shapes.h"
 #include "data_read.h"
 #include "data_sim.h"
 #include "capturetoolDM2.h"
@@ -12,6 +13,7 @@
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv/cv.h>	
+
 
 // ----- INFO -----------------------------------------------------------------------------------------------------------------------------
 // Constructor

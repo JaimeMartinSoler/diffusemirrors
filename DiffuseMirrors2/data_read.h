@@ -3,11 +3,13 @@
 #define __DATA_READ_H
 
 #include "global.h"
+#include "shapes.h"
 
 #include <vector>
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv/cv.h>	
+
 
 	// ------------------------------------------------------------------------------------------------------------------------------
 	// The measured data is stored in shutters[i].second, while calling:
