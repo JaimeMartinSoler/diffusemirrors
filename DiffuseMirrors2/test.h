@@ -6,6 +6,9 @@
 void test();
 
 
+// test_gradient_descent()
+void test_gradient_descent();
+
 // test_create_raw_from_raw_takes()
 void test_create_raw_from_raw_takes();
 

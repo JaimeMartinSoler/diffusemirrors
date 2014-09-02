@@ -21,11 +21,16 @@ using namespace Eigen;
 // test function for testing
 void test() {
 
-	test_create_raw_from_raw_takes();
+	test_gradient_descent();
 
 	std::cout << "\n\nTest done...\n\n";
 }
 
+
+// test_gradient_descent()
+void test_gradient_descent() {
+	// TO-DO
+}
 
 // test_create_raw_from_raw_takes()
 void test_create_raw_from_raw_takes() {

@@ -241,7 +241,7 @@ void set_scene_direct_vision_any (bool loop) {	// by default: loop = false
 	Object3D* wall_patches_obj3D = new Object3D(0);
 	OBJECT3D_SET[WALL_PATCHES] = wall_patches_obj3D;
 
-	// CAMERA_FOV (7) // empty (CAMERA_FOV uses WALL_PATCHES)
+	// CAMERA_FOV (7) // empty 
 	Object3D* camera_fov_obj3D = new Object3D(0);
 	OBJECT3D_SET[CAMERA_FOV] = camera_fov_obj3D;
 
@@ -331,6 +331,74 @@ void set_scene_calibration_matrix (Info* info_, Pixels_storing pixel_storing_) {
 	OBJECT3D_SET[VOLUME_PATCHES] = volume_patches_obj3D;
 
 	// PIXEL_PATCHES (10) // empty
+	Object3D* pixel_patches_obj3D = new Object3D(0);
+	OBJECT3D_SET[PIXEL_PATCHES] = pixel_patches_obj3D;
+}
+
+// set_scene_vision_simulation()
+void set_scene_vision_simulation(float dist_cam_wall) {
+	
+	// CAMERA (0)
+	Point camera_pos(0.0f, 0.75f, 0.0f);		// pos of the center of the camera
+	Point camera_rot(0.0f, 180.0f, 0.0f);		// rot from the center of the camera
+	Point camera_size(0.15f, 0.15f, 0.04f);
+	Point camera_centre(camera_size.x() / 2.0f, camera_size.y() / 2.0f, 0.0f);	// centre relative to the first point
+	set_camera(&camera_pos, &camera_rot, &camera_size, &camera_centre);
+	// Get the screen normals:
+	// Ordering: 1st row: col, col, col... 2nd row: col, col, col... from left to right, from bottom to top
+	std::vector<Point*> screen_patches_corners_normals((CAMERA_PIX_X + 1) * (CAMERA_PIX_Y + 1));	// size is always (CAMERA_PIX_X + 1) * (CAMERA_PIX_Y + 1), regardingless the value of PIXELS_STORING_GLOBAL
+	std::vector<Point*> screen_patches_centers_normals(CAMERA_PIX_X * CAMERA_PIX_Y);				// size is always (CAMERA_PIX_X)     * (CAMERA_PIX_Y)    , regardingless the value of PIXELS_STORING_GLOBAL
+	set_screen_normals_pixel_patches(screen_patches_corners_normals, screen_patches_centers_normals, &camera_pos, &camera_rot, &camera_centre);
+
+	// LASER (1)
+	Point laser_pos(-0.15f, 0.75f, 0.0f);		// pos of the center of the laser
+	Point laser_rot(0.0f, 180.0f, 0.0f);		// rot from the center of the laser
+	Point laser_size(0.1f, 0.1f, 0.3f);
+	Point laser_centre(laser_size.x() / 2.0f, laser_size.y() / 2.0f, 0.0f);	// centre relative to the first point
+	set_laser(&laser_pos, &laser_rot, &laser_size, &laser_centre);
+
+	// WALL (2)
+	Point wall_pos(-1.625f, 0.0f, -dist_cam_wall);	// pos of the center of the wall	// (-1.625f, 0.0f, -1.36f)
+	Point wall_rot(0.0f, 0.0f, 0.0f);				// rot from the center of the wall
+	Point wall_size(4.0f, 0.01f, 0.2f);
+	Point wall_centre(0.0f, 0.0f, 0.0f);			// centre relative to the first point
+	float wall_albedo = 0.5f;	// does not matter
+	set_box(&wall_pos, &wall_rot, &wall_size, &wall_centre, WALL, wall_albedo);
+
+	// OCCLUDER (3) // empty
+	Object3D* occluder_obj3D = new Object3D(0);
+	OBJECT3D_SET[OCCLUDER] = occluder_obj3D;
+
+	// FLOOR (4)
+	Point floor_pos(wall_pos.x(), 0.0f, 0.7f);
+	Point floor_rot(-90.0f, 0.0f, 0.0f);
+	Point floor_size(wall_size.x(), 6.0f, wall_size.z());
+	Point floor_centre(0.0f, 0.0f, 0.0f);
+	float floor_albedo = 0.5f;	// does not matter
+	set_box(&floor_pos, &floor_rot, &floor_size, &floor_centre, FLOOR, floor_albedo);
+
+	// VOLUME (5) // empty
+	Object3D* volume_obj3D = new Object3D(0);
+	OBJECT3D_SET[VOLUME] = volume_obj3D;
+
+	// WALL_PATCHES (6)
+	std::vector<float> wall_patches_albedo(CAMERA_PIX_X * CAMERA_PIX_Y);	// size is always (CAMERA_PIX_X) * (CAMERA_PIX_Y), regardingless the value of PIXELS_STORING_GLOBAL
+	set_wall_patches_albedo(wall_patches_albedo);
+	set_wall_patches(&camera_pos, &camera_rot, &camera_size, &camera_centre, screen_patches_corners_normals, screen_patches_centers_normals, wall_patches_albedo);
+
+	// CAMERA_FOV (7) // empty 
+	Object3D* camera_fov_obj3D = new Object3D(0);
+	OBJECT3D_SET[CAMERA_FOV] = camera_fov_obj3D;
+
+	// LASER_RAY (8) // empty
+	Object3D* laser_ray_obj3D = new Object3D(0);
+	OBJECT3D_SET[LASER_RAY] = laser_ray_obj3D;
+
+	// VOLUME_PATCHES (9) // empty
+	Object3D* volume_patches_obj3D = new Object3D(0);
+	OBJECT3D_SET[VOLUME_PATCHES] = volume_patches_obj3D;
+ 
+	// PIXEL_PATCHES (10)
 	Object3D* pixel_patches_obj3D = new Object3D(0);
 	OBJECT3D_SET[PIXEL_PATCHES] = pixel_patches_obj3D;
 }
@@ -589,9 +657,9 @@ void set_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_cen
 	OBJECT3D_SET[PIXEL_PATCHES] = pixel_patches;
 		
 	// Syncronization
-	//std::cout << ",    UPDATED_NEW_OBJECT\n";
+	//std::cout << ",    UPDATED_NEW_SCENE\n";
 	UPDATED_NEW_FRAME = false;
-	UPDATED_NEW_OBJECT = true;
+	UPDATED_NEW_SCENE = true;
 	cv_frame_object.notify_all();	// Notify all cv_frame_object. All threads waiting for cv_frame_object will break the wait after waking up
 	locker_frame_object.unlock();	// Unlock mutex_frame_object, now threads which used mutex_frame_object can continue
 }
@@ -659,9 +727,9 @@ void update_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_
 		}
 		
 		// Syncronization
-		//std::cout << ",    UPDATED_NEW_OBJECT\n";
+		//std::cout << ",    UPDATED_NEW_SCENE\n";
 		UPDATED_NEW_FRAME = false;
-		UPDATED_NEW_OBJECT = true;
+		UPDATED_NEW_SCENE = true;
 		cv_frame_object.notify_all();	// Notify all cv_frame_object. All threads waiting for cv_frame_object will break the wait after waking up
 		locker_frame_object.unlock();	// Unlock mutex_frame_object, now threads which used mutex_frame_object can continue
 
@@ -768,9 +836,9 @@ void update_wall_and_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point
 		rot_from_c_to_normal(OBJECT3D_SET[WALL], &mean_n, scale_axis_rotation);
 
 		// Syncronization
-		//std::cout << ",    UPDATED_NEW_OBJECT\n";
+		//std::cout << ",    UPDATED_NEW_SCENE\n";
 		UPDATED_NEW_FRAME = false;
-		UPDATED_NEW_OBJECT = true;
+		UPDATED_NEW_SCENE = true;
 		cv_frame_object.notify_all();	// Notify all cv_frame_object. All threads waiting for cv_frame_object will break the wait after waking up
 		locker_frame_object.unlock();	// Unlock mutex_frame_object, now threads which used mutex_frame_object can continue
 

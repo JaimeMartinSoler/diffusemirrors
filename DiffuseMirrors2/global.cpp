@@ -20,6 +20,6 @@ bool PMD_LOOP_ENABLE = true;
 std::mutex mutex_frame_object;				// mutual exclusion frame-object
 std::condition_variable cv_frame_object;	// condition variable frame-object
 bool UPDATED_NEW_FRAME = false;				// bool for spurious wakes (setted to false to wait in the object until 1st Frame is drawn)
-bool UPDATED_NEW_OBJECT = true;				// bool for spurious wakes	
+bool UPDATED_NEW_SCENE = true;				// bool for spurious wakes	
 
 

@@ -76,10 +76,22 @@
     <CustomBuildAfterTargets Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" />
     <CustomBuildAfterTargets Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <IncludePath>$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <IncludePath>$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IncludePath>$(IncludePath)</IncludePath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>freeglut/include;C:\Program Files\MATLAB\R2012b\extern\include;eigen321;./include;OpenCV/include;OpenCV/include/opencv</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>freeglut/include;C:\Program Files\MATLAB\R2012b\extern\include;eigen321;./include;OpenCV/include;OpenCV/include/opencv;C:\Users\transient\Documents\Visual Studio 2012\Projects\DiffuseMirrors2\Purple0\Purple</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_VARIADIC_MAX=10;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -108,7 +120,7 @@ copy OpenCV\*.dll "$(OutDir)"</Command>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>freeglut/include;C:/Program Files/MATLAB/R2012b/extern/include;eigen321;./include;OpenCV/include;OpenCV/include/opencv</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>freeglut/include;C:/Program Files/MATLAB/R2012b/extern/include;eigen321;./include;OpenCV/include;OpenCV/include/opencv;C:\Users\transient\Documents\Visual Studio 2012\Projects\DiffuseMirrors2\Purple0\Purple</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_VARIADIC_MAX=10;_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -134,7 +146,7 @@ copy OpenCV\bin64\*.dll "$(OutDir)"</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>eigen321;C:\Program Files\MATLAB\R2012b\extern\include;freeglut/include;./include;OpenCV/include;OpenCV/include/opencv</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>eigen321;C:\Program Files\MATLAB\R2012b\extern\include;freeglut/include;./include;OpenCV/include;OpenCV/include/opencv;C:\Users\transient\Documents\Visual Studio 2012\Projects\DiffuseMirrors2\Purple0\Purple</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_VARIADIC_MAX=10;NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeader>
@@ -162,7 +174,7 @@ copy OpenCV\opencv_*.dll "$(OutDir)"</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>eigen321;C:\Program Files\MATLAB\R2012b\extern\include;freeglut/include;./include;OpenCV/include;OpenCV/include/opencv</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>eigen321;C:\Program Files\MATLAB\R2012b\extern\include;freeglut/include;./include;OpenCV/include;OpenCV/include/opencv;C:\Users\transient\Documents\Visual Studio 2012\Projects\DiffuseMirrors2\Purple0\Purple</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_VARIADIC_MAX=10;NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeader>

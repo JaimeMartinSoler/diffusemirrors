@@ -5,8 +5,9 @@
 #include "shapes.h"
 #include "data_sim.h"
 #include "data_read.h"
+#include "scene.h"
+// MATLAB
 #include "engine.h"
-
 
 // gets all the data results, once the scene (OBJECT3D_SET) has been configured
 void get_data_sim_diffused_mirror() {
@@ -60,7 +61,7 @@ void get_data_sim_diffused_mirror() {
 	//plot_transient_pixel(transient_image, pix_x, pix_y);
 
 	// Plot image pixels values with opencv, from pixels_value
-	Frame pixels_value_frame(pixels_value, CAMERA_PIX_Y, CAMERA_PIX_X, false, distance, frequency, phase, shutter);
+	Frame pixels_value_frame(pixels_value, false, distance, frequency, phase, shutter);
 	pixels_value_frame.plot_frame();
 }
 
@@ -85,9 +86,10 @@ void get_data_sim_direct_vision_wall() {
 	get_pixels_value(pixels_value_simple, transient_image_simple, distance, frequency, phase, shutter, Em);
 
 	// Plot image pixels values with opencv, from pixels_value
-	Frame pixels_value_simple_frame(pixels_value_simple, CAMERA_PIX_Y, CAMERA_PIX_X, false, distance, frequency, phase, shutter);
+	Frame pixels_value_simple_frame(pixels_value_simple, false, distance, frequency, phase, shutter);
 	pixels_value_simple_frame.plot_frame();
 }
+
 
 
 
@@ -414,6 +416,70 @@ void plot_image_pixels_values(std::vector<float> & pixels_value_, int heigth_, i
 	engClose(ep);
 }
 */
+
+
+
+
+
+
+// ----------------------------------------------------------------
+// ----------------------------------------------------------------
+// THE FUNCTIONS BELOW ARE JUST TEMPORTAL AND MAY BE NON-FUNCTIONAL:
+// ----------------------------------------------------------------
+// ----------------------------------------------------------------
+
+
+// gets all the data results with the simple set-up, once the scene (OBJECT3D_SET) has been configured
+void get_data_sim_direct_vision(Frame & frame_in, Frame & frame_out) {
+
+	// Transient pixel = Impulse response of the scene. alpha_r in Ref08
+	// vector of maps. One map for pixel representing
+	//   x axis = key   = time (r) in ns
+	//   y axis = value = amplitude of the impulse response
+	std::vector<std::multimap<float, float>> transient_image_simple;
+	if (frame_in.pixels_storing == PIXELS_TOTAL)
+		transient_image_simple.resize(CAMERA_PIX_X * CAMERA_PIX_Y);
+	else if (frame_in.pixels_storing == PIXELS_VALID)
+		transient_image_simple.resize(CAMERA_PIX_X_VALID * CAMERA_PIX_Y_VALID);
+	get_transient_image_simple(transient_image_simple);
+
+	// Pixels value. H(w,phi) in the paper
+	float distance	= frame_in.distance;	// (m)
+	float frequency	= frame_in.frequency;	// (MHz)
+	float phase		= frame_in.phase;		// (deg)
+	float shutter	= frame_in.shutter;		// (us)
+	float Em		= 1.0f;
+	std::vector<float> pixels_value_simple;
+	if (frame_in.pixels_storing == PIXELS_TOTAL)
+		pixels_value_simple.resize(CAMERA_PIX_X * CAMERA_PIX_Y);
+	else if (frame_in.pixels_storing == PIXELS_VALID)
+		pixels_value_simple.resize(CAMERA_PIX_X_VALID * CAMERA_PIX_Y_VALID);
+	get_pixels_value(pixels_value_simple, transient_image_simple, distance, frequency, phase, shutter, Em);
+
+	// Plot image pixels values with opencv, from pixels_value
+	Frame pixels_value_simple_frame(pixels_value_simple, false, distance, frequency, phase, shutter);
+	pixels_value_simple_frame.plot_frame();
+}
+
+
+
+// This will include a minimization algorithm, but for now it will run some simulations manually and get the best fit
+// is totally inefficient with this implementation, just to try the system
+void set_best_fit_scene_direct_vision_any () {
+	
+	float dist_cam_wall_res = 0.1f;
+	float dist_cam_wall_min = 1.0f;
+	float dist_cam_wall_max = 3.0f + dist_cam_wall_res/2.0f;
+
+	for (float dist_cam_wall = dist_cam_wall_min; dist_cam_wall < dist_cam_wall_max; dist_cam_wall += dist_cam_wall_res) {
+
+		// set the new scene
+		set_scene_vision_simulation (dist_cam_wall);
+
+		// compute the distance function simulation 
+	}
+
+}
 
 
 

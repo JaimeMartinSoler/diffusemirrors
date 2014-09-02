@@ -188,7 +188,7 @@ public:
 	// Constructor. RawData oriented
 	Frame::Frame(Info* info_, RawData* RawData_src_, int distance_idx_, int frequency_idx_, int shutter_idx_, int phase_idx_, Pixels_storing pixels_storing_ = PIXELS_VALID);
 	// Constructor from vector. Simulation oriented. For any Pixels_storing it considers the vector matrix_vector properly arranged
-	Frame::Frame(std::vector<float> & matrix_vector, int heigth_, int width_, bool rows_up2down = true, float distance_ = 0.0f, float frequency_ = 0.0f, float shutter_ = 0.0f, float phase_ = 0.0f, Pixels_storing pixels_storing_ = PIXELS_VALID);
+	Frame::Frame(std::vector<float> & matrix_vector, bool rows_up2down = true, float distance_ = 0.0f, float frequency_ = 0.0f, float shutter_ = 0.0f, float phase_ = 0.0f, Pixels_storing pixels_storing_ = PIXELS_VALID);
 	// Constructor from vector. Data real time capture oriented. heigth_ and width_ must be refered to the sizes of the total frame, regerdingless to the Pixels_storing
 	Frame::Frame(unsigned short int* data_, int heigth_, int width_, float distance_, float frequency_, float shutter_, float phase_, int phase_idx_, Pixels_storing pixels_storing_ = PIXELS_VALID);
 	// Constructor Default

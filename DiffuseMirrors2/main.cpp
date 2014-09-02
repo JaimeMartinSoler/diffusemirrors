@@ -171,7 +171,7 @@ int main_fov_measurement(int argc, char** argv, bool loop = true, Scene scene = 
 int main_raw_data(int argc, char** argv, char* dir_name_, char* file_name_, Scene scene = RAW_DATA) {
 	
 	// set all the object3D of the corresponding scene (just camera, laser and wall)
-	bool cmx_info = true;
+	bool cmx_info = true;	// pure raw data is not cmx oriented, but it's a good idea to store the corresponding info anyway
 	float laser_to_cam_offset_x = -0.15f;
 	float laser_to_cam_offset_y = 0.0f;
 	float laser_to_cam_offset_z = 0.0;
@@ -225,6 +225,30 @@ int main_calibration_matrix (int argc, char** argv, char* dir_name_, char* file_
 	return 0;
 }
 
+// main_direct_vision_simulation(...)
+int main_direct_vision_simulation (int argc, char** argv, bool loop = true, Scene scene = DIRECT_VISION_SIMULATION) {
+	
+	// capture data directly from PMD to Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE)
+	float frequency = 100.0f;
+	float distance = 0.0f;
+	float shutter = 1920.0f;
+	char comport[128] = "COM6";
+	Frame * frame_00_null = NULL;	// (*frame_00_null) in PMD_params_to_Frame(...), to avoid this Frame meas. FRAME_00_CAPTURE else
+	Frame * frame_90_null = NULL;	// (*frame_90_null) in PMD_params_to_Frame(...), to avoid this Frame meas. FRAME_90_CAPTURE else
+	//std::thread thread_PMD_params_to_Frame (PMD_params_to_Frame_anti_bug_thread, FRAME_00_CAPTURE, FRAME_90_CAPTURE, frequency, distance, shutter, comport, loop);
+	
+	// create the .cmx file, dealing with the .inf and .raw files. It internally creates the corresponding scene
+	//std::thread thread_create_cmx_from_raw (create_cmx_from_raw_anti_bug_thread, &info);
+
+	// pause in main to allow control when the loops will finish
+	//control_loop_pause();
+
+	// joins
+	//thread_create_cmx_from_raw.join();
+
+	return 0;
+}
+
 
 
 // MAIN
@@ -239,7 +263,7 @@ int main(int argc, char** argv) {
 	// DiffuseMirrors2.exe "80 90 100" "0 1 2 3" "1920" f:\tmp\pmdtest2 PMD_test_meas COM6 1
 	// ------------------------------------------------------------------------------------------------------------------------------
 
-	Scene scene = RAW_DATA_AND_CALIBRATION_MATRIX;	// DIRECT_VISION_WALL, DIRECT_VISION_ANY, DIRECT_VISION_ANY_SIMULATION, DIFFUSED_MIRROR, FOV_MEASUREMENT, RAW_DATA, CALIBRATION_MATRIX, UNKNOWN_SCENE, TEST, RAW_DATA_AND_CALIBRATION_MATRIX
+	Scene scene = TEST;	// DIRECT_VISION_WALL, DIRECT_VISION_ANY, DIRECT_VISION_ANY_SIMULATION, DIFFUSED_MIRROR, FOV_MEASUREMENT, RAW_DATA, CALIBRATION_MATRIX, UNKNOWN_SCENE, TEST, RAW_DATA_AND_CALIBRATION_MATRIX, DIRECT_VISION_SIMULATION
 	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\test_03";
 	char file_name[1024] = "PMD";
 	bool loop = true;
@@ -247,6 +271,7 @@ int main(int argc, char** argv) {
 	switch(scene) {
 		case DIRECT_VISION_WALL : main_direct_vision_wall (argc, argv, loop, scene);                break;
 		case DIRECT_VISION_ANY  : main_direct_vision_any  (argc, argv, loop, scene);                break;
+		case DIRECT_VISION_SIMULATION  : main_direct_vision_simulation  (argc, argv, loop, scene);                break;
 		case DIFFUSED_MIRROR    : main_diffused_mirror    (argc, argv, loop, scene);                break;
 		case FOV_MEASUREMENT    : main_fov_measurement    (argc, argv, loop, scene);                break;
 		case RAW_DATA           : main_raw_data           (argc, argv, dir_name, file_name, scene); break;

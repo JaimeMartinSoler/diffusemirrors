@@ -972,7 +972,7 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 	pmd_handle_error(hnd, res, "Could not open device");
 	SerialPort port = control_init(comport_full_name);
 
-	// Init OpenCV
+	// Init OpenCV (if so)
 	char measpath[1024];	// For temporal files for CV_WHILE_CAPTURING
 	char fnprefix[256];		// For temporal files for CV_WHILE_CAPTURING
 	if (CV_WHILE_CAPTURING)
@@ -987,9 +987,9 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 	float ms_time_timer;
 	float ms_time_timer_max = 5000.0f;
 	clock_t begin_time_timer, end_time_timer;
-	float time_tot_s_rem, time_h_rem, time_m_rem, time_s_rem;
+	float time_tot_s_rem, time_h_rem, time_m_rem, time_s_rem, percent;
 	seconds_to_hms (time_tot_s, time_h, time_m, time_s);
-	begin_time_timer = clock();	// begin_time_timer for the timer
+	begin_time_timer = clock();	// begin_time_timer for the timer, first time
 
 	// Loop through takes
 	bool firstiter = true;
@@ -1017,8 +1017,12 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 					if ((ms_time_timer >= ms_time_timer_max) || (firstiter)) {
 						begin_time_timer = clock();	// begin_time_timer for the timer
 						time_tot_s_rem = time_tot_s - period_shutter_tot * (take * delays.size() * frequencies.size() + di * frequencies.size() + fi);
+						percent = (1.0f - (time_tot_s_rem / time_tot_s)) * 100.0f;
 						seconds_to_hms (time_tot_s_rem, time_h_rem, time_m_rem, time_s_rem);
-						cout << "\nRemaning time: " << time_h_rem << "h " << time_m_rem << "' " << time_s_rem << "'', of a total of : " << time_h << "h " << time_m << "' " << time_s << "''.";
+						std::setprecision(2);
+						cout << "\n" << percent << " %. "; 
+						std::setprecision(6);	// original precision
+						cout << "Remaning time: " << time_h_rem << "h " << time_m_rem << "' " << time_s_rem << "'', of a total of : " << time_h << "h " << time_m << "' " << time_s << "''.";
 					}
 				}
 
@@ -1039,8 +1043,8 @@ int PMD_params_to_file (std::vector<float> & frequencies, std::vector<float> & d
 
 						char dateStr [256];
 						char timeStr [256];
-						_strdate( dateStr);
-						_strtime( timeStr );
+						_strdate(dateStr);
+						_strtime(timeStr);
 					
 						sprintf(command,"%s\\%s%s", dir_name, file_name, INF_FILENAME_SUFFIX);
 						FILE *fp = fopen(command, "w"); 
@@ -1456,8 +1460,8 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequ
 		// Save buffer to Frames. The frames construction takes: < 1 ms. Deals with Syncronization.
 				//const clock_t begin_time_buffer_to_frame = clock();
 		locker_frame_object.lock();		// Lock mutex_frame_object, any thread which used mutex_frame_object can NOT continue untill unlock()
-		while (!UPDATED_NEW_OBJECT) {
-			std::cout << "\n\nWaiting in Frame to finish the UPDATED_NEW_OBJECT. This should never happen!\n\n";
+		while (!UPDATED_NEW_SCENE) {
+			std::cout << "\n\nWaiting in Frame to finish the UPDATED_NEW_SCENE. This should never happen!\n\n";
 			cv_frame_object.wait(locker_frame_object);
 		}
 		if (&Frame_00_cap != NULL)
@@ -1466,7 +1470,7 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequ
 			Frame_90_cap = Frame(ushort_img[0], h, w, distance_, frequency_, shutter_, phases[1], 1, PIXELS_STORING_GLOBAL);
 		//std::cout << "UPDATED_NEW_FRAME";
 		UPDATED_NEW_FRAME = true;
-		UPDATED_NEW_OBJECT = false;
+		UPDATED_NEW_SCENE = false;
 		cv_frame_object.notify_all();	// Notify all cv_frame_object. All threads waiting for cv_frame_object will break the wait after waking up
 		locker_frame_object.unlock();	// Unlock mutex_frame_object, now threads which used mutex_frame_object can continue
 				//const clock_t end_time_buffer_to_frame = clock();

@@ -537,7 +537,7 @@ Frame::Frame(Info* info_, RawData* RawData_src_, int distance_idx_, int frequenc
 	}	}	}
 }
 // Constructor from vector. Simulation oriented. For any Pixels_storing it consideres the vector matrix_vector properly arranged
-Frame::Frame(std::vector<float> & matrix_vector, int heigth_, int width_, bool rows_up2down, float distance_, float frequency_, float shutter_, float phase_, Pixels_storing pixels_storing_) {
+Frame::Frame(std::vector<float> & matrix_vector, bool rows_up2down, float distance_, float frequency_, float shutter_, float phase_, Pixels_storing pixels_storing_) {
 	
 	// External Parameters (RawData, Info)
 	RawData_src = NULL;
@@ -549,8 +549,14 @@ Frame::Frame(std::vector<float> & matrix_vector, int heigth_, int width_, bool r
 	
 	// Frame Parameters
 	pixels_storing = pixels_storing_;
-	width = width_;
-	heigth = heigth_;
+	if (pixels_storing_ == PIXELS_TOTAL) {
+		width = CAMERA_PIX_X;
+		heigth = CAMERA_PIX_Y;
+	}
+	else if (pixels_storing_ == PIXELS_VALID) {
+		width = CAMERA_PIX_X_VALID;
+		heigth = CAMERA_PIX_Y_VALID;
+	}
 	frequency = frequency_;
 	distance = distance_;
 	shutter = shutter_;
@@ -730,7 +736,7 @@ void plot_frame_fov_measurement(bool loop) {		// by default: loop = false
 		
 		// Syncronization
 		UPDATED_NEW_FRAME = false;
-		UPDATED_NEW_OBJECT = true;
+		UPDATED_NEW_SCENE = true;
 		cv_frame_object.notify_all();	// Notify all cv_frame_object. All threads waiting for cv_frame_object will break the wait after waking up
 		locker_frame_object.unlock();	// Unlock mutex_frame_object, now threads which used mutex_frame_object can continue
 		

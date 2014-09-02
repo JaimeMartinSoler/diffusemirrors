@@ -7,7 +7,7 @@
 #include <condition_variable> // std::condition_variable
 
 // enums
-enum Scene {DIRECT_VISION_WALL, DIRECT_VISION_ANY, DIRECT_VISION_ANY_SIMULATION, DIFFUSED_MIRROR, FOV_MEASUREMENT, RAW_DATA, CALIBRATION_MATRIX, UNKNOWN_SCENE, TEST, RAW_DATA_AND_CALIBRATION_MATRIX};
+enum Scene {DIRECT_VISION_WALL, DIRECT_VISION_ANY, DIRECT_VISION_ANY_SIMULATION, DIFFUSED_MIRROR, FOV_MEASUREMENT, RAW_DATA, CALIBRATION_MATRIX, UNKNOWN_SCENE, TEST, RAW_DATA_AND_CALIBRATION_MATRIX, DIRECT_VISION_SIMULATION};
 // The PMD camera stores 165x120 pixels but some of them in the edges can not be considered as valid pixel measurements
 enum Pixels_storing {PIXELS_TOTAL, PIXELS_VALID, UNKNOWN_PIXELS_STORING};
 //enum Source {DATA_FILE, DATA_REAL_TIME, SIMULATION, UNKNOWN_SRC};
@@ -123,7 +123,7 @@ extern bool PMD_LOOP_ENABLE;
 extern std::mutex mutex_frame_object;
 extern std::condition_variable cv_frame_object;
 extern bool UPDATED_NEW_FRAME;
-extern bool UPDATED_NEW_OBJECT;
+extern bool UPDATED_NEW_SCENE;
 
 #endif
 

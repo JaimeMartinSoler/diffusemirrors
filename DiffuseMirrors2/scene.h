@@ -31,6 +31,9 @@ void set_scene_direct_vision_any(bool loop = false);
 // sets all the Calibration Matrix scene. (Actually just the Camera, Laser, Wall and Wall_Patches).
 void set_scene_calibration_matrix (Info* info_, Pixels_storing pixel_storing_ = PIXELS_VALID);
 
+// set_scene_vision_simulation()
+void set_scene_vision_simulation(float dist_cam_wall);
+
 // clears all the scenes, setting empty Objects
 void clear_scene();
 
