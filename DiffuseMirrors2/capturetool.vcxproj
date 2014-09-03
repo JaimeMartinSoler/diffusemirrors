@@ -200,8 +200,8 @@ copy OpenCV\bin64\opencv_*.dll "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="capturetoolDM2.cpp" />
-    <ClCompile Include="data_read.cpp" />
+    <ClCompile Include="capturetool2.cpp" />
+    <ClCompile Include="data.cpp" />
     <ClCompile Include="data_sim.cpp" />
     <ClCompile Include="global.cpp" />
     <ClCompile Include="main.cpp" />
@@ -212,9 +212,9 @@ copy OpenCV\bin64\opencv_*.dll "$(OutDir)"</Command>
     <ClCompile Include="test.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="capturetoolDM2.h" />
+    <ClInclude Include="capturetool2.h" />
     <ClInclude Include="CImg.h" />
-    <ClInclude Include="data_read.h" />
+    <ClInclude Include="data.h" />
     <ClInclude Include="data_sim.h" />
     <ClInclude Include="global.h" />
     <ClInclude Include="main.h" />

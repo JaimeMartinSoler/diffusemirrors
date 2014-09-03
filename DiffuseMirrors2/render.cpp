@@ -335,7 +335,7 @@ void drawFPS() {
 	printw (0.9, 0.9, 0, "FPS: %4.2f", fps);
 }
 
-// draws a string at the specified coordinates
+// draws a std::string at the specified coordinates
 void printw (float x, float y, float z, char* format, ...) {
 
 	va_list args;	//  Variable argument list
@@ -346,11 +346,11 @@ void printw (float x, float y, float z, char* format, ...) {
 	//  Initialize a variable argument list
 	va_start(args, format);
 
-	//  Return the number of characters in the string referenced the list of arguments.
+	//  Return the number of characters in the std::string referenced the list of arguments.
 	//  _vscprintf doesn't count terminating '\0' (that's why +1)
 	len = _vscprintf(format, args) + 1; 
 
-	//  Allocate memory for a string of the specified size
+	//  Allocate memory for a std::string of the specified size
 	text = (char *)malloc(len * sizeof(char));
 
 	//  Write formatted output using a pointer to the list of arguments
@@ -372,7 +372,7 @@ void printw (float x, float y, float z, char* format, ...) {
 	//const unsigned char test[3] = {'W', 'E', '\0'};
 	//glutBitmapString(GLUT_BITMAP_TIMES_ROMAN_24, test); 
 
-	//  Free the allocated memory for the string
+	//  Free the allocated memory for the std::string
 	free(text);
 }
 

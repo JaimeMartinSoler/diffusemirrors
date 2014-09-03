@@ -4,7 +4,7 @@
 #include "global.h"
 #include "shapes.h"
 #include "data_sim.h"
-#include "data_read.h"
+#include "data.h"
 #include "scene.h"
 // MATLAB
 #include "engine.h"
@@ -62,7 +62,7 @@ void get_data_sim_diffused_mirror() {
 
 	// Plot image pixels values with opencv, from pixels_value
 	Frame pixels_value_frame(pixels_value, false, distance, frequency, phase, shutter);
-	pixels_value_frame.plot_frame();
+	pixels_value_frame.plot();
 }
 
 
@@ -87,7 +87,7 @@ void get_data_sim_direct_vision_wall() {
 
 	// Plot image pixels values with opencv, from pixels_value
 	Frame pixels_value_simple_frame(pixels_value_simple, false, distance, frequency, phase, shutter);
-	pixels_value_simple_frame.plot_frame();
+	pixels_value_simple_frame.plot();
 }
 
 
@@ -351,7 +351,7 @@ void plot_transient_pixel (std::vector<std::multimap<float, float>> & transient_
 	engEvalString(ep, "ylabel('value');");
 
 	// use std::cin freeze the plot
-	std::cout << "\nWrite any string and click ENTER to continue\n";
+	std::cout << "\nWrite any std::string and click ENTER to continue\n";
 	std::string answer;
 	std::cin >> answer;
 
@@ -437,28 +437,28 @@ void get_data_sim_direct_vision(Frame & frame_in, Frame & frame_out) {
 	//   x axis = key   = time (r) in ns
 	//   y axis = value = amplitude of the impulse response
 	std::vector<std::multimap<float, float>> transient_image_simple;
-	if (frame_in.pixels_storing == PIXELS_TOTAL)
+	if (frame_in.ps == PIXELS_TOTAL)
 		transient_image_simple.resize(CAMERA_PIX_X * CAMERA_PIX_Y);
-	else if (frame_in.pixels_storing == PIXELS_VALID)
+	else if (frame_in.ps == PIXELS_VALID)
 		transient_image_simple.resize(CAMERA_PIX_X_VALID * CAMERA_PIX_Y_VALID);
 	get_transient_image_simple(transient_image_simple);
 
 	// Pixels value. H(w,phi) in the paper
-	float distance	= frame_in.distance;	// (m)
-	float frequency	= frame_in.frequency;	// (MHz)
-	float phase		= frame_in.phase;		// (deg)
-	float shutter	= frame_in.shutter;		// (us)
+	float distance	= frame_in.dist;	// (m)
+	float frequency	= frame_in.freq;	// (MHz)
+	float phase		= frame_in.phas;		// (deg)
+	float shutter	= frame_in.shut;		// (us)
 	float Em		= 1.0f;
 	std::vector<float> pixels_value_simple;
-	if (frame_in.pixels_storing == PIXELS_TOTAL)
+	if (frame_in.ps == PIXELS_TOTAL)
 		pixels_value_simple.resize(CAMERA_PIX_X * CAMERA_PIX_Y);
-	else if (frame_in.pixels_storing == PIXELS_VALID)
+	else if (frame_in.ps == PIXELS_VALID)
 		pixels_value_simple.resize(CAMERA_PIX_X_VALID * CAMERA_PIX_Y_VALID);
 	get_pixels_value(pixels_value_simple, transient_image_simple, distance, frequency, phase, shutter, Em);
 
 	// Plot image pixels values with opencv, from pixels_value
 	Frame pixels_value_simple_frame(pixels_value_simple, false, distance, frequency, phase, shutter);
-	pixels_value_simple_frame.plot_frame();
+	pixels_value_simple_frame.plot();
 }
 
 

@@ -16,10 +16,10 @@ void test_create_raw_from_raw_takes();
 void test_calibration_matrix();
 
 // Reads data from a .dat and info.txt file setting the DATAPMD_READ variable
-int test_data_read_main();
+int test_data_main();
 
-// test_capturetoolDM2_main(...)
-int test_capturetoolDM2_main();
+// test_capturetool2_main(...)
+int test_capturetool2_main();
 
 // test get_area()
 void test_get_area();

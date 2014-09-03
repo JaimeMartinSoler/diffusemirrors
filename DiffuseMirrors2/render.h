@@ -68,7 +68,7 @@ void calculateFPS();
 // draws FPS
 void drawFPS();
 
-// draws a string at the specified coordinates
+// draws a std::string at the specified coordinates
 void printw (float x, float y, float z, char* format, ...);
 
 // mouse(...): to deal with th mouse

@@ -26,6 +26,7 @@ enum Pixels_storing {PIXELS_TOTAL, PIXELS_VALID, UNKNOWN_PIXELS_STORING};
 #define DUTYCYCLE 0.04f // ABSOLUTELY IMPORTANT for thermal stability: add delay to ensure a duty cycle below 4%
 #define FILENAME_FORMAT "capture_take%02d_f%06.2f_d%05.2f" // Filename prefix: Frequency, delay in m // For temporal files for CV_WHILE_CAPTURING
 #define FILENAME_APPEND "_p%03d.%s"         // Append phase, shutter (=0 for HDR) and suffix to filename // For temporal files for CV_WHILE_CAPTURING
+
 #define NUMTAKE_FILENAME_APPEND "_nt"	// Info file 
 #define INF_FILENAME_SUFFIX ".inf"	// Info file 
 #define RAW_FILENAME_SUFFIX ".raw"	// Raw Data file
@@ -116,7 +117,7 @@ extern RawData DATAPMD_CAPTURE;	// RawData Captured (directly from the PMD to th
 extern Frame FRAME_00_CAPTURE;	// Frame (phase=00) Captured (directly from the PMD to this object)
 extern Frame FRAME_90_CAPTURE;	// Frame (phase=90) Captured (directly from the PMD to this object)
 
-// To externally control the capability to loop of the capturetoolDM2.cpp functions (true by default)
+// To externally control the capability to loop of the capturetool2.cpp functions (true by default)
 extern bool PMD_LOOP_ENABLE;
 
 // Syncornization

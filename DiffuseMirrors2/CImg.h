@@ -73,7 +73,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstdarg>
-#include <cstring>
+#include <cstd::string>
 #include <cmath>
 #include <ctime>
 #include <exception>
@@ -2128,7 +2128,7 @@ namespace cimg_library_suffixed {
     char _message[16384];
     CImgException() { *_message = 0; }
     CImgException(const char *const format, ...) { _cimg_exception_err("CImgException",true); }
-    //! Return a C-string containing the error message associated to the thrown exception.
+    //! Return a C-std::string containing the error message associated to the thrown exception.
     const char *what() const throw() { return _message; }
   };
 
@@ -2179,7 +2179,7 @@ namespace cimg_library_suffixed {
     // Define traits that will be used to determine the best data type to work in CImg functions.
     //
     template<typename T> struct type {
-      static const char* string() {
+      static const char* std::string() {
         static const char* s[] = { "unknown",   "unknown8",   "unknown16",  "unknown24",
                                    "unknown32", "unknown40",  "unknown48",  "unknown56",
                                    "unknown64", "unknown72",  "unknown80",  "unknown88",
@@ -2199,7 +2199,7 @@ namespace cimg_library_suffixed {
     };
 
     template<> struct type<bool> {
-      static const char* string() { static const char *const s = "bool"; return s; }
+      static const char* std::string() { static const char *const s = "bool"; return s; }
       static bool is_float() { return false; }
       static bool is_inf(const bool) { return false; }
       static bool is_nan(const bool) { return false; }
@@ -2213,7 +2213,7 @@ namespace cimg_library_suffixed {
     };
 
     template<> struct type<unsigned char> {
-      static const char* string() { static const char *const s = "unsigned char"; return s; }
+      static const char* std::string() { static const char *const s = "unsigned char"; return s; }
       static bool is_float() { return false; }
       static bool is_inf(const unsigned char) { return false; }
       static bool is_nan(const unsigned char) { return false; }
@@ -2226,7 +2226,7 @@ namespace cimg_library_suffixed {
     };
 
     template<> struct type<char> {
-      static const char* string() { static const char *const s = "char"; return s; }
+      static const char* std::string() { static const char *const s = "char"; return s; }
       static bool is_float() { return false; }
       static bool is_inf(const char) { return false; }
       static bool is_nan(const char) { return false; }
@@ -2239,7 +2239,7 @@ namespace cimg_library_suffixed {
     };
 
     template<> struct type<signed char> {
-      static const char* string() { static const char *const s = "signed char"; return s; }
+      static const char* std::string() { static const char *const s = "signed char"; return s; }
       static bool is_float() { return false; }
       static bool is_inf(const signed char) { return false; }
       static bool is_nan(const signed char) { return false; }
@@ -2252,7 +2252,7 @@ namespace cimg_library_suffixed {
     };
 
     template<> struct type<unsigned short> {
-      static const char* string() { static const char *const s = "unsigned short"; return s; }
+      static const char* std::string() { static const char *const s = "unsigned short"; return s; }
       static bool is_float() { return false; }
       static bool is_inf(const unsigned short) { return false; }
       static bool is_nan(const unsigned short) { return false; }
@@ -2265,7 +2265,7 @@ namespace cimg_library_suffixed {
     };
 
     template<> struct type<short> {
-      static const char* string() { static const char *const s = "short"; return s; }
+      static const char* std::string() { static const char *const s = "short"; return s; }
       static bool is_float() { return false; }
       static bool is_inf(const short) { return false; }
       static bool is_nan(const short) { return false; }
@@ -2278,7 +2278,7 @@ namespace cimg_library_suffixed {
     };
 
     template<> struct type<unsigned int> {
-      static const char* string() { static const char *const s = "unsigned int"; return s; }
+      static const char* std::string() { static const char *const s = "unsigned int"; return s; }
       static bool is_float() { return false; }
       static bool is_inf(const unsigned int) { return false; }
       static bool is_nan(const unsigned int) { return false; }
@@ -2291,7 +2291,7 @@ namespace cimg_library_suffixed {
     };
 
     template<> struct type<int> {
-      static const char* string() { static const char *const s = "int"; return s; }
+      static const char* std::string() { static const char *const s = "int"; return s; }
       static bool is_float() { return false; }
       static bool is_inf(const int) { return false; }
       static bool is_nan(const int) { return false; }
@@ -2304,7 +2304,7 @@ namespace cimg_library_suffixed {
     };
 
     template<> struct type<unsigned long> {
-      static const char* string() { static const char *const s = "unsigned long"; return s; }
+      static const char* std::string() { static const char *const s = "unsigned long"; return s; }
       static bool is_float() { return false; }
       static bool is_inf(const unsigned long) { return false; }
       static bool is_nan(const unsigned long) { return false; }
@@ -2317,7 +2317,7 @@ namespace cimg_library_suffixed {
     };
 
     template<> struct type<long> {
-      static const char* string() { static const char *const s = "long"; return s; }
+      static const char* std::string() { static const char *const s = "long"; return s; }
       static bool is_float() { return false; }
       static bool is_inf(const long) { return false; }
       static bool is_nan(const long) { return false; }
@@ -2330,7 +2330,7 @@ namespace cimg_library_suffixed {
     };
 
     template<> struct type<double> {
-      static const char* string() { static const char *const s = "double"; return s; }
+      static const char* std::string() { static const char *const s = "double"; return s; }
       static bool is_float() { return true; }
       static bool is_inf(const double val) { return !is_nan(val) && val+1==val; }
       static bool is_nan(const double val) { return !(val<=0 || val>=0); }
@@ -2344,7 +2344,7 @@ namespace cimg_library_suffixed {
     };
 
     template<> struct type<float> {
-      static const char* string() { static const char *const s = "float"; return s; }
+      static const char* std::string() { static const char *const s = "float"; return s; }
       static bool is_float() { return true; }
       static bool is_inf(const float val) { return cimg::type<double>::is_inf((double)val); }
       static bool is_nan(const float val) { return cimg::type<double>::is_nan((double)val); }
@@ -3974,9 +3974,9 @@ namespace cimg_library_suffixed {
 
     //! Display a warning message on the default output stream.
     /**
-       \param format C-string containing the format of the message, as with <tt>std::printf()</tt>.
+       \param format C-std::string containing the format of the message, as with <tt>std::printf()</tt>.
        \note If configuration macro \c cimg_strict_warnings is set, this function throws a \c CImgWarningException instead.
-       \warning As the first argument is a format string, it is highly recommended to write
+       \warning As the first argument is a format std::string, it is highly recommended to write
        \code
        cimg::warn("%s",warning_message);
        \endcode
@@ -4003,7 +4003,7 @@ namespace cimg_library_suffixed {
 
     // Execute an external system command.
     /**
-       \param command C-string containing the command line to execute.
+       \param command C-std::string containing the command line to execute.
        \param module_name Module name.
        \return Status value of the executed command, whose meaning is OS-dependent.
        \note This function is similar to <tt>std::system()</tt>
@@ -4562,28 +4562,28 @@ namespace cimg_library_suffixed {
       return (char)((x<'A'||x>'Z')?x:x-'A'+'a');
     }
 
-    //! Convert C-string to lower case.
+    //! Convert C-std::string to lower case.
     inline void uncase(char *const str) {
       if (str) for (char *ptr = str; *ptr; ++ptr) *ptr = uncase(*ptr);
     }
 
-    //! Read value in a C-string.
+    //! Read value in a C-std::string.
     /**
-       \param str C-string containing the float value to read.
+       \param str C-std::string containing the float value to read.
        \return Read value.
-       \note Same as <tt>std::atof()</tt> extended to manage the retrieval of fractions from C-strings, as in <em>"1/2"</em>.
+       \note Same as <tt>std::atof()</tt> extended to manage the retrieval of fractions from C-std::strings, as in <em>"1/2"</em>.
     **/
     inline double atof(const char *const str) {
       double x = 0, y = 1;
       if (!str) return 0; else { std::sscanf(str,"%lf/%lf",&x,&y); return x/y; }
     }
 
-    //! Compare the first \p l characters of two C-strings, ignoring the case.
+    //! Compare the first \p l characters of two C-std::strings, ignoring the case.
     /**
-       \param str1 C-string.
-       \param str2 C-string.
+       \param str1 C-std::string.
+       \param str2 C-std::string.
        \param l Number of characters to compare.
-       \return \c 0 if the two strings are equal, something else otherwise.
+       \return \c 0 if the two std::strings are equal, something else otherwise.
        \note This function has to be defined since it is not provided by all C++-compilers (not ANSI).
     **/
     inline int strncasecmp(const char *const str1, const char *const str2, const int l) {
@@ -4594,11 +4594,11 @@ namespace cimg_library_suffixed {
       return k!=l?diff:0;
     }
 
-    //! Compare two C-strings, ignoring the case.
+    //! Compare two C-std::strings, ignoring the case.
     /**
-       \param str1 C-string.
-       \param str2 C-string.
-       \return \c 0 if the two strings are equal, something else otherwise.
+       \param str1 C-std::string.
+       \param str2 C-std::string.
+       \return \c 0 if the two std::strings are equal, something else otherwise.
        \note This function has to be defined since it is not provided by all C++-compilers (not ANSI).
     **/
     inline int strcasecmp(const char *const str1, const char *const str2) {
@@ -4609,9 +4609,9 @@ namespace cimg_library_suffixed {
       return cimg::strncasecmp(str1,str2,1+(l1<l2?l1:l2));
     }
 
-    //! Remove delimiters on the start and/or end of a C-string.
+    //! Remove delimiters on the start and/or end of a C-std::string.
     /**
-       \param[in,out] str C-string to work with (modified at output).
+       \param[in,out] str C-std::string to work with (modified at output).
        \param delimiter Delimiter character code to remove.
        \param is_symmetric Tells if the removal is done only if delimiters are symmetric (both at the beginning and the end of \c s).
        \param is_iterative Tells if the removal is done if several iterations are possible.
@@ -4631,9 +4631,9 @@ namespace cimg_library_suffixed {
       return false;
     }
 
-    //! Replace escape sequences in C-strings by their binary ascii values.
+    //! Replace escape sequences in C-std::strings by their binary ascii values.
     /**
-       \param[in,out] str C-string to work with (modified at output).
+       \param[in,out] str C-std::string to work with (modified at output).
      **/
     inline void strescape(char *const str) {
 #define cimg_strescape(ci,co) case ci: *nd = co; ++ns; break;
@@ -4661,7 +4661,7 @@ namespace cimg_library_suffixed {
           } else *nd = *(ns++);
     }
 
-    // Return a temporary string describing the size of a memory buffer.
+    // Return a temporary std::string describing the size of a memory buffer.
     inline const char *strbuffersize(const unsigned long size) {
       static char res[256] = { 0 };
       if (size<1024LU) cimg_snprintf(res,sizeof(res),"%lu byte%s",size,size>1?"s":"");
@@ -4690,7 +4690,7 @@ namespace cimg_library_suffixed {
     }
 
     // Convert filename as a Windows-style filename (short path name).
-    inline void winformat_string(char *const str) {
+    inline void winformat_std::string(char *const str) {
       if (str && *str) {
 #if cimg_OS==2
         char *const nstr = new char[MAX_PATH];
@@ -4702,7 +4702,7 @@ namespace cimg_library_suffixed {
     //! Open a file.
     /**
        \param path Path of the filename to open.
-       \param mode C-string describing the opening mode.
+       \param mode C-std::string describing the opening mode.
        \return Opened file.
        \note Same as <tt>std::fopen()</tt> but throw a \c CImgIOException when
        the specified file cannot be opened, instead of returning \c 0.
@@ -4770,7 +4770,7 @@ namespace cimg_library_suffixed {
         std::FILE *file = 0;
         cimg_snprintf(filetmp,sizeof(filetmp),"%s.tmp",cimg::filenamerand());
         char *tmpPath = std::getenv("TMP");
-        if (!tmpPath) { tmpPath = std::getenv("TEMP"); winformat_string(tmpPath); }
+        if (!tmpPath) { tmpPath = std::getenv("TEMP"); winformat_std::string(tmpPath); }
         if (tmpPath) _cimg_test_temporary_path(tmpPath);
 #if cimg_OS==2
         _cimg_test_temporary_path("C:\\WINNT\\Temp");
@@ -4932,7 +4932,7 @@ namespace cimg_library_suffixed {
         }
         if (!path_found) std::strcpy(st_path,"convert");
 #endif
-        winformat_string(st_path);
+        winformat_std::string(st_path);
       }
       return st_path;
     }
@@ -5041,7 +5041,7 @@ namespace cimg_library_suffixed {
         }
         if (!path_found) std::strcpy(st_path,"gm");
 #endif
-        winformat_string(st_path);
+        winformat_std::string(st_path);
       }
       return st_path;
     }
@@ -5086,7 +5086,7 @@ namespace cimg_library_suffixed {
         }
         if (!path_found) std::strcpy(st_path,"medcon");
 #endif
-        winformat_string(st_path);
+        winformat_std::string(st_path);
       }
       return st_path;
     }
@@ -5122,7 +5122,7 @@ namespace cimg_library_suffixed {
         }
         if (!path_found) std::strcpy(st_path,"ffmpeg");
 #endif
-        winformat_string(st_path);
+        winformat_std::string(st_path);
       }
       return st_path;
     }
@@ -5158,7 +5158,7 @@ namespace cimg_library_suffixed {
         }
         if (!path_found) std::strcpy(st_path,"gzip");
 #endif
-        winformat_string(st_path);
+        winformat_std::string(st_path);
       }
       return st_path;
     }
@@ -5194,7 +5194,7 @@ namespace cimg_library_suffixed {
         }
         if (!path_found) std::strcpy(st_path,"gunzip");
 #endif
-        winformat_string(st_path);
+        winformat_std::string(st_path);
       }
       return st_path;
     }
@@ -5230,7 +5230,7 @@ namespace cimg_library_suffixed {
         }
         if (!path_found) std::strcpy(st_path,"dcraw");
 #endif
-        winformat_string(st_path);
+        winformat_std::string(st_path);
       }
       return st_path;
     }
@@ -5266,7 +5266,7 @@ namespace cimg_library_suffixed {
         }
         if (!path_found) std::strcpy(st_path,"wget");
 #endif
-        winformat_string(st_path);
+        winformat_std::string(st_path);
       }
       return st_path;
     }
@@ -5302,12 +5302,12 @@ namespace cimg_library_suffixed {
         }
         if (!path_found) std::strcpy(st_path,"curl");
 #endif
-        winformat_string(st_path);
+        winformat_std::string(st_path);
       }
       return st_path;
     }
 
-    //! Split filename into two C-strings \c body and \c extension.
+    //! Split filename into two C-std::strings \c body and \c extension.
     inline const char *split_filename(const char *const filename, char *const body=0) {
       if (!filename) { if (body) *body = 0; return 0; }
       const char *p = 0; for (const char *np = filename; np>=filename && (p=np); np = std::strchr(np,'.')+1) {}
@@ -5334,8 +5334,8 @@ namespace cimg_library_suffixed {
     //! Try to guess format from an image file.
     /**
        \param file Input file (can be \c 0 if \c filename is set).
-       \param filename Filename, as a C-string (can be \c 0 if \c file is set).
-       \return C-string containing the guessed file format, or \c 0 if nothing has been guessed.
+       \param filename Filename, as a C-std::string (can be \c 0 if \c file is set).
+       \return C-std::string containing the guessed file format, or \c 0 if nothing has been guessed.
      **/
     inline const char *file_type(std::FILE *const file, const char *const filename) {
       if (!file && !filename)
@@ -5393,7 +5393,7 @@ namespace cimg_library_suffixed {
     inline int fread(T *const ptr, const unsigned long nmemb, std::FILE *stream) {
       if (!ptr || nmemb<=0 || !stream)
         throw CImgArgumentException("cimg::fread(): Invalid reading request of %u %s%s from file %p to buffer %p.",
-                                    nmemb,cimg::type<T>::string(),nmemb>1?"s":"",stream,ptr);
+                                    nmemb,cimg::type<T>::std::string(),nmemb>1?"s":"",stream,ptr);
 
       const unsigned long wlimitT = 63*1024*1024, wlimit = wlimitT/sizeof(T);
       unsigned long to_read = nmemb, al_read = 0, l_to_read = 0, l_al_read = 0;
@@ -5421,7 +5421,7 @@ namespace cimg_library_suffixed {
     inline int fwrite(const T *ptr, const unsigned long nmemb, std::FILE *stream) {
       if (!ptr || !stream)
         throw CImgArgumentException("cimg::fwrite(): Invalid writing request of %u %s%s from buffer %p to file %p.",
-                                    nmemb,cimg::type<T>::string(),nmemb>1?"s":"",ptr,stream);
+                                    nmemb,cimg::type<T>::std::string(),nmemb>1?"s":"",ptr,stream);
       if (nmemb<=0) return 0;
       const unsigned long wlimitT = 63*1024*1024, wlimit = wlimitT/sizeof(T);
       unsigned long to_write = nmemb, al_write = 0, l_to_write = 0, l_al_write = 0;
@@ -5439,8 +5439,8 @@ namespace cimg_library_suffixed {
 
     //! Load file from network as a local temporary file.
     /**
-       \param filename Filename, as a C-string.
-       \param[out] filename_local C-string containing the path to a local copy of \c filename.
+       \param filename Filename, as a C-std::string.
+       \param[out] filename_local C-std::string containing the path to a local copy of \c filename.
        \return Value of \c filename_local.
        \note Use external binaries \c wget or \c curl to perform. You must have one of these tools installed
        to be able to use this function.
@@ -5449,7 +5449,7 @@ namespace cimg_library_suffixed {
       if (!filename)
         throw CImgArgumentException("cimg::load_network_external(): Specified filename is (null).");
       if (!filename_local)
-        throw CImgArgumentException("cimg::load_network_external(): Specified destination string is (null).");
+        throw CImgArgumentException("cimg::load_network_external(): Specified destination std::string is (null).");
       const char *const _ext = cimg::split_filename(filename), *const ext = (*_ext && _ext>filename)?_ext-1:_ext;
       char command[1024] = { 0 };
       std::FILE *file = 0;
@@ -6488,7 +6488,7 @@ namespace cimg_library_suffixed {
 
     //! Return \c true if key specified by given keycode is being pressed on the associated window, \c false otherwise.
     /**
-       \param keycode C-string containing the keycode label of the key to test.
+       \param keycode C-std::string containing the keycode label of the key to test.
        \note Use it when the key you want to test can be dynamically set by the user.
        \par Example
        \code
@@ -6672,7 +6672,7 @@ namespace cimg_library_suffixed {
       return _normalization;
     }
 
-    //! Return title of the associated window as a C-string.
+    //! Return title of the associated window as a C-std::string.
     /**
        \note Window title may be not visible, depending on the used window manager or if the current display is in fullscreen mode.
     **/
@@ -6824,7 +6824,7 @@ namespace cimg_library_suffixed {
       return pos<(sizeof(_released_keys)/sizeof(unsigned int))?_released_keys[pos]:0;
     }
 
-    //! Return keycode corresponding to the specified string.
+    //! Return keycode corresponding to the specified std::string.
     /**
        \note Keycode constants are defined in the cimg namespace and are architecture-dependent. Use them to ensure
        your code stay portable (see cimg::keyESC).
@@ -7039,8 +7039,8 @@ namespace cimg_library_suffixed {
 
     //! Set title of the associated window.
     /**
-       \param format C-string containing the format of the title, as with <tt>std::printf()</tt>.
-       \warning As the first argument is a format string, it is highly recommended to write
+       \param format C-std::string containing the format of the title, as with <tt>std::printf()</tt>.
+       \warning As the first argument is a format std::string, it is highly recommended to write
        \code
        disp.set_title("%s",window_title);
        \endcode
@@ -8213,7 +8213,7 @@ namespace cimg_library_suffixed {
       if (cimg::X11_attr().is_blue_first) cimg::swap(data1,data3);
       XLockDisplay(dpy);
 
-      if (!_normalization || (_normalization==3 && cimg::type<T>::string()==cimg::type<unsigned char>::string())) {
+      if (!_normalization || (_normalization==3 && cimg::type<T>::std::string()==cimg::type<unsigned char>::std::string())) {
         _min = _max = 0;
         switch (cimg::X11_attr().nb_bits) {
         case 8 : { // 256 colormap, no normalization
@@ -9071,7 +9071,7 @@ namespace cimg_library_suffixed {
         *const ndata = (img._width==_width && img._height==_height)?_data:new unsigned int[(unsigned long)img._width*img._height],
         *ptrd = ndata;
 
-      if (!_normalization || (_normalization==3 && cimg::type<T>::string()==cimg::type<unsigned char>::string())) {
+      if (!_normalization || (_normalization==3 && cimg::type<T>::std::string()==cimg::type<unsigned char>::std::string())) {
         _min = _max = 0;
         switch (img._spectrum) {
         case 1 : {
@@ -9535,26 +9535,26 @@ namespace cimg_library_suffixed {
       _CImg_stdarg(*this,value0,value1,(unsigned long)size_x*size_y*size_z*size_c,double);
     }
 
-    //! Construct image with specified size and initialize pixel values from a value string.
+    //! Construct image with specified size and initialize pixel values from a value std::string.
     /**
        Construct a new image instance of size \c size_x x \c size_y x \c size_z x \c size_c, with pixels of type \c T, and initializes pixel
-       values from the specified string \c values.
+       values from the specified std::string \c values.
        \param size_x Image width().
        \param size_y Image height().
        \param size_z Image depth().
        \param size_c Image spectrum() (number of channels).
-       \param values Value string describing the way pixel values are set.
+       \param values Value std::string describing the way pixel values are set.
        \param repeat_values Tells if the value filling process is repeated over the image.
        \note
        - Similar to CImg(unsigned int,unsigned int,unsigned int,unsigned int), but it also fills
-         the pixel buffer with values described in the value string \c values.
-       - Value string \c values may describe two different filling processes:
+         the pixel buffer with values described in the value std::string \c values.
+       - Value std::string \c values may describe two different filling processes:
          - Either \c values is a sequences of values assigned to the image pixels, as in <tt>"1,2,3,7,8,2"</tt>.
            In this case, set \c repeat_values to \c true to periodically fill the image with the value sequence.
          - Either, \c values is a formula, as in <tt>"cos(x/10)*sin(y/20)"</tt>. In this case, parameter \c repeat_values is pointless.
        - For both cases, specifying \c repeat_values is mandatory. It disambiguates the possible overloading of constructor
          CImg(unsigned int,unsigned int,unsigned int,unsigned int,T) with \c T being a <tt>const char*</tt>.
-       - A \c CImgArgumentException is thrown when an invalid value string \c values is specified.
+       - A \c CImgArgumentException is thrown when an invalid value std::string \c values is specified.
        \par Example
        \code
        const CImg<float> img1(129,129,1,3,"0,64,128,192,255",true),                   // Construct image filled from a value sequence.
@@ -9654,7 +9654,7 @@ namespace cimg_library_suffixed {
     //! Construct image from reading an image file.
     /**
        Construct a new image instance with pixels of type \c T, and initialize pixel values with the data read from an image file.
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
        \note
        - Similar to CImg(unsigned int,unsigned int,unsigned int,unsigned int), but it reads the image
          dimensions and pixel values from the specified image file.
@@ -9791,7 +9791,7 @@ namespace cimg_library_suffixed {
     /**
        Construct a new image instance with pixels of type \c T, and size get from some dimensions of an existing \c CImg<t> instance.
        \param img Input image from which dimensions are borrowed.
-       \param dimensions C-string describing the image size along the X,Y,Z and C-dimensions.
+       \param dimensions C-std::string describing the image size along the X,Y,Z and C-dimensions.
        \note
        - Similar to CImg(unsigned int,unsigned int,unsigned int,unsigned int), but it takes the image dimensions
          (\e not its pixel values) from an existing \c CImg<t> instance.
@@ -9908,7 +9908,7 @@ namespace cimg_library_suffixed {
       return *this;
     }
 
-    //! Construct image with specified size and initialize pixel values from a value string \inplace.
+    //! Construct image with specified size and initialize pixel values from a value std::string \inplace.
     /**
        In-place version of the constructor CImg(unsigned int,unsigned int,unsigned int,unsigned int,const char*,bool).
     **/
@@ -10045,7 +10045,7 @@ namespace cimg_library_suffixed {
           case 'c' : case 's' : siz[k] = img._spectrum; ++s; break;
           default :
             throw CImgArgumentException(_cimg_instance
-                                        "assign(): Invalid character '%c' detected in specified dimension string '%s'.",
+                                        "assign(): Invalid character '%c' detected in specified dimension std::string '%s'.",
                                         cimg_instance,
                                         *s,dimensions);
           }
@@ -10359,8 +10359,8 @@ namespace cimg_library_suffixed {
 
     //! Assign pixels values from a specified expression.
     /**
-       Initialize all pixel values from the specified string \c expression.
-       \param expression Value string describing the way pixel values are set.
+       Initialize all pixel values from the specified std::string \c expression.
+       \param expression Value std::string describing the way pixel values are set.
        \note
        - String parameter \c expression may describe different things:
          - If \c expression is a list of values (as in \c "1,2,3,8,3,2"), or a formula (as in \c "(x*y)%255"),
@@ -10446,8 +10446,8 @@ namespace cimg_library_suffixed {
 
     //! In-place addition operator.
     /**
-       Add values to image pixels, according to the specified string \c expression.
-       \param expression Value string describing the way pixel values are added.
+       Add values to image pixels, according to the specified std::string \c expression.
+       \param expression Value std::string describing the way pixel values are added.
        \note
        - Similar to operator=(const char*), except that it adds values to the pixels of the current image instance,
          instead of assigning them.
@@ -11336,7 +11336,7 @@ namespace cimg_library_suffixed {
     //! Test if all pixel values of an image follow a specified expression.
     /**
        Return \c true is all pixels of the image instance are equal to the specified \c expression.
-       \param expression Value string describing the way pixel values are compared.
+       \param expression Value std::string describing the way pixel values are compared.
     **/
     bool operator==(const char *const expression) const {
       if (is_empty()) return !*expression;
@@ -11396,7 +11396,7 @@ namespace cimg_library_suffixed {
     //! Test if all pixel values of an image are different from a specified expression.
     /**
        Return \c true is all pixels of the image instance are different to the specified \c expression.
-       \param expression Value string describing the way pixel values are compared.
+       \param expression Value std::string describing the way pixel values are compared.
     **/
     bool operator!=(const char *const expression) const {
       return !((*this)==expression);
@@ -11489,16 +11489,16 @@ namespace cimg_library_suffixed {
     //@{
     //-------------------------------------
 
-    //! Return the type of image pixel values as a C string.
+    //! Return the type of image pixel values as a C std::string.
     /**
-       Return a \c char* string containing the usual type name of the image pixel values
-       (i.e. a stringified version of the template parameter \c T).
+       Return a \c char* std::string containing the usual type name of the image pixel values
+       (i.e. a std::stringified version of the template parameter \c T).
        \note
-       - The returned string may contain spaces (as in \c "unsigned char").
-       - If the pixel type \c T does not correspond to a registered type, the string <tt>"unknown"</tt> is returned.
+       - The returned std::string may contain spaces (as in \c "unsigned char").
+       - If the pixel type \c T does not correspond to a registered type, the std::string <tt>"unknown"</tt> is returned.
     **/
     static const char* pixel_type() {
-      return cimg::type<T>::string();
+      return cimg::type<T>::std::string();
     }
 
     //! Return the number of image columns.
@@ -12761,31 +12761,31 @@ namespace cimg_library_suffixed {
       return *this;
     }
 
-    //! Return a C-string containing a list of all values of the image instance.
+    //! Return a C-std::string containing a list of all values of the image instance.
     /**
-       Return a new \c CImg<char> image whose buffer data() is a \c char* string describing the list of all pixel values
+       Return a new \c CImg<char> image whose buffer data() is a \c char* std::string describing the list of all pixel values
        of the image instance (written in base 10), separated by specified \c separator character.
-       \param separator A \c char character which specifies the separator between values in the returned C-string.
+       \param separator A \c char character which specifies the separator between values in the returned C-std::string.
        \param max_size Maximum size of the returned image.
        \note
        - The returned image is never empty.
-       - For an empty image instance, the returned string is <tt>""</tt>.
-       - If \c max_size is equal to \c 0, there are no limits on the size of the returned string.
-       - Otherwise, if the maximum number of string characters is exceeded, the value string is cut off
+       - For an empty image instance, the returned std::string is <tt>""</tt>.
+       - If \c max_size is equal to \c 0, there are no limits on the size of the returned std::string.
+       - Otherwise, if the maximum number of std::string characters is exceeded, the value std::string is cut off
          and terminated by character \c '\0'. In that case, the returned image size is <tt>max_size + 1</tt>.
     **/
-    CImg<charT> value_string(const char separator=',', const unsigned int max_size=0) const {
-      if (is_empty()) return CImg<charT>::string("");
+    CImg<charT> value_std::string(const char separator=',', const unsigned int max_size=0) const {
+      if (is_empty()) return CImg<charT>::std::string("");
       CImgList<charT> items;
       char s_item[256] = { 0 };
       const T *ptrs = _data;
-      unsigned int string_size = 0;
-      for (unsigned long off = 0, siz = (unsigned int)size(); off<siz && string_size<=max_size; ++off) {
+      unsigned int std::string_size = 0;
+      for (unsigned long off = 0, siz = (unsigned int)size(); off<siz && std::string_size<=max_size; ++off) {
         const unsigned int printed_size = 1U + cimg_snprintf(s_item,sizeof(s_item),cimg::type<T>::format(),cimg::type<T>::format(*(ptrs++)));
         CImg<charT> item(s_item,printed_size);
         item[printed_size-1] = separator;
         item.move_to(items);
-        if (max_size) string_size+=printed_size;
+        if (max_size) std::string_size+=printed_size;
       }
       CImg<charT> res;
       (items>'x').move_to(res);
@@ -13228,11 +13228,11 @@ namespace cimg_library_suffixed {
        \param colors List of colors of the 3d object.
        \param opacities List (or image) of opacities of the 3d object.
        \param is_full_check Tells if full checking of the 3d object must be performed.
-       \param[out] error_message C-string to contain the error message, if the test does not succeed.
+       \param[out] error_message C-std::string to contain the error message, if the test does not succeed.
        \note
        - Set \c is_full_checking to \c false to speed-up the 3d object checking. In this case, only the size of
          each 3d object component is checked.
-       - Size of the string \c error_message should be at least 128-bytes long, to be able to contain the error message.
+       - Size of the std::string \c error_message should be at least 128-bytes long, to be able to contain the error message.
     **/
     template<typename tp, typename tc, typename to>
     bool is_object3d(const CImgList<tp>& primitives,
@@ -13375,11 +13375,11 @@ namespace cimg_library_suffixed {
     /**
        Return \c true if the image instance represents a valid serialization of a 3d object, and \c false otherwise.
        \param is_full_check Tells if full checking of the instance must be performed.
-       \param[out] error_message C-string to contain the error message, if the test does not succeed.
+       \param[out] error_message C-std::string to contain the error message, if the test does not succeed.
        \note
        - Set \c is_full_checking to \c false to speed-up the 3d object checking. In this case, only the size of
          each 3d object component is checked.
-       - Size of the string \c error_message should be at least 128-bytes long, to be able to contain the error message.
+       - Size of the std::string \c error_message should be at least 128-bytes long, to be able to contain the error message.
     **/
     bool is_CImg3d(const bool is_full_check=true, char *const error_message=0) const {
       if (error_message) *error_message = 0;
@@ -15040,7 +15040,7 @@ namespace cimg_library_suffixed {
 
     //! Pointwise min operator between an image and an expression.
     /**
-       \param expression Math formula as a C-string.
+       \param expression Math formula as a C-std::string.
        \note Replace each pixel value \f$I_{(x,y,z,c)}\f$ of the image instance by \f$\mathrm{min}(I_{(x,y,z,c)},\mathrm{expr}_{(x,y,z,c)})\f$.
     **/
     CImg<T>& min(const char *const expression) {
@@ -15111,7 +15111,7 @@ namespace cimg_library_suffixed {
 
     //! Pointwise max operator between an image and an expression.
     /**
-       \param expression Math formula as a C-string.
+       \param expression Math formula as a C-std::string.
        \note Replace each pixel value \f$I_{(x,y,z,c)}\f$ of the image instance by \f$\mathrm{max}(I_{(x,y,z,c)},\mathrm{expr}_{(x,y,z,c)})\f$.
     **/
     CImg<T>& max(const char *const expression) {
@@ -15515,7 +15515,7 @@ namespace cimg_library_suffixed {
 
     //! Evaluate math formula.
     /**
-       \param expression Math formula, as a C-string.
+       \param expression Math formula, as a C-std::string.
        \param x Value of the pre-defined variable \c x.
        \param y Value of the pre-defined variable \c y.
        \param z Value of the pre-defined variable \c z.
@@ -16774,12 +16774,12 @@ namespace cimg_library_suffixed {
       return get_dijkstra(starting_node,ending_node,foo);
     }
 
-    //! Return an image containing the ascii codes of the specified  string.
+    //! Return an image containing the ascii codes of the specified  std::string.
     /**
-       \param str input C-string to encode as an image.
+       \param str input C-std::string to encode as an image.
        \param is_last_zero Tells if the ending \c '0' character appear in the resulting image.
     **/
-    static CImg<T> string(const char *const str, const bool is_last_zero=true) {
+    static CImg<T> std::string(const char *const str, const bool is_last_zero=true) {
       if (!str) return CImg<T>();
       return CImg<T>(str,std::strlen(str)+(is_last_zero?1:0));
     }
@@ -17580,7 +17580,7 @@ namespace cimg_library_suffixed {
 
     //! Fill sequentially pixel values according to a given expression.
     /**
-       \param expression C-string describing a math formula, or a list of values.
+       \param expression C-std::string describing a math formula, or a list of values.
        \param repeat_flag In case a list of values is provided, tells if this list must be repeated for the filling.
     **/
     CImg<T>& fill(const char *const expression, const bool repeat_flag) {
@@ -20640,7 +20640,7 @@ namespace cimg_library_suffixed {
 
     //! Mirror image content along specified axes.
     /**
-       \param axes Mirror axes, as a C-string.
+       \param axes Mirror axes, as a C-std::string.
        \note \c axes may contains multiple character, e.g. \c "xyz"
     **/
     CImg<T>& mirror(const char *const axes) {
@@ -20869,7 +20869,7 @@ namespace cimg_library_suffixed {
 
     //! Permute axes order.
     /**
-       \param order Axes permutations, as a C-string of 4 characters.
+       \param order Axes permutations, as a C-std::string of 4 characters.
        This function permutes image content regarding the specified axes permutation.
     **/
     CImg<T>& permute_axes(const char *const order) {
@@ -24494,7 +24494,7 @@ namespace cimg_library_suffixed {
 
     //! Return image gradient.
     /**
-       \param axes Axes considered for the gradient computation, as a C-string (e.g "xy").
+       \param axes Axes considered for the gradient computation, as a C-std::string (e.g "xy").
        \param scheme = Numerical scheme used for the gradient computation:
        - -1 = Backward finite differences
        - 0 = Centered finite differences
@@ -24614,7 +24614,7 @@ namespace cimg_library_suffixed {
 
     //! Return image hessian.
     /**
-       \param axes Axes considered for the hessian computation, as a C-string (e.g "xy").
+       \param axes Axes considered for the hessian computation, as a C-std::string (e.g "xy").
     **/
     CImgList<Tfloat> get_hessian(const char *const axes=0) const {
       CImgList<Tfloat> res;
@@ -31343,11 +31343,11 @@ namespace cimg_library_suffixed {
       return draw_image(0,sprite,mask,opacity,mask_max_value);
     }
 
-    //! Draw a text string.
+    //! Draw a text std::string.
     /**
        \param x0 X-coordinate of the text in the image instance.
        \param y0 Y-coordinate of the text in the image instance.
-       \param text Format of the text ('printf'-style format string).
+       \param text Format of the text ('printf'-style format std::string).
        \param foreground_color Pointer to \c spectrum() consecutive values, defining the foreground drawing color.
        \param background_color Pointer to \c spectrum() consecutive values, defining the background drawing color.
        \param opacity Drawing opacity.
@@ -31364,7 +31364,7 @@ namespace cimg_library_suffixed {
       return _draw_text(x0,y0,tmp,foreground_color,background_color,opacity,font);
     }
 
-    //! Draw a text string \overloading.
+    //! Draw a text std::string \overloading.
     /**
        \note A transparent background is used for the text.
     **/
@@ -31379,7 +31379,7 @@ namespace cimg_library_suffixed {
       return _draw_text(x0,y0,tmp,foreground_color,(tc*)0,opacity,font);
     }
 
-    //! Draw a text string \overloading.
+    //! Draw a text std::string \overloading.
     /**
        \note A transparent foreground is used for the text.
     **/
@@ -31394,11 +31394,11 @@ namespace cimg_library_suffixed {
       return _draw_text(x0,y0,tmp,(tc*)0,background_color,opacity,font);
     }
 
-    //! Draw a text string \overloading.
+    //! Draw a text std::string \overloading.
     /**
        \param x0 X-coordinate of the text in the image instance.
        \param y0 Y-coordinate of the text in the image instance.
-       \param text Format of the text ('printf'-style format string).
+       \param text Format of the text ('printf'-style format std::string).
        \param foreground_color Array of spectrum() values of type \c T, defining the foreground color (0 means 'transparent').
        \param background_color Array of spectrum() values of type \c T, defining the background color (0 means 'transparent').
        \param opacity Drawing opacity.
@@ -31443,7 +31443,7 @@ namespace cimg_library_suffixed {
       return _draw_text(x0,y0,tmp,foreground_color,background_color,opacity,font);
     }
 
-    //! Draw a text string \overloading.
+    //! Draw a text std::string \overloading.
     template<typename tc>
     CImg<T>& draw_text(const int x0, const int y0,
                        const char *const text,
@@ -31455,7 +31455,7 @@ namespace cimg_library_suffixed {
       return draw_text(x0,y0,"%s",foreground_color,(const tc*)0,opacity,font_height,tmp);
     }
 
-    //! Draw a text string \overloading.
+    //! Draw a text std::string \overloading.
     template<typename tc>
     CImg<T>& draw_text(const int x0, const int y0,
                        const char *const text,
@@ -34467,7 +34467,7 @@ namespace cimg_library_suffixed {
 
     //! Load image from a file.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
        \note The extension of \c filename defines the file format. If no filename
        extension is provided, CImg<T>::get_load() will try to load the file as a .cimg or .cimgz file.
     **/
@@ -34637,7 +34637,7 @@ namespace cimg_library_suffixed {
 
     //! Load image from an ascii file.
     /**
-       \param filename Filename, as a C -string.
+       \param filename Filename, as a C -std::string.
     **/
     CImg<T>& load_ascii(const char *const filename) {
       return _load_ascii(0,filename);
@@ -34698,7 +34698,7 @@ namespace cimg_library_suffixed {
 
     //! Load image from a DLM file.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
     **/
     CImg<T>& load_dlm(const char *const filename) {
       return _load_dlm(0,filename);
@@ -34756,7 +34756,7 @@ namespace cimg_library_suffixed {
 
     //! Load image from a BMP file.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
     **/
     CImg<T>& load_bmp(const char *const filename) {
       return _load_bmp(0,filename);
@@ -34929,7 +34929,7 @@ namespace cimg_library_suffixed {
 
     //! Load image from a JPEG file.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
     **/
     CImg<T>& load_jpeg(const char *const filename) {
       return _load_jpeg(0,filename);
@@ -35049,7 +35049,7 @@ namespace cimg_library_suffixed {
 
     //! Load image from a file, using Magick++ library.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
     **/
     // Added April/may 2006 by Christoph Hormann <chris_hormann@gmx.de>
     //   This is experimental code, not much tested, use with care.
@@ -35125,7 +35125,7 @@ namespace cimg_library_suffixed {
 
     //! Load image from a PNG file.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
     **/
     CImg<T>& load_png(const char *const filename) {
       return _load_png(0,filename);
@@ -35317,7 +35317,7 @@ namespace cimg_library_suffixed {
 
     //! Load image from a PNM file.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
     **/
     CImg<T>& load_pnm(const char *const filename) {
       return _load_pnm(0,filename);
@@ -35518,7 +35518,7 @@ namespace cimg_library_suffixed {
 
     //! Load image from a PFM file.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
     **/
     CImg<T>& load_pfm(const char *const filename) {
       return _load_pfm(0,filename);
@@ -35606,7 +35606,7 @@ namespace cimg_library_suffixed {
 
     //! Load image from a RGB file.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
       \param dimw Width of the image buffer.
       \param dimh Height of the image buffer.
     **/
@@ -35661,7 +35661,7 @@ namespace cimg_library_suffixed {
 
     //! Load image from a RGBA file.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
        \param dimw Width of the image buffer.
        \param dimh Height of the image buffer.
     **/
@@ -35718,7 +35718,7 @@ namespace cimg_library_suffixed {
 
     //! Load image from a TIFF file.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
        \param first_frame First frame to read (for multi-pages tiff).
        \param last_frame Last frame to read (for multi-pages tiff).
        \param step_frame Step value of frame reading.
@@ -36008,7 +36008,7 @@ namespace cimg_library_suffixed {
 
     //! Load image from a MINC2 file.
     /**
-        \param filename Filename, as a C-string.
+        \param filename Filename, as a C-std::string.
     **/
     // (Original code by Haz-Edine Assemlal).
     CImg<T>& load_minc2(const char *const filename) {
@@ -36045,7 +36045,7 @@ namespace cimg_library_suffixed {
 
     //! Load image from an ANALYZE7.5/NIFTI file.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
        \param[out] voxel_size Pointer to the three voxel sizes read from the file.
     **/
     CImg<T>& load_analyze(const char *const filename, float *const voxel_size=0) {
@@ -36189,7 +36189,7 @@ namespace cimg_library_suffixed {
 
     //! Load image from a .cimg[z] file.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
       \param axis Appending axis, if file contains multiple images. Can be <tt>{ 'x' | 'y' | 'z' | 'c' }</tt>.
       \param align Appending alignment.
     **/
@@ -36220,7 +36220,7 @@ namespace cimg_library_suffixed {
 
     //! Load sub-images of a .cimg file.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
       \param n0 Starting frame.
       \param n1 Ending frame.
       \param x0 X-coordinate of the starting sub-image vertex.
@@ -36277,7 +36277,7 @@ namespace cimg_library_suffixed {
 
     //! Load image from an INRIMAGE-4 file.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
        \param[out] voxel_size Pointer to the three voxel sizes read from the file.
     **/
     CImg<T>& load_inr(const char *const filename, float *const voxel_size=0) {
@@ -36395,7 +36395,7 @@ namespace cimg_library_suffixed {
 
     //! Load image from a EXR file.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
     **/
     CImg<T>& load_exr(const char *const filename) {
       if (!filename)
@@ -36434,7 +36434,7 @@ namespace cimg_library_suffixed {
 
     //! Load image from a PANDORE-5 file.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
     **/
     CImg<T>& load_pandore(const char *const filename) {
       return _load_pandore(0,filename);
@@ -36657,7 +36657,7 @@ namespace cimg_library_suffixed {
 
     //! Load image from a PAR-REC (Philips) file.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
       \param axis Appending axis, if file contains multiple images. Can be <tt>{ 'x' | 'y' | 'z' | 'c' }</tt>.
       \param align Appending alignment.
     **/
@@ -36675,7 +36675,7 @@ namespace cimg_library_suffixed {
 
     //! Load image from a raw binary file.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
       \param size_x Width of the image buffer.
       \param size_y Height of the image buffer.
       \param size_z Depth of the image buffer.
@@ -36752,7 +36752,7 @@ namespace cimg_library_suffixed {
 
     //! Load image sequence using FFMPEG av's libraries.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
       \param first_frame Index of the first frame to read.
       \param last_frame Index of the last frame to read.
       \param step_frame Step value for frame reading.
@@ -36776,7 +36776,7 @@ namespace cimg_library_suffixed {
 
     //! Load image sequence from a YUV file.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
       \param size_x Width of the frames.
       \param size_y Height of the frames.
       \param first_frame Index of the first frame to read.
@@ -36820,7 +36820,7 @@ namespace cimg_library_suffixed {
     /**
         \param[out] primitives Primitives data of the 3d object.
         \param[out] colors Colors data of the 3d object.
-        \param filename Filename, as a C-string.
+        \param filename Filename, as a C-std::string.
     **/
     template<typename tf, typename tc>
     CImg<T>& load_off(CImgList<tf>& primitives, CImgList<tc>& colors, const char *const filename) {
@@ -36858,7 +36858,7 @@ namespace cimg_library_suffixed {
       char line[256] = { 0 };
       int err;
 
-      // Skip comments, and read magic string OFF
+      // Skip comments, and read magic std::string OFF
       do { err = std::fscanf(nfile,"%255[^\n] ",line); } while (!err || (err==1 && *line=='#'));
       if (cimg::strncasecmp(line,"OFF",3) && cimg::strncasecmp(line,"COFF",4)) {
         if (!file) cimg::fclose(nfile);
@@ -37046,7 +37046,7 @@ namespace cimg_library_suffixed {
 
     //! Load image sequence using FFMPEG's external tool 'ffmpeg'.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
       \param axis Appending axis, if file contains multiple images. Can be <tt>{ 'x' | 'y' | 'z' | 'c' }</tt>.
       \param align Appending alignment.
     **/
@@ -37061,7 +37061,7 @@ namespace cimg_library_suffixed {
 
     //! Load image using GraphicsMagick's external tool 'gm'.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
     **/
     CImg<T>& load_graphicsmagick_external(const char *const filename) {
       if (!filename)
@@ -37112,7 +37112,7 @@ namespace cimg_library_suffixed {
 
     //! Load gzipped image file, using external tool 'gunzip'.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
     **/
     CImg<T>& load_gzip_external(const char *const filename) {
       if (!filename)
@@ -37159,7 +37159,7 @@ namespace cimg_library_suffixed {
 
     //! Load image using ImageMagick's external tool 'convert'.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
     **/
     CImg<T>& load_imagemagick_external(const char *const filename) {
       if (!filename)
@@ -37210,7 +37210,7 @@ namespace cimg_library_suffixed {
 
     //! Load image from a DICOM file, using XMedcon's external tool 'medcon'.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
     **/
     CImg<T>& load_medcon_external(const char *const filename) {
       if (!filename)
@@ -37257,7 +37257,7 @@ namespace cimg_library_suffixed {
 
     //! Load image from a RAW Color Camera file, using external tool 'dcraw'.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
     **/
     CImg<T>& load_dcraw_external(const char *const filename) {
       if (!filename)
@@ -37372,7 +37372,7 @@ namespace cimg_library_suffixed {
 
     //! Load image using various non-native ways.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
     **/
     CImg<T>& load_other(const char *const filename) {
       if (!filename)
@@ -37515,7 +37515,7 @@ namespace cimg_library_suffixed {
       } else if (title) disp.set_title("%s",title);
       disp.show().flush();
 
-      const CImg<char> dtitle = CImg<char>::string(disp.title());
+      const CImg<char> dtitle = CImg<char>::std::string(disp.title());
       if (display_info) print(dtitle);
 
       CImg<T> zoom;
@@ -38277,10 +38277,10 @@ namespace cimg_library_suffixed {
        \param disp Display window.
        \param plot_type Plot type. Can be <tt>{ 0=points | 1=segments | 2=splines | 3=bars }</tt>.
        \param vertex_type Vertex type.
-       \param labelx Title for the horizontal axis, as a C-string.
+       \param labelx Title for the horizontal axis, as a C-std::string.
        \param xmin Minimum value along the X-axis.
        \param xmax Maximum value along the X-axis.
-       \param labely Title for the vertical axis, as a C-string.
+       \param labely Title for the vertical axis, as a C-std::string.
        \param ymin Minimum value along the X-axis.
        \param ymax Maximum value along the X-axis.
     **/
@@ -38414,7 +38414,7 @@ namespace cimg_library_suffixed {
 
     //! Save image as a file.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
        \param number When positive, represents an index added to the filename.
        \note
        - The used file format is defined by the file extension in the filename \p filename.
@@ -38526,7 +38526,7 @@ namespace cimg_library_suffixed {
 
     //! Save image as an ascii file.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
     **/
     const CImg<T>& save_ascii(const char *const filename) const {
       return _save_ascii(0,filename);
@@ -38561,7 +38561,7 @@ namespace cimg_library_suffixed {
 
     //! Save image as a .cpp source file.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
     **/
     const CImg<T>& save_cpp(const char *const filename) const {
       return _save_cpp(0,filename);
@@ -38603,7 +38603,7 @@ namespace cimg_library_suffixed {
 
     //! Save image as a DLM file.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
     **/
     const CImg<T>& save_dlm(const char *const filename) const {
       return _save_dlm(0,filename);
@@ -38648,7 +38648,7 @@ namespace cimg_library_suffixed {
 
     //! Save image as a BMP file.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
     **/
     const CImg<T>& save_bmp(const char *const filename) const {
       return _save_bmp(0,filename);
@@ -38759,7 +38759,7 @@ namespace cimg_library_suffixed {
 
     //! Save image as a JPEG file.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
       \param quality Image quality (in %)
     **/
     const CImg<T>& save_jpeg(const char *const filename, const unsigned int quality=100) const {
@@ -38875,7 +38875,7 @@ namespace cimg_library_suffixed {
 
     //! Save image, using built-in ImageMagick++ library.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
       \param bytes_per_pixel Force the number of bytes per pixel for the saving, when possible.
     **/
     const CImg<T>& save_magick(const char *const filename, const unsigned int bytes_per_pixel=0) const {
@@ -38952,7 +38952,7 @@ namespace cimg_library_suffixed {
 
     //! Save image as a PNG file.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
        \param bytes_per_pixel Force the number of bytes per pixels for the saving, when possible.
     **/
     const CImg<T>& save_png(const char *const filename, const unsigned int bytes_per_pixel=0) const {
@@ -39157,7 +39157,7 @@ namespace cimg_library_suffixed {
 
     //! Save image as a PNM file.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
       \param bytes_per_pixel Force the number of bytes per pixels for the saving.
     **/
     const CImg<T>& save_pnm(const char *const filename, const unsigned int bytes_per_pixel=0) const {
@@ -39299,7 +39299,7 @@ namespace cimg_library_suffixed {
 
     //! Save image as a PNK file.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
     **/
     const CImg<T>& save_pnk(const char *const filename) const {
       return _save_pnk(0,filename);
@@ -39371,7 +39371,7 @@ namespace cimg_library_suffixed {
 
     //! Save image as a PFM file.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
     **/
     const CImg<T>& save_pfm(const char *const filename) const {
       return get_mirror('y')._save_pfm(0,filename);
@@ -39463,7 +39463,7 @@ namespace cimg_library_suffixed {
 
     //! Save image as a RGB file.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
     **/
     const CImg<T>& save_rgb(const char *const filename) const {
       return _save_rgb(0,filename);
@@ -39529,7 +39529,7 @@ namespace cimg_library_suffixed {
 
     //! Save image as a RGBA file.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
     **/
     const CImg<T>& save_rgba(const char *const filename) const {
       return _save_rgba(0,filename);
@@ -39607,7 +39607,7 @@ namespace cimg_library_suffixed {
 
     //! Save image as a TIFF file.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
        \param compression_type Type of data compression. Can be <tt>{ 1=None | 2=CCITTRLE | 3=CCITTFAX3 | 4=CCITTFAX4 | 5=LZW | 6=JPEG }</tt>.
        \note
        - libtiff support is enabled by defining the precompilation
@@ -39720,8 +39720,8 @@ namespace cimg_library_suffixed {
 
     //! Save image as a MINC2 file.
     /**
-       \param filename Filename, as a C-string.
-       \param imitate_file If non-zero, reference filename, as a C-string, to borrow header from.
+       \param filename Filename, as a C-std::string.
+       \param imitate_file If non-zero, reference filename, as a C-std::string, to borrow header from.
     **/
     const CImg<T>& save_minc2(const char *const filename,
                               const char *const imitate_file=0) const {
@@ -39764,7 +39764,7 @@ namespace cimg_library_suffixed {
 
     //! Save image as an ANALYZE7.5 or NIFTI file.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
       \param voxel_size Pointer to 3 consecutive values that tell about the voxel sizes along the X,Y and Z dimensions.
     **/
     const CImg<T>& save_analyze(const char *const filename, const float *const voxel_size=0) const {
@@ -39840,7 +39840,7 @@ namespace cimg_library_suffixed {
 
     //! Save image as a .cimg file.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
       \param is_compressed Tells if the file contains compressed image data.
     **/
     const CImg<T>& save_cimg(const char *const filename, const bool is_compressed=false) const {
@@ -39856,7 +39856,7 @@ namespace cimg_library_suffixed {
 
     //! Save image as a sub-image into an existing .cimg file.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
       \param n0 Index of the image inside the file.
       \param x0 X-coordinate of the sub-image location.
       \param y0 Y-coordinate of the sub-image location.
@@ -39882,7 +39882,7 @@ namespace cimg_library_suffixed {
 
     //! Save blank image as a .cimg file.
     /**
-        \param filename Filename, as a C-string.
+        \param filename Filename, as a C-std::string.
         \param dx Width of the image.
         \param dy Height of the image.
         \param dz Depth of the image.
@@ -39900,7 +39900,7 @@ namespace cimg_library_suffixed {
     //! Save blank image as a .cimg file \overloading.
     /**
        Same as save_empty_cimg(const char *,unsigned int,unsigned int,unsigned int,unsigned int)
-       with a file stream argument instead of a filename string.
+       with a file stream argument instead of a filename std::string.
     **/
     static void save_empty_cimg(std::FILE *const file,
                                 const unsigned int dx, const unsigned int dy=1,
@@ -39910,7 +39910,7 @@ namespace cimg_library_suffixed {
 
     //! Save image as an INRIMAGE-4 file.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
       \param voxel_size Pointer to 3 values specifying the voxel sizes along the X,Y and Z dimensions.
     **/
     const CImg<T>& save_inr(const char *const filename, const float *const voxel_size=0) const {
@@ -39964,7 +39964,7 @@ namespace cimg_library_suffixed {
 
     //! Save image as an OpenEXR file.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
        \note The OpenEXR file format is <a href="http://en.wikipedia.org/wiki/OpenEXR">described here</a>.
     **/
     const CImg<T>& save_exr(const char *const filename) const {
@@ -40035,7 +40035,7 @@ namespace cimg_library_suffixed {
 
     //! Save image as a Pandore-5 file.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
        \param colorspace Colorspace data field in output file
        (see <a href="http://www.greyc.ensicaen.fr/~regis/Pandore/#documentation">Pandore file specifications</a> for more informations).
     **/
@@ -40046,7 +40046,7 @@ namespace cimg_library_suffixed {
     //! Save image as a Pandore-5 file \overloading.
     /**
         Same as save_pandore(const char *,unsigned int) const
-        with a file stream argument instead of a filename string.
+        with a file stream argument instead of a filename std::string.
     **/
     const CImg<T>& save_pandore(std::FILE *const file, const unsigned int colorspace=0) const {
       return _save_pandore(file,0,colorspace);
@@ -40217,7 +40217,7 @@ namespace cimg_library_suffixed {
 
     //! Save image as a raw data file.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
        \param is_multiplexed Tells if the image channels are stored in a multiplexed way (\c true) or not (\c false).
        \note The .raw format does not store the image dimensions in the output file, so you have to keep track of them somewhere
        to be able to read the file correctly afterwards.
@@ -40229,7 +40229,7 @@ namespace cimg_library_suffixed {
     //! Save image as a raw data file \overloading.
     /**
        Same as save_raw(const char *,bool) const
-       with a file stream argument instead of a filename string.
+       with a file stream argument instead of a filename std::string.
     **/
     const CImg<T>& save_raw(std::FILE *const file, const bool is_multiplexed=false) const {
       return _save_raw(file,0,is_multiplexed);
@@ -40261,7 +40261,7 @@ namespace cimg_library_suffixed {
 
     //! Save image as a video file, using the FFmpeg library.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
       \param fps Video framerate.
       \param bitrate Video bitrate.
       \note
@@ -40297,7 +40297,7 @@ namespace cimg_library_suffixed {
 
     //! Save image as a .yuv video file.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
        \param is_rgb Tells if pixel values of the instance image are RGB-coded (\c true) or YUV-coded (\c false).
        \note Each slice of the instance image is considered to be a single frame of the output video file.
     **/
@@ -40309,7 +40309,7 @@ namespace cimg_library_suffixed {
     //! Save image as a .yuv video file \overloading.
     /**
        Same as save_yuv(const char*,bool) const
-       with a file stream argument instead of a filename string.
+       with a file stream argument instead of a filename std::string.
     **/
     const CImg<T>& save_yuv(std::FILE *const file, const bool is_rgb=true) const {
       get_split('z').save_yuv(file,is_rgb);
@@ -40318,7 +40318,7 @@ namespace cimg_library_suffixed {
 
     //! Save 3d object as an Object File Format (.off) file.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
        \param primitives List of 3d object primitives.
        \param colors List of 3d object colors.
        \note
@@ -40336,7 +40336,7 @@ namespace cimg_library_suffixed {
     //! Save 3d object as an Object File Format (.off) file \overloading.
     /**
        Same as save_off(const CImgList<tf>&,const CImgList<tc>&,const char*) const
-       with a file stream argument instead of a filename string.
+       with a file stream argument instead of a filename std::string.
     **/
     template<typename tf, typename tc>
     const CImg<T>& save_off(const CImgList<tf>& primitives, const CImgList<tc>& colors,
@@ -40408,8 +40408,8 @@ namespace cimg_library_suffixed {
 
     //! Save volumetric image as a video, using ffmpeg external binary.
     /**
-       \param filename Filename, as a C-string.
-       \param codec Video codec, as a C-string.
+       \param filename Filename, as a C-std::string.
+       \param codec Video codec, as a C-std::string.
        \param fps Video framerate.
        \param bitrate Video bitrate.
        \note
@@ -40436,7 +40436,7 @@ namespace cimg_library_suffixed {
 
     //! Save image using gzip external binary.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
        \note This method uses \c gzip, an external executable binary provided by <a href="//http://www.gzip.org">gzip</a>.
        It must be installed for the method to succeed.
     **/
@@ -40483,7 +40483,7 @@ namespace cimg_library_suffixed {
 
     //! Save image using GraphicsMagick's external binary.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
        \param quality Image quality (expressed in percent), when the file format supports it.
        \note This method uses \c gm, an external executable binary provided by <a href="http://www.graphicsmagick.org">GraphicsMagick</a>.
        It must be installed for the method to succeed.
@@ -40522,7 +40522,7 @@ namespace cimg_library_suffixed {
 
     //! Save image using ImageMagick's external binary.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
        \param quality Image quality (expressed in percent), when the file format supports it.
        \note This method uses \c convert, an external executable binary provided by <a href="http://www.imagemagick.org">ImageMagick</a>.
        It must be installed for the method to succeed.
@@ -40561,7 +40561,7 @@ namespace cimg_library_suffixed {
 
     //! Save image as a Dicom file.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
        \note This method uses \c medcon, an external executable binary provided by <a href="http://xmedcon.sourceforge.net">(X)Medcon</a>.
        It must be installed for the method to succeed.
     **/
@@ -40609,7 +40609,7 @@ namespace cimg_library_suffixed {
 
     // Save image for non natively supported formats.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
        \param quality Image quality (expressed in percent), when the file format supports it.
        \note
        - The filename extension tells about the desired file format.
@@ -41072,7 +41072,7 @@ namespace cimg_library_suffixed {
 
     //! Construct list by reading the content of a file.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
     **/
     explicit CImgList(const char *const filename):_width(0),_allocated_width(0),_data(0) {
       assign(filename);
@@ -41546,16 +41546,16 @@ namespace cimg_library_suffixed {
     //@{
     //-------------------------------------
 
-    //! Return the type of image pixel values as a C string.
+    //! Return the type of image pixel values as a C std::string.
     /**
-       Return a \c char* string containing the usual type name of the image pixel values
-       (i.e. a stringified version of the template parameter \c T).
+       Return a \c char* std::string containing the usual type name of the image pixel values
+       (i.e. a std::stringified version of the template parameter \c T).
        \note
-       - The returned string may contain spaces (as in \c "unsigned char").
-       - If the pixel type \c T does not correspond to a registered type, the string <tt>"unknown"</tt> is returned.
+       - The returned std::string may contain spaces (as in \c "unsigned char").
+       - If the pixel type \c T does not correspond to a registered type, the std::string <tt>"unknown"</tt> is returned.
     **/
     static const char* pixel_type() {
-      return cimg::type<T>::string();
+      return cimg::type<T>::std::string();
     }
 
     //! Return the size of the list, i.e. the number of images contained in it.
@@ -41952,21 +41952,21 @@ namespace cimg_library_suffixed {
       return _data[pos<0?0:(pos>=(int)_width?(int)_width-1:pos)](x,y,z,c);
     }
 
-    //! Return a C-string containing the values of all images in the instance list.
+    //! Return a C-std::string containing the values of all images in the instance list.
     /**
        \param separator Character separator set between consecutive pixel values.
-       \param max_size Maximum size of the returned string.
-       \note The result is returne as a <tt>CImg<char></tt> image whose pixel buffer contains the desired C-string.
+       \param max_size Maximum size of the returned std::string.
+       \note The result is returne as a <tt>CImg<char></tt> image whose pixel buffer contains the desired C-std::string.
     **/
-    CImg<charT> value_string(const char separator=',', const unsigned int max_size=0) const {
+    CImg<charT> value_std::string(const char separator=',', const unsigned int max_size=0) const {
       if (is_empty()) return CImg<ucharT>(1,1,1,1,0);
       CImgList<charT> items;
       for (unsigned int l = 0; l<_width-1; ++l) {
-        CImg<charT> item = _data[l].value_string(separator,0);
+        CImg<charT> item = _data[l].value_std::string(separator,0);
         item.back() = separator;
         item.move_to(items);
       }
-      _data[_width-1].value_string(separator,0).move_to(items);
+      _data[_width-1].value_std::string(separator,0).move_to(items);
       CImg<charT> res; (items>'x').move_to(res);
       if (max_size) { res.crop(0,max_size); res(max_size) = 0; }
       return res;
@@ -43729,7 +43729,7 @@ namespace cimg_library_suffixed {
 
     //! Load an image from a video file, using ffmpeg libraries.
     /**
-      \param filename Filename, as a C-string.
+      \param filename Filename, as a C-std::string.
       \param first_frame Index of the first frame to read.
       \param last_frame Index of the last frame to read.
       \param step_frame Step value for frame reading.
@@ -44181,7 +44181,7 @@ namespace cimg_library_suffixed {
         }
         if (!title) disp.set_title("CImgList<%s> (%u)",pixel_type(),_width);
       } else if (title) disp.set_title("%s",title);
-      const CImg<char> dtitle = CImg<char>::string(disp.title());
+      const CImg<char> dtitle = CImg<char>::std::string(disp.title());
       if (display_info) print(disp.title());
       disp.show().flush();
 
@@ -44294,7 +44294,7 @@ namespace cimg_library_suffixed {
 
     //! Tell if an image list can be saved as one single file.
     /**
-       \param filename Filename, as a C-string.
+       \param filename Filename, as a C-std::string.
        \return \c true if the file format supports multiple images, \c false otherwise.
     **/
     static bool is_saveable(const char *const filename) {
@@ -44353,7 +44353,7 @@ namespace cimg_library_suffixed {
       } while (file);
       cimglist_for(*this,l) {
         cimg_snprintf(filetmp2,sizeof(filetmp2),"%s_%.6u." _cimg_save_gif_ext,filetmp,l+1);
-        CImg<charT>::string(filetmp2).move_to(filenames);
+        CImg<charT>::std::string(filetmp2).move_to(filenames);
         if (_data[l]._depth>1 || _data[l]._spectrum!=3) _data[l].get_resize(-100,-100,1,3).save(filetmp2);
         else _data[l].save(filetmp2);
       }
@@ -44361,17 +44361,17 @@ namespace cimg_library_suffixed {
 #if cimg_OS!=2
       cimg_snprintf(command,sizeof(command),"%s -delay 1x%u -loop %u",
                     cimg::imagemagick_path(),fps,nb_loops);
-      CImg<ucharT>::string(command).move_to(filenames,0);
+      CImg<ucharT>::std::string(command).move_to(filenames,0);
       cimg_snprintf(command,sizeof(command),"\"%s\" >/dev/null 2>&1",
                     filename);
-      CImg<ucharT>::string(command).move_to(filenames);
+      CImg<ucharT>::std::string(command).move_to(filenames);
 #else
       cimg_snprintf(command,sizeof(command),"\"%s -delay 1x%u -loop %u",
                     cimg::imagemagick_path(),fps,nb_loops);
-      CImg<ucharT>::string(command).move_to(filenames,0);
+      CImg<ucharT>::std::string(command).move_to(filenames,0);
       cimg_snprintf(command,sizeof(command),"\"%s\"\" >NUL 2>&1",
                     filename);
-      CImg<ucharT>::string(command).move_to(filenames);
+      CImg<ucharT>::std::string(command).move_to(filenames);
 #endif
       CImg<charT> _command = filenames>'x';
       cimg_for(_command,p,char) if (!*p) *p = ' ';
@@ -45138,7 +45138,7 @@ namespace cimg_library_suffixed {
       } while (file);
       cimglist_for(*this,l) {
         cimg_snprintf(filetmp2,sizeof(filetmp2),"%s_%.6u.ppm",filetmp,l+1);
-        CImg<charT>::string(filetmp2).move_to(filenames);
+        CImg<charT>::std::string(filetmp2).move_to(filenames);
         if (_data[l]._depth>1 || _data[l]._spectrum!=3) _data[l].get_resize(-100,-100,1,3).save_pnm(filetmp2);
         else _data[l].save_pnm(filetmp2);
       }
@@ -45491,7 +45491,7 @@ namespace cimg {
 
   //! Evaluate math expression.
   /**
-     \param expression C-string describing the formula to evaluate.
+     \param expression C-std::string describing the formula to evaluate.
      \param x Value of the pre-defined variable \c x.
      \param y Value of the pre-defined variable \c y.
      \param z Value of the pre-defined variable \c z.

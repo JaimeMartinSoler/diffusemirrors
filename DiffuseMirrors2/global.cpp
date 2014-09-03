@@ -1,7 +1,7 @@
 
 #include "global.h"
 #include "shapes.h"
-#include "data_read.h"
+#include "data.h"
 
 // vectors with all the object3D to be studied (and rendered)
 extern Object3D_Set OBJECT3D_SET(OBJECT3D_SET_SIZE);
@@ -13,7 +13,7 @@ RawData DATAPMD_CAPTURE;	// RawData Captured (directly from the PMD to this obje
 Frame FRAME_00_CAPTURE;		// Frame (phase=00) Captured (directly from the PMD to this object)
 Frame FRAME_90_CAPTURE;		// Frame (phase=90) Captured (directly from the PMD to this object)
 
-// To externally control the capability to loop of the capturetoolDM2.cpp functions (true by default)
+// To externally control the capability to loop of the capturetool2.cpp functions (true by default)
 bool PMD_LOOP_ENABLE = true;
 
 // Syncornization

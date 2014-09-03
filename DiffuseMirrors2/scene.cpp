@@ -6,7 +6,7 @@
 #include "scene.h"
 #include "shapes.h"
 #include "global.h"
-#include "data_read.h"
+#include "data.h"
 // OPENCV INCLUDES
 #include <cv.h>
 #include <cvaux.h>
@@ -768,9 +768,9 @@ void update_wall_and_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point
 	std::vector<int> r_idx (r_div);	// this will contain the indices of the rows of the pixels involved to get mean_pt, mean_n
 	std::vector<int> c_idx (c_div);	// this will contain the indices of the cols of the pixels involved to get mean_pt, mean_n
 	for (size_t r = 0; r < r_idx.size(); r++)
-		r_idx[r] = std::min((int)(r*FRAME_00_CAPTURE.heigth/(r_div-1)), FRAME_00_CAPTURE.heigth-1);
+		r_idx[r] = std::min((int)(r*FRAME_00_CAPTURE.rows/(r_div-1)), FRAME_00_CAPTURE.rows-1);
 	for (size_t c = 0; c < c_idx.size(); c++)
-		c_idx[c] = std::min((int)(c*FRAME_00_CAPTURE.width/(c_div-1)), FRAME_00_CAPTURE.width-1);
+		c_idx[c] = std::min((int)(c*FRAME_00_CAPTURE.cols/(c_div-1)), FRAME_00_CAPTURE.cols-1);
 	std::vector<Point> vector_points (r_div * c_div);					// Ordering: like a Matrix (row, col, starting with 0)
 	std::vector<Point> vector_normals (4 * (r_div - 1) * (c_div - 1));	// Ordering: like a Matrix (row, col, starting with 0)
 	Point mean_pt, mean_n;	// the mean of the position and normal of the points
@@ -816,15 +816,15 @@ void update_wall_and_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point
 		// UPDATING THE WALL
 		for (size_t r = 0; r < r_idx.size(); r++) {
 			for (size_t c = 0; c < c_idx.size(); c++) {
-				p0 = (*(*OBJECT3D_SET[PIXEL_PATCHES])[(FRAME_00_CAPTURE.heigth - r_idx[r] - 1) * FRAME_00_CAPTURE.width + c_idx[c]]).c;
+				p0 = (*(*OBJECT3D_SET[PIXEL_PATCHES])[(FRAME_00_CAPTURE.rows - r_idx[r] - 1) * FRAME_00_CAPTURE.cols + c_idx[c]]).c;
 				vector_points[r*c_div + c] = (*p0);
 		}	}
 		for (size_t r = 1; r < r_idx.size(); r++) {
 			for (size_t c = 0; c < c_idx.size() - 1; c++) {
-				p0 = (*(*OBJECT3D_SET[PIXEL_PATCHES])[(FRAME_00_CAPTURE.heigth - r_idx[r    ] - 1) * FRAME_00_CAPTURE.width + c_idx[c    ]]).c;
-				p1 = (*(*OBJECT3D_SET[PIXEL_PATCHES])[(FRAME_00_CAPTURE.heigth - r_idx[r    ] - 1) * FRAME_00_CAPTURE.width + c_idx[c + 1]]).c;
-				p2 = (*(*OBJECT3D_SET[PIXEL_PATCHES])[(FRAME_00_CAPTURE.heigth - r_idx[r - 1] - 1) * FRAME_00_CAPTURE.width + c_idx[c + 1]]).c;
-				p3 = (*(*OBJECT3D_SET[PIXEL_PATCHES])[(FRAME_00_CAPTURE.heigth - r_idx[r - 1] - 1) * FRAME_00_CAPTURE.width + c_idx[c    ]]).c;
+				p0 = (*(*OBJECT3D_SET[PIXEL_PATCHES])[(FRAME_00_CAPTURE.rows - r_idx[r    ] - 1) * FRAME_00_CAPTURE.cols + c_idx[c    ]]).c;
+				p1 = (*(*OBJECT3D_SET[PIXEL_PATCHES])[(FRAME_00_CAPTURE.rows - r_idx[r    ] - 1) * FRAME_00_CAPTURE.cols + c_idx[c + 1]]).c;
+				p2 = (*(*OBJECT3D_SET[PIXEL_PATCHES])[(FRAME_00_CAPTURE.rows - r_idx[r - 1] - 1) * FRAME_00_CAPTURE.cols + c_idx[c + 1]]).c;
+				p3 = (*(*OBJECT3D_SET[PIXEL_PATCHES])[(FRAME_00_CAPTURE.rows - r_idx[r - 1] - 1) * FRAME_00_CAPTURE.cols + c_idx[c    ]]).c;
 				get_normal ((*p0), (*p1), (*p2), vector_normals[4*((r-1)*(c_div-1) + c) + 0]);
 				get_normal ((*p1), (*p2), (*p3), vector_normals[4*((r-1)*(c_div-1) + c) + 1]);
 				get_normal ((*p2), (*p3), (*p0), vector_normals[4*((r-1)*(c_div-1) + c) + 2]);
@@ -924,7 +924,7 @@ void set_depth_map(cv::Mat & depth_map_, Frame & Frame_00_cap, Frame & Frame_90_
 	if (PIXELS_STORING_GLOBAL == PIXELS_TOTAL) {
 		for (int r = 0; r < depth_map_.rows; r++) {
 			for (int c = 0; c < depth_map_.cols; c++) {
-				path_dist = (atan2(-Frame_90_cap.at(r,c,1), Frame_00_cap.at(r,c,1)) + PI) * C_LIGHT_AIR / (2 * PI * Frame_00_cap.frequency * 1000000.0f) + delay_m_100MHz;
+				path_dist = (atan2(-Frame_90_cap.at(r,c), Frame_00_cap.at(r,c)) + PI) * C_LIGHT_AIR / (2 * PI * Frame_00_cap.freq * 1000000.0f) + delay_m_100MHz;
 				depth_map_.at<float>(r,c) = path_dist / 2.0f;	// this is an approximation that supposes camera and laser close enough
 		}	}
 	} else if (PIXELS_STORING_GLOBAL == PIXELS_VALID) {
@@ -933,7 +933,7 @@ void set_depth_map(cv::Mat & depth_map_, Frame & Frame_00_cap, Frame & Frame_90_
 				if ((r < CAMERA_PIX_Y_BAD_TOP) || (r >= CAMERA_PIX_Y - CAMERA_PIX_Y_BAD_BOTTOM) || (c < CAMERA_PIX_X_BAD_LEFT) || (c >= CAMERA_PIX_X - CAMERA_PIX_X_BAD_RIGHT))
 					depth_map_.at<float>(r,c) = 0.0f;	// will not be considered
 				else {
-					path_dist = (atan2(-Frame_90_cap.at(r,c,1), Frame_00_cap.at(r,c,1)) + PI) * C_LIGHT_AIR / (2 * PI * Frame_00_cap.frequency * 1000000.0f) + delay_m_100MHz;
+					path_dist = (atan2(-Frame_90_cap.at(r,c), Frame_00_cap.at(r,c)) + PI) * C_LIGHT_AIR / (2 * PI * Frame_00_cap.freq * 1000000.0f) + delay_m_100MHz;
 					depth_map_.at<float>(r,c) = path_dist / 2.0f;	// this is an approximation that supposes camera and laser close enough
 	}	}	}	}
 }

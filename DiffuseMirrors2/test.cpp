@@ -6,9 +6,9 @@
 #include "render.h"
 #include "scene.h"
 #include "data_sim.h"
-#include "data_read.h"
+#include "data.h"
 #include "shapes.h"
-#include "capturetoolDM2.h"
+#include "capturetool2.h"
 // http://eigen.tuxfamily.org/dox/group__QuickRefPage.html
 #include <Eigen/Dense>
 using namespace Eigen;
@@ -21,7 +21,7 @@ using namespace Eigen;
 // test function for testing
 void test() {
 
-	test_gradient_descent();
+	test_create_raw_from_raw_takes();
 
 	std::cout << "\n\nTest done...\n\n";
 }
@@ -39,20 +39,20 @@ void test_create_raw_from_raw_takes() {
 	char file_name[1024] = "PMD";
 	Info info(dir_name, file_name);
 
-	RawData raw_data_take_0 (&info, 0);
-	RawData raw_data_take_1 (&info, 1);
-	RawData raw_data_take_2 (&info, 2);
-	RawData raw_data		(&info);
+	RawData raw_data_take_0 (info, 0);
+	RawData raw_data_take_1 (info, 1);
+	RawData raw_data_take_2 (info, 2);
+	RawData raw_data		(info);
 	
-	Frame frame_take_0	(&info, &raw_data_take_0, 0, 0, 0, 0);
-	Frame frame_take_1	(&info, &raw_data_take_1, 0, 0, 0, 0);
-	Frame frame_take_2	(&info, &raw_data_take_2, 0, 0, 0, 0);
-	Frame frame			(&info, &raw_data, 0, 0, 0, 0);
+	Frame frame_take_0	(raw_data_take_0, 0, 0, 0, 0);
+	Frame frame_take_1	(raw_data_take_1, 0, 0, 0, 0);
+	Frame frame_take_2	(raw_data_take_2, 0, 0, 0, 0);
+	Frame frame			(raw_data, 0, 0, 0, 0);
 	
-	frame_take_0.plot_frame();
-	frame_take_1.plot_frame();
-	frame_take_2.plot_frame();
-	frame.plot_frame();
+	frame_take_0.plot();
+	frame_take_1.plot();
+	frame_take_2.plot();
+	frame.plot();
 }
 
 
@@ -63,27 +63,23 @@ void test_calibration_matrix() {
 	char file_name[1024] = "PMD_Calibration_Matrix";
 	Info info = Info(dir_name, file_name);
 
-	CalibrationMatrix cm(&info, PIXELS_VALID);
+	CalibrationMatrix cm(info);
 	
 	std::cout << "\ndata_size        = " << cm.data_size;
-	std::cout << "\npath_dist_0.cols = " << cm.path_dist_0.cols;
-	std::cout << "\npath_dist_0.rows = " << cm.path_dist_0.rows;
-	std::cout << "\nwidth            = " << cm.width;
-	std::cout << "\nheigth           = " << cm.heigth;
 	std::cout << "\nerror_code       = " << cm.error_code;
-	std::cout << "\npath_dist_0(0,0) = " << cm.path_dist_0.at<float>(0,0);
-	std::cout << "\npath_dist_0(cen) = " << cm.path_dist_0.at<float>(cm.heigth/2,cm.width/2);
-	std::cout << "\npath_dist_0(cor) = " << cm.path_dist_0.at<float>(cm.heigth-1,cm.width-1);
+	std::cout << "\npath_dist_0_at(0,0) = " << cm.path_dist_0_at(0,0);
+	std::cout << "\npath_dist_0(cen) = " << cm.path_dist_0_at(info.rows/2,info.cols/2);
+	std::cout << "\npath_dist_0(cor) = " << cm.path_dist_0_at(info.rows-1,info.cols-1);
 	
 	int di_floor = 8;
-	float path_dist = info.distances[di_floor] + 0.6f * (info.distances[di_floor+1] - info.distances[di_floor]);
+	float path_dist = info.dists[di_floor] + 0.6f * (info.dists[di_floor+1] - info.dists[di_floor]);
 	std::cout << "\npath_dist = " << path_dist;
-	std::cout << "\nc(fi_max, " << path_dist << ", cen) = " << cm.c(info.frequencies.size()-1, path_dist, cm.width/2, cm.heigth/2);
+	std::cout << "\nc(fi_max, " << path_dist << ", cen) = " << cm.c_coef(info.freqs.size()-1, info.rows/2, info.cols/2, path_dist);
 
 }
 
 // Reads data from a .dat and info.txt file setting the DATAPMD_READ variable
-int test_data_read_main() {
+int test_data_main() {
 
 	char dir_name[1024] = "f:\\tmp\\pmdtest2";
 	char file_name[1024] = "PMD_test_meas";
@@ -91,28 +87,28 @@ int test_data_read_main() {
 	// Create instance of INFO
 	INFO = Info(dir_name, file_name);
 	// Create instance and store in DATAPMD_READ
-	DATAPMD_READ = RawData(&INFO);
+	DATAPMD_READ = RawData(INFO);
 	// We have to check if there were errors while creating DATAPMD_READ
 	if (DATAPMD_READ.error_code)
 		return 1;	// error
 
 	// Tests
 	// DATAPMD_READ
-	Frame frame_read (&INFO, &DATAPMD_READ, 0, 0, 0, 0);
-	frame_read.plot_frame();
+	Frame frame_read (DATAPMD_READ, 0, 0, 0, 0);
+	frame_read.plot();
 	// DATAPMD_CAPTURE
-	Frame frame_captured (&INFO, &DATAPMD_CAPTURE, 0, 0, 0, 0);
-	frame_captured.plot_frame();
+	Frame frame_captured (DATAPMD_CAPTURE, 0, 0, 0, 0);
+	frame_captured.plot();
 	// FRAME_00_CAPTURE, FRAME_90_CAPTURE
-	FRAME_00_CAPTURE.plot_frame();
-	FRAME_90_CAPTURE.plot_frame();
+	FRAME_00_CAPTURE.plot();
+	FRAME_90_CAPTURE.plot();
 
 	return 0;	// no errors
 }
 
 
-// test_capturetoolDM2_main(...)
-int test_capturetoolDM2_main() {
+// test_capturetool2_main(...)
+int test_capturetool2_main() {
 	
 	// DiffuseMirrors2.exe "80 90 100" "0 1 2 3" "1920" f:\tmp\pmdtest2 PMD_test_meas COM6 1
 	//int error_in_PMD_charArray_to_file = PMD_charArray_to_file (argc, argv);
@@ -141,9 +137,9 @@ int test_capturetoolDM2_main() {
 	if (PMD_params_to_file (frequencies,delays,shutters_float, dir_name, file_name, comport, numtakes))
 		error = 1;
 	
-	// Capture directly from PMD to RawData (RawData DATAPMD_CAPTURE)
-	if (PMD_params_to_RawData (DATAPMD_CAPTURE, frequencies, delays, shutters_float, comport, numtakes, false))
-		error = 1;
+	// Capture directly from PMD to RawData (RawData DATAPMD_CAPTURE)	(DEPRECATED)
+	//if (PMD_params_to_RawData (DATAPMD_CAPTURE, frequencies, delays, shutters_float, comport, numtakes, false))
+	//	error = 1;
 	
 	// Capture directly from PMD to Frame (Frame FRAME_00_CAPTURE, Frame FRAME_90_CAPTURE)
 	float frequency = 100.0f;
@@ -203,7 +199,7 @@ int test_MATLAB_engine() {
 	double time[10] = { 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0 };
 
 	/*
-	 * Call engOpen with a NULL string. This starts a MATLAB process 
+	 * Call engOpen with a NULL std::string. This starts a MATLAB process 
      * on the current host using the command "matlab".
 	 */
 	if (!(ep = engOpen(""))) {
@@ -261,8 +257,8 @@ int test_MATLAB_engine() {
 	 * PART II
 	 *
 	 * For the second half of this demonstration, we will request
-	 * a MATLAB string, which should define a variable X.  MATLAB
-	 * will evaluate the string and create the variable.  We
+	 * a MATLAB std::string, which should define a variable X.  MATLAB
+	 * will evaluate the std::string and create the variable.  We
 	 * will then recover the variable, and determine its type.
 	 */
 	  
@@ -277,7 +273,7 @@ int test_MATLAB_engine() {
 	while (result == NULL) {
 	    char str[BUFSIZE+1];
 	    /*
-	     * Get a string input from the user
+	     * Get a std::string input from the user
 	     */
 	    printf("Enter a MATLAB command to evaluate.  This command should\n");
 	    printf("create a variable X.  This program will then determine\n");

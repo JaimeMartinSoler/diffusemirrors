@@ -12,10 +12,10 @@ Jaime Martin
 #include "render.h"
 #include "scene.h"
 #include "data_sim.h"
-#include "data_read.h"
+#include "data.h"
 #include "shapes.h"
 #include "test.h"
-#include "capturetoolDM2.h"
+#include "capturetool2.h"
 
 #include <thread>      
 
@@ -155,7 +155,7 @@ int main_fov_measurement(int argc, char** argv, bool loop = true, Scene scene = 
 	std::thread thread_PMD_params_to_Frame (PMD_params_to_Frame_anti_bug_thread, FRAME_00_CAPTURE, FRAME_90_CAPTURE, frequency, distance, shutter, comport, loop);
 	
 	// plot the frame_00
-	std::thread thread_plot_frame_fov_measurement (plot_frame_fov_measurement, loop);
+	std::thread thread_plot_frame_fov_measurement (plot_frame_fov_measurement, FRAME_00_CAPTURE, FRAME_90_CAPTURE, loop);
 
 	// pause in main to allow control when the loops will finish
 	control_loop_pause();
@@ -214,7 +214,7 @@ int main_calibration_matrix (int argc, char** argv, char* dir_name_, char* file_
 	Info info = Info(dir_name_, file_name_);
 
 	// create the .cmx file, dealing with the .inf and .raw files. It internally creates the corresponding scene
-	std::thread thread_create_cmx_from_raw (create_cmx_from_raw_anti_bug_thread, &info);
+	std::thread thread_create_cmx_from_raw (create_cmx_from_raw_anti_bug_thread, info);
 
 	// pause in main to allow control when the loops will finish
 	//control_loop_pause();
@@ -263,7 +263,7 @@ int main(int argc, char** argv) {
 	// DiffuseMirrors2.exe "80 90 100" "0 1 2 3" "1920" f:\tmp\pmdtest2 PMD_test_meas COM6 1
 	// ------------------------------------------------------------------------------------------------------------------------------
 
-	Scene scene = TEST;	// DIRECT_VISION_WALL, DIRECT_VISION_ANY, DIRECT_VISION_ANY_SIMULATION, DIFFUSED_MIRROR, FOV_MEASUREMENT, RAW_DATA, CALIBRATION_MATRIX, UNKNOWN_SCENE, TEST, RAW_DATA_AND_CALIBRATION_MATRIX, DIRECT_VISION_SIMULATION
+	Scene scene = DIRECT_VISION_ANY;	// DIRECT_VISION_WALL, DIRECT_VISION_ANY, DIRECT_VISION_ANY_SIMULATION, DIFFUSED_MIRROR, FOV_MEASUREMENT, RAW_DATA, CALIBRATION_MATRIX, UNKNOWN_SCENE, TEST, RAW_DATA_AND_CALIBRATION_MATRIX, DIRECT_VISION_SIMULATION
 	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\test_03";
 	char file_name[1024] = "PMD";
 	bool loop = true;
