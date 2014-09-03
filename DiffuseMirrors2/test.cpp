@@ -35,7 +35,7 @@ void test_gradient_descent() {
 // test_create_raw_from_raw_takes()
 void test_create_raw_from_raw_takes() {
 	
-	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\test_03";
+	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\test_04";
 	char file_name[1024] = "PMD";
 	Info info(dir_name, file_name);
 

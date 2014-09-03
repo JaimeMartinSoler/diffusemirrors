@@ -605,8 +605,12 @@ void set_wall_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_size
 // sets the Object3D with all the pixel patches (pixel patch = PointMesh with one rectangle). Only for Direct-Vision-Any scene
 void set_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_centre_, std::vector<Point*> & screen_patches_corners_normals_, std::vector<Point*> & screen_patches_centers_normals_) {	
 
-	// Ordering: 1st row: col, col, col... 2nd row: col, col, col... from left to right, from top to bottom (matrix ordering)
-	cv::Mat depth_map(CAMERA_PIX_Y, CAMERA_PIX_X, cv::DataType<float>::type);
+	// Matrix-like r,c ordering 0-indexed
+	std::vector<float> depth_map;
+	if (PIXELS_STORING_GLOBAL == PIXELS_VALID)
+		depth_map.resize(CAMERA_PIX_X_VALID * CAMERA_PIX_Y_VALID);
+	else if (PIXELS_STORING_GLOBAL == PIXELS_TOTAL)
+		depth_map.resize(CAMERA_PIX_X * CAMERA_PIX_Y);
 	
 	// Syncronization
 	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
@@ -640,12 +644,12 @@ void set_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_cen
 	}
 	pixel_patches = new Object3D(size_Object3D);
 	for (int iy = y_begin; iy < y_end; iy++) {
-		for (int ix = x_begin; ix < x_end; ix++) {
-			Point* p0 = new Point((*(screen_patches_corners_normals_[iy*(CAMERA_PIX_X + 1) + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
-			Point* p1 = new Point((*(screen_patches_corners_normals_[iy*(CAMERA_PIX_X + 1) + ix + 1])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
-			Point* p2 = new Point((*(screen_patches_corners_normals_[(iy + 1)*(CAMERA_PIX_X + 1) + ix + 1])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
-			Point* p3 = new Point((*(screen_patches_corners_normals_[(iy + 1)*(CAMERA_PIX_X + 1) + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
-			Point* c  = new Point((*(screen_patches_centers_normals_[iy*CAMERA_PIX_X + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs)); 
+		for (int ix = x_begin; ix < x_end; ix++) {	// TO-DO: Fix this indexations after scene
+			Point* p0 = new Point((*(screen_patches_corners_normals_[iy*(CAMERA_PIX_X + 1) + ix])) * depth_map[CAMERA_PIX_Y-iy-1,ix] + (*camera_centre_abs));
+			Point* p1 = new Point((*(screen_patches_corners_normals_[iy*(CAMERA_PIX_X + 1) + ix + 1])) * depth_map[CAMERA_PIX_Y-iy-1,ix] + (*camera_centre_abs));
+			Point* p2 = new Point((*(screen_patches_corners_normals_[(iy + 1)*(CAMERA_PIX_X + 1) + ix + 1])) * depth_map[CAMERA_PIX_Y-iy-1,ix] + (*camera_centre_abs));
+			Point* p3 = new Point((*(screen_patches_corners_normals_[(iy + 1)*(CAMERA_PIX_X + 1) + ix])) * depth_map[CAMERA_PIX_Y-iy-1,ix] + (*camera_centre_abs));
+			Point* c  = new Point((*(screen_patches_centers_normals_[iy*CAMERA_PIX_X + ix])) * depth_map[CAMERA_PIX_Y-iy-1,ix] + (*camera_centre_abs)); 
 			// PointMesh
 			// Each wall_patch will be a PointMesh with one rectangle inside the Object3D wall_patches
 			PointMesh* pixel_patches_pm = new PointMesh(vp_rectangle(p0, p1, p2, p3), RECTANGLE, c, albedo);
@@ -666,9 +670,13 @@ void set_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_cen
 
 // sets the Object3D with all the pixel patches (pixel patch = PointMesh with one rectangle). Only for Direct-Vision-Any scene
 void update_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_centre_, std::vector<Point*> & screen_patches_corners_normals_, std::vector<Point*> & screen_patches_centers_normals_, bool loop) {	// by default: loop = false
-
-	// Ordering: 1st row: col, col, col... 2nd row: col, col, col... from left to right, from top to bottom (matrix ordering)
-	cv::Mat depth_map(CAMERA_PIX_Y, CAMERA_PIX_X, cv::DataType<float>::type);
+	
+	// Matrix-like r,c ordering 0-indexed
+	std::vector<float> depth_map;
+	if (PIXELS_STORING_GLOBAL == PIXELS_VALID)
+		depth_map.resize(CAMERA_PIX_X_VALID * CAMERA_PIX_Y_VALID);
+	else if (PIXELS_STORING_GLOBAL == PIXELS_TOTAL)
+		depth_map.resize(CAMERA_PIX_X * CAMERA_PIX_Y);
 	
 	// Syncronization
 	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
@@ -702,7 +710,7 @@ void update_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_
 			//std::cout << "Waiting in Object to finish the UPDATED_NEW_Frame. This is OK!\n";
 			cv_frame_object.wait(locker_frame_object);
 		}
-		
+
 		// Setting Depth Map
 		set_depth_map(depth_map, FRAME_00_CAPTURE, FRAME_90_CAPTURE);
 
@@ -710,11 +718,17 @@ void update_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_
 		pos_in_Object3D = 0;
 		for (int iy = y_begin; iy < y_end; iy++) {
 			for (int ix = x_begin; ix < x_end; ix++) {
-				Point p0 ((*(screen_patches_corners_normals_[iy*(CAMERA_PIX_X + 1) + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
-				Point p1 ((*(screen_patches_corners_normals_[iy*(CAMERA_PIX_X + 1) + ix + 1])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
-				Point p2 ((*(screen_patches_corners_normals_[(iy + 1)*(CAMERA_PIX_X + 1) + ix + 1])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
-				Point p3 ((*(screen_patches_corners_normals_[(iy + 1)*(CAMERA_PIX_X + 1) + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
-				Point c  ((*(screen_patches_centers_normals_[iy*CAMERA_PIX_X + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs)); 
+				//std::cout << "\ndepth_map[" << iy << "][" << ix << "] = " << depth_map[CAMERA_PIX_Y-iy-1,ix];
+				Point p0 ((*(screen_patches_corners_normals_[iy*(CAMERA_PIX_X + 1) + ix])) * depth_map[CAMERA_PIX_Y-iy-1,ix] + (*camera_centre_abs));
+				Point p1 ((*(screen_patches_corners_normals_[iy*(CAMERA_PIX_X + 1) + ix + 1])) * depth_map[CAMERA_PIX_Y-iy-1,ix] + (*camera_centre_abs));
+				Point p2 ((*(screen_patches_corners_normals_[(iy + 1)*(CAMERA_PIX_X + 1) + ix + 1])) * depth_map[CAMERA_PIX_Y-iy-1,ix] + (*camera_centre_abs));
+				Point p3 ((*(screen_patches_corners_normals_[(iy + 1)*(CAMERA_PIX_X + 1) + ix])) * depth_map[CAMERA_PIX_Y-iy-1,ix] + (*camera_centre_abs));
+				Point c  ((*(screen_patches_centers_normals_[iy*CAMERA_PIX_X + ix])) * depth_map[CAMERA_PIX_Y-iy-1,ix] + (*camera_centre_abs)); 
+				//Point p0 ((*(screen_patches_corners_normals_[iy*(CAMERA_PIX_X + 1) + ix])) * 2.0f + (*camera_centre_abs));
+				//Point p1 ((*(screen_patches_corners_normals_[iy*(CAMERA_PIX_X + 1) + ix + 1])) * 2.0f + (*camera_centre_abs));
+				//Point p2 ((*(screen_patches_corners_normals_[(iy + 1)*(CAMERA_PIX_X + 1) + ix + 1])) * 2.0f + (*camera_centre_abs));
+				//Point p3 ((*(screen_patches_corners_normals_[(iy + 1)*(CAMERA_PIX_X + 1) + ix])) * 2.0f + (*camera_centre_abs));
+				//Point c  ((*(screen_patches_centers_normals_[iy*CAMERA_PIX_X + ix])) * 2.0f + (*camera_centre_abs)); 
 				// Update points and center
 				// WARNING: NORMAL VECTOR OF THE POINTMESH IS NOT BEEING UPDATED (but neither being used)
 				(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[pos_in_Object3D]).p[0]) = p0;
@@ -743,9 +757,13 @@ void update_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_
 
 // updates the Object3D with all the pixel patches (pixel patch = PointMesh with one rectangle) and the Object3D with the Wall. Only for Direct-Vision-Wall scene
 void update_wall_and_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_centre_, std::vector<Point*> & screen_patches_corners_normals_, std::vector<Point*> & screen_patches_centers_normals_, int r_div, int c_div, bool loop) {	// by default: loop = false
-
-	// Ordering: 1st row: col, col, col... 2nd row: col, col, col... from left to right, from top to bottom (matrix ordering)
-	cv::Mat depth_map(CAMERA_PIX_Y, CAMERA_PIX_X, cv::DataType<float>::type);
+	
+	// Matrix-like r,c ordering 0-indexed
+	std::vector<float> depth_map;
+	if (PIXELS_STORING_GLOBAL == PIXELS_VALID)
+		depth_map.resize(CAMERA_PIX_X_VALID * CAMERA_PIX_Y_VALID);
+	else if (PIXELS_STORING_GLOBAL == PIXELS_TOTAL)
+		depth_map.resize(CAMERA_PIX_X * CAMERA_PIX_Y);
 	
 	// Syncronization
 	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
@@ -804,11 +822,11 @@ void update_wall_and_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point
 			for (int ix = x_begin; ix < x_end; ix++) {
 				// Update points and center
 				// WARNING: NORMAL VECTOR OF THE POINTMESH IS NOT BEEING UPDATED (but neither being used)
-				(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[pos_in_Object3D]).p[0]) = Point((*(screen_patches_corners_normals_[iy*(CAMERA_PIX_X + 1) + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
-				(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[pos_in_Object3D]).p[1]) = Point((*(screen_patches_corners_normals_[iy*(CAMERA_PIX_X + 1) + ix + 1])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
-				(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[pos_in_Object3D]).p[2]) = Point((*(screen_patches_corners_normals_[(iy + 1)*(CAMERA_PIX_X + 1) + ix + 1])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
-				(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[pos_in_Object3D]).p[3]) = Point((*(screen_patches_corners_normals_[(iy + 1)*(CAMERA_PIX_X + 1) + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs));
-				(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[pos_in_Object3D]).c)	   = Point((*(screen_patches_centers_normals_[iy*CAMERA_PIX_X + ix])) * depth_map.at<float>(CAMERA_PIX_Y-iy-1,ix) + (*camera_centre_abs)); 
+				(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[pos_in_Object3D]).p[0]) = Point((*(screen_patches_corners_normals_[iy*(CAMERA_PIX_X + 1) + ix])) * depth_map[CAMERA_PIX_Y-iy-1,ix] + (*camera_centre_abs));
+				(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[pos_in_Object3D]).p[1]) = Point((*(screen_patches_corners_normals_[iy*(CAMERA_PIX_X + 1) + ix + 1])) * depth_map[CAMERA_PIX_Y-iy-1,ix] + (*camera_centre_abs));
+				(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[pos_in_Object3D]).p[2]) = Point((*(screen_patches_corners_normals_[(iy + 1)*(CAMERA_PIX_X + 1) + ix + 1])) * depth_map[CAMERA_PIX_Y-iy-1,ix] + (*camera_centre_abs));
+				(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[pos_in_Object3D]).p[3]) = Point((*(screen_patches_corners_normals_[(iy + 1)*(CAMERA_PIX_X + 1) + ix])) * depth_map[CAMERA_PIX_Y-iy-1,ix] + (*camera_centre_abs));
+				(*(*(*OBJECT3D_SET[PIXEL_PATCHES])[pos_in_Object3D]).c)	   = Point((*(screen_patches_centers_normals_[iy*CAMERA_PIX_X + ix])) * depth_map[CAMERA_PIX_Y-iy-1,ix] + (*camera_centre_abs)); 
 				pos_in_Object3D++;
 			}
 		}
@@ -905,7 +923,7 @@ void set_screen_normals_pixel_patches(std::vector<Point*> & screen_patches_corne
 }
 
 // sets a depth map from the 2 frames
-void set_depth_map(cv::Mat & depth_map_, Frame & Frame_00_cap, Frame & Frame_90_cap) {
+void set_depth_map(std::vector<float> & depth_map_, Frame & Frame_00_cap, Frame & Frame_90_cap) {
 
 	// It would be better to do this by accessing to a calibration matrix
 	
@@ -921,21 +939,13 @@ void set_depth_map(cv::Mat & depth_map_, Frame & Frame_00_cap, Frame & Frame_90_
 	float delay_m_100MHz = 2.0f;	// delay @ 100 MHz = 2.0m
 
 	float path_dist = 0.0f;
-	if (PIXELS_STORING_GLOBAL == PIXELS_TOTAL) {
-		for (int r = 0; r < depth_map_.rows; r++) {
-			for (int c = 0; c < depth_map_.cols; c++) {
-				path_dist = (atan2(-Frame_90_cap.at(r,c), Frame_00_cap.at(r,c)) + PI) * C_LIGHT_AIR / (2 * PI * Frame_00_cap.freq * 1000000.0f) + delay_m_100MHz;
-				depth_map_.at<float>(r,c) = path_dist / 2.0f;	// this is an approximation that supposes camera and laser close enough
-		}	}
-	} else if (PIXELS_STORING_GLOBAL == PIXELS_VALID) {
-		for (int r = 0; r < depth_map_.rows; r++) {
-			for (int c = 0; c < depth_map_.cols; c++) {
-				if ((r < CAMERA_PIX_Y_BAD_TOP) || (r >= CAMERA_PIX_Y - CAMERA_PIX_Y_BAD_BOTTOM) || (c < CAMERA_PIX_X_BAD_LEFT) || (c >= CAMERA_PIX_X - CAMERA_PIX_X_BAD_RIGHT))
-					depth_map_.at<float>(r,c) = 0.0f;	// will not be considered
-				else {
-					path_dist = (atan2(-Frame_90_cap.at(r,c), Frame_00_cap.at(r,c)) + PI) * C_LIGHT_AIR / (2 * PI * Frame_00_cap.freq * 1000000.0f) + delay_m_100MHz;
-					depth_map_.at<float>(r,c) = path_dist / 2.0f;	// this is an approximation that supposes camera and laser close enough
-	}	}	}	}
+	//std::cout << "\nFrame_00_cap.rows, cols = " << Frame_00_cap.rows << ", " << Frame_00_cap.cols;
+	for (int r = 0; r < Frame_00_cap.rows; r++) {
+		for (int c = 0; c < Frame_00_cap.cols; c++) {
+			path_dist = (atan2(-Frame_90_cap.at(r,c), Frame_00_cap.at(r,c)) + PI) * C_LIGHT_AIR / (2 * PI * Frame_00_cap.freq * 1000000.0f) + delay_m_100MHz;
+			depth_map_[rc2idx(r,c,Frame_00_cap.ps)] = path_dist / 2.0f;	// this is an approximation that supposes camera and laser close enough
+			//std::cout << "\ndepth_map_[" << rc2idx(r,c,Frame_00_cap.ps) << "] = " << depth_map_[rc2idx(r,c,Frame_00_cap.ps)];
+	}	}
 }
 
 // sets the Object3D with the lines representing the camera FoV and its intersection with the wall

@@ -978,7 +978,7 @@ void create_cmx_from_raw(Info & info_) {
 	float cmx_data_value;
 	float raw_data_value;
 	int phase_idx = 0;										// always
-	int shutter_idx = raw_data.info->shuts.size() - 1;	//always, the calibration matrix is 1-shutter oriented
+	int shut_idx = raw_data.info->shuts.size() - 1;	//always, the calibration matrix is 1-shutter oriented
 	// dist_src_pix_rc vector
 	std::vector<float> dist_src_pix_pow2_rc, v_aux;
 	set_scene_calibration_matrix (&info_, PIXELS_TOTAL);	// set the corresponding scene (camera, laser, wall and wall_patches)
@@ -987,7 +987,7 @@ void create_cmx_from_raw(Info & info_) {
 	dist_src_pix_pow2_rc.resize(v_aux.size());	// v_aux is ordered as WALL_PATCHES and it is, by rows, from down to top, we want it from top to down
 	for (size_t r = 0; r < raw_data.info->rows; r++) {		// should be: raw_data.info->heigth = CAMERA_PIX_Y
 		for (size_t c = 0; c < raw_data.info->cols; c++) {		// should be: raw_data.info->width  = CAMERA_PIX_X
-			dist_src_pix_pow2_rc[r*raw_data.info->cols + c] = v_aux[(raw_data.info->rows-1-r)*raw_data.info->cols + c];
+			dist_src_pix_pow2_rc[r*raw_data.info->cols + c] = v_aux[(raw_data.info->rows-1-r)*raw_data.info->cols + c];	// TO-DO: modify this when indexing is fixed in scene
 	}	}
 	// fwrite parameters
 	float* cmx_data_value_ptr = &cmx_data_value;
@@ -1004,10 +1004,10 @@ void create_cmx_from_raw(Info & info_) {
 			for (size_t r = 0; r < raw_data.info->rows; r++) {
 				for (size_t c = 0; c < raw_data.info->cols; c++) {
 
-					// Calculate the corresponding value of the Calibration Matrix
+					// Calculate the corresponding value of the Calibration Matrix 
 					// data is not stored properly. -32768 fixes it thanks to short int over-run
 					// by default image is up-down-fliped so heigth_RawData = (heigth_Frame-1-h)
-					raw_data_value = (float)(raw_data.at(di, fi, shutter_idx, c, raw_data.info->rows - 1 - r, phase_idx) - 32768);
+					raw_data_value = (float)(raw_data.at(fi, di, shut_idx, phase_idx, r, c, PIXELS_TOTAL) - 32768);
 					
 					//cmx_data_value = c * Em * albedo = H * dist_src_pix_rc,    dist_src_pix_rc = |r_src - r_x0(r,c)|^2,
 					cmx_data_value = raw_data_value * dist_src_pix_pow2_rc[r*raw_data.info->cols + c];
@@ -1343,9 +1343,9 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_
 			cv_frame_object.wait(locker_frame_object);
 		}
 		if (&Frame_00_cap != NULL)
-			Frame_00_cap = Frame(ushort_img[0], rows, cols, dist_, freq_, shut_, phases[0], 0, PIXELS_STORING_GLOBAL);
+			Frame_00_cap.set(ushort_img[0], rows, cols, freq_, dist_, shut_, phases[0], 0, PIXELS_STORING_GLOBAL);
 		if (&Frame_90_cap != NULL)
-			Frame_90_cap = Frame(ushort_img[0], rows, cols, dist_, freq_, shut_, phases[1], 1, PIXELS_STORING_GLOBAL);
+			Frame_90_cap.set(ushort_img[0], rows, cols, freq_, dist_, shut_, phases[1], 1, PIXELS_STORING_GLOBAL);
 		//std::cout << "UPDATED_NEW_FRAME";
 		UPDATED_NEW_FRAME = true;
 		UPDATED_NEW_SCENE = false;

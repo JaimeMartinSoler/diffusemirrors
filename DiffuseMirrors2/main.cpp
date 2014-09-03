@@ -57,7 +57,7 @@ int main_direct_vision_any(int argc, char** argv, bool loop = true, Scene scene 
 	char comport[128] = "COM6";
 	Frame * frame_00_null = NULL;	// (*frame_00_null) in PMD_params_to_Frame(...), to avoid this Frame meas. FRAME_00_CAPTURE else
 	Frame * frame_90_null = NULL;	// (*frame_90_null) in PMD_params_to_Frame(...), to avoid this Frame meas. FRAME_90_CAPTURE else
-	std::thread thread_PMD_params_to_Frame (PMD_params_to_Frame_anti_bug_thread, FRAME_00_CAPTURE, FRAME_90_CAPTURE, frequency, distance, shutter, comport, loop);
+	std::thread thread_PMD_params_to_Frame (PMD_params_to_Frame_anti_bug_thread, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), frequency, distance, shutter, comport, loop);
 	
 	// Set all the object3D of the corresponding scene
 	std::thread thread_set_scene (set_scene_direct_vision_any, loop);
@@ -87,7 +87,7 @@ int main_direct_vision_wall(int argc, char** argv, bool loop = true, Scene scene
 	char comport[128] = "COM6";
 	Frame * frame_00_null = NULL;	// (*frame_00_null) in PMD_params_to_Frame(...), to avoid this Frame meas. FRAME_00_CAPTURE else
 	Frame * frame_90_null = NULL;	// (*frame_90_null) in PMD_params_to_Frame(...), to avoid this Frame meas. FRAME_90_CAPTURE else
-	std::thread thread_PMD_params_to_Frame (PMD_params_to_Frame_anti_bug_thread, FRAME_00_CAPTURE, FRAME_90_CAPTURE, frequency, distance, shutter, comport, loop);
+	std::thread thread_PMD_params_to_Frame (PMD_params_to_Frame_anti_bug_thread, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), frequency, distance, shutter, comport, loop);
 	
 	// Set all the object3D of the corresponding scene
 	std::thread thread_set_scene (set_scene_direct_vision_wall, loop);
@@ -152,10 +152,10 @@ int main_fov_measurement(int argc, char** argv, bool loop = true, Scene scene = 
 	char comport[128] = "COM6";
 	Frame * frame_00_null = NULL;	// (*frame_00_null) in PMD_params_to_Frame(...), to avoid this Frame meas. FRAME_00_CAPTURE else
 	Frame * frame_90_null = NULL;	// (*frame_90_null) in PMD_params_to_Frame(...), to avoid this Frame meas. FRAME_90_CAPTURE else
-	std::thread thread_PMD_params_to_Frame (PMD_params_to_Frame_anti_bug_thread, FRAME_00_CAPTURE, FRAME_90_CAPTURE, frequency, distance, shutter, comport, loop);
+	std::thread thread_PMD_params_to_Frame (PMD_params_to_Frame_anti_bug_thread, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), frequency, distance, shutter, comport, loop);
 	
 	// plot the frame_00
-	std::thread thread_plot_frame_fov_measurement (plot_frame_fov_measurement, FRAME_00_CAPTURE, FRAME_90_CAPTURE, loop);
+	std::thread thread_plot_frame_fov_measurement (plot_frame_fov_measurement, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), loop);
 
 	// pause in main to allow control when the loops will finish
 	control_loop_pause();
@@ -214,7 +214,7 @@ int main_calibration_matrix (int argc, char** argv, char* dir_name_, char* file_
 	Info info = Info(dir_name_, file_name_);
 
 	// create the .cmx file, dealing with the .inf and .raw files. It internally creates the corresponding scene
-	std::thread thread_create_cmx_from_raw (create_cmx_from_raw_anti_bug_thread, info);
+	std::thread thread_create_cmx_from_raw (create_cmx_from_raw_anti_bug_thread, std::ref(info));
 
 	// pause in main to allow control when the loops will finish
 	//control_loop_pause();
@@ -262,9 +262,9 @@ int main(int argc, char** argv) {
 	// cd C:\Users\transient\Documents\Visual Studio 2012\Projects\DiffuseMirrors2\x64\Release
 	// DiffuseMirrors2.exe "80 90 100" "0 1 2 3" "1920" f:\tmp\pmdtest2 PMD_test_meas COM6 1
 	// ------------------------------------------------------------------------------------------------------------------------------
-
-	Scene scene = DIRECT_VISION_ANY;	// DIRECT_VISION_WALL, DIRECT_VISION_ANY, DIRECT_VISION_ANY_SIMULATION, DIFFUSED_MIRROR, FOV_MEASUREMENT, RAW_DATA, CALIBRATION_MATRIX, UNKNOWN_SCENE, TEST, RAW_DATA_AND_CALIBRATION_MATRIX, DIRECT_VISION_SIMULATION
-	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\test_03";
+	
+	Scene scene = FOV_MEASUREMENT;	// DIRECT_VISION_WALL, DIRECT_VISION_ANY, DIRECT_VISION_ANY_SIMULATION, DIFFUSED_MIRROR, FOV_MEASUREMENT, RAW_DATA, CALIBRATION_MATRIX, UNKNOWN_SCENE, TEST, RAW_DATA_AND_CALIBRATION_MATRIX, DIRECT_VISION_SIMULATION
+	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\test_04";
 	char file_name[1024] = "PMD";
 	bool loop = true;
 	

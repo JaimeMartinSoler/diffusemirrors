@@ -80,7 +80,7 @@ void update_wall_and_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point
 void set_screen_normals_pixel_patches(std::vector<Point*> & screen_patches_corners_normals_, std::vector<Point*> & screen_patches_centers_normals_, Point* camera_pos_, Point* camera_rot_, Point* camera_centre_);
 
 // sets a depth map from the 2 frames
-void set_depth_map(cv::Mat & depth_map_, Frame & Frame_00_cap, Frame & Frame_90_cap);
+void set_depth_map(std::vector<float> & depth_map_, Frame & Frame_00_cap, Frame & Frame_90_cap);
 
 // sets the albedo, rotation and bool values for each volume patch
 void set_volume_patches_params(std::vector<float> & volume_patches_albedo_, std::vector<Point*> & volume_patches_rot_, std::vector<bool> & volume_patches_bool_);

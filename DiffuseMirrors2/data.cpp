@@ -15,10 +15,158 @@
 #include <opencv/cv.h>	
 
 
-// ----- INFO -----------------------------------------------------------------------------------------------------------------------------
 
-// Constructor
+
+// ----------------------------------------------------------------------------------------------------------------------------------------
+// ----- INFO -----------------------------------------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------------------------------------------------------
+
+// ----- CONSTRUCTORS ---------------------------- // Note that each Constructor just contains its corresponding Setter
+
+// Constructor Default
+Info::Info() {
+	set ();
+}
+// Constructor Copy
+// pointers are copied "as are", the data pointed is not duplicated. For this use .clone(...) (if implemented)
+Info::Info(Info & info) {// External Parameters (file names):
+	set(info);
+}
+// Constructor: All parameters
+Info::Info(	char* dir_name_, char* file_name_, int sizeof_value_raw_, int rows_, int cols_,
+			std::vector<float> & freqs_, std::vector<float> & dists_, std::vector<float> & shuts_, std::vector<float> & phass_, int numtakes_, int error_code_,
+			int sizeof_value_cmx_, float laser_to_cam_offset_x_, float laser_to_cam_offset_y_, float laser_to_cam_offset_z_, float dist_wall_cam_) {
+	set (dir_name_, file_name_, sizeof_value_raw_, rows_, cols_, freqs_, dists_, shuts_, phass_, numtakes_, error_code_,
+		 sizeof_value_cmx_, laser_to_cam_offset_x_, laser_to_cam_offset_y_, laser_to_cam_offset_z_, dist_wall_cam_);
+}
+
+// Constructor from file
 Info::Info(char* dir_name_, char* file_name_) {
+	set (dir_name_, file_name_);
+}
+
+
+// ----- SETTERS --------------------------------- // Note that each Constructor just contains its corresponding Setter
+
+// Setter Default
+void Info::set () {
+
+	// External Parameters (file names):
+	dir_name = NULL;
+	file_name = NULL;
+	inf_full_file_name = NULL;
+	raw_full_file_name = NULL;
+	cmx_full_file_name = NULL;
+	cmd_full_file_name = NULL;
+	raw_take_full_file_name.resize(0);
+
+	// Info Parameters:
+	sizeof_value_raw = 0;
+	rows = 0;
+	cols = 0;
+	freqs = std::vector<float>(0);;
+	dists = std::vector<float>(0);;
+	shuts = std::vector<float>(0);;
+	phass = std::vector<float>(0);;
+	numtakes = 0;
+	// Calibration Matrix parameters:
+	sizeof_value_cmx = 0;
+	laser_to_cam_offset_x = 0.0f;
+	laser_to_cam_offset_y = 0.0f;
+	laser_to_cam_offset_z = 0.0f;
+	dist_wall_cam = 0.0f;
+
+	error_code = 0;
+}
+// Setter Copy
+// pointers are copied "as are", the data pointed is not duplicated. For this use .clone(...) (if implemented)
+void Info::set(Info & info) {// External Parameters (file names):
+	
+	dir_name = info.dir_name;
+	file_name = info.file_name;
+	inf_full_file_name = info.inf_full_file_name;
+	raw_full_file_name = info.raw_full_file_name;
+	cmx_full_file_name = info.cmx_full_file_name;
+	cmd_full_file_name = info.cmd_full_file_name;
+	raw_take_full_file_name = info.raw_take_full_file_name;
+
+	// Info Parameters:
+	sizeof_value_raw = info.sizeof_value_raw;	// bytes
+	rows = info.rows;
+	cols = info.cols;
+	freqs = info.freqs;
+	dists = info.dists;
+	shuts = info.shuts;
+	phass = info.phass;
+	numtakes = info.numtakes;
+	// Calibration Matrix parameters:
+	int sizeof_value_cmx = info.sizeof_value_cmx;	// bytes
+	float laser_to_cam_offset_x = info.laser_to_cam_offset_x;
+	float laser_to_cam_offset_y = info.laser_to_cam_offset_y;
+	float laser_to_cam_offset_z = info.laser_to_cam_offset_z;
+	float dist_wall_cam = info.dist_wall_cam;
+	int error_code = info.error_code;
+}
+// Setter All parameters
+void Info::set (char* dir_name_, char* file_name_, int sizeof_value_raw_, int rows_, int cols_,
+			std::vector<float> & freqs_, std::vector<float> & dists_, std::vector<float> & shuts_, std::vector<float> & phass_, int numtakes_, int error_code_,
+			int sizeof_value_cmx_, float laser_to_cam_offset_x_, float laser_to_cam_offset_y_, float laser_to_cam_offset_z_, float dist_wall_cam_) {
+
+	// External Parameters (file names):
+	dir_name = dir_name_;
+	file_name = file_name_;
+	if ((dir_name_ != NULL) && (file_name_ != NULL)) {
+		char inf_full_file_name_[1024];
+		char raw_full_file_name_[1024];
+		char cmx_full_file_name_[1024];
+		char cmd_full_file_name_[1024];
+		sprintf(inf_full_file_name_,"%s\\%s%s", dir_name_, file_name_, INF_FILENAME_SUFFIX);
+		sprintf(raw_full_file_name_,"%s\\%s%s", dir_name_, file_name_, RAW_FILENAME_SUFFIX);
+		sprintf(cmx_full_file_name_,"%s\\%s%s", dir_name_, file_name_, CMX_FILENAME_SUFFIX);
+		sprintf(cmd_full_file_name_,"%s\\%s%s", dir_name_, file_name_, CMD_FILENAME_SUFFIX);
+		inf_full_file_name = inf_full_file_name_;
+		raw_full_file_name = raw_full_file_name_;
+		cmx_full_file_name = cmx_full_file_name_;
+		cmd_full_file_name = cmd_full_file_name_;
+		raw_take_full_file_name.resize(numtakes_);
+		for (int i = 0; i < numtakes_; i++) {
+			char raw_take_full_file_name_i[1024];
+			sprintf (raw_take_full_file_name_i,"%s\\%s%s%03d%s", dir_name, file_name, NUMTAKE_FILENAME_APPEND, i, RAW_FILENAME_SUFFIX);
+			raw_take_full_file_name[i] = raw_take_full_file_name_i;
+		}
+	}
+	else {
+		inf_full_file_name = NULL;
+		raw_full_file_name = NULL;
+		cmx_full_file_name = NULL;
+		cmd_full_file_name = NULL;
+		raw_take_full_file_name.resize(numtakes_);
+		for (int i = 0; i < numtakes_; i++)
+			raw_take_full_file_name[i] = NULL;
+	}
+
+	// Info Parameters:
+	sizeof_value_raw = sizeof_value_raw_;
+	rows = rows_;
+	cols = cols_;
+	freqs = freqs_;
+	dists = dists_;
+	shuts = shuts_;
+	phass = phass_;
+	numtakes = numtakes_;
+	// Calibration Matrix parameters:
+	sizeof_value_cmx = sizeof_value_cmx_;
+	laser_to_cam_offset_x = laser_to_cam_offset_x_;
+	laser_to_cam_offset_y = laser_to_cam_offset_y_;
+	laser_to_cam_offset_z = laser_to_cam_offset_z_;
+	dist_wall_cam = dist_wall_cam_;
+
+	error_code = error_code_;
+
+}
+
+// Setter from file
+void Info::set (char* dir_name_, char* file_name_) {
 	
 	// External Parameters (file names):
 	dir_name = dir_name_;
@@ -127,131 +275,79 @@ Info::Info(char* dir_name_, char* file_name_) {
 
 	error_code = 0;	// no errors
 }
-// Constructor Copy
-	// pointers are copied "as are", the data pointed is not duplicated. For this use .clone(...) (if implemented)
-Info::Info(Info & info) {// External Parameters (file names):
-	
-	dir_name = info.dir_name;
-	file_name = info.file_name;
-	inf_full_file_name = info.inf_full_file_name;
-	raw_full_file_name = info.raw_full_file_name;
-	cmx_full_file_name = info.cmx_full_file_name;
-	cmd_full_file_name = info.cmd_full_file_name;
-	raw_take_full_file_name = info.raw_take_full_file_name;
-
-	// Info Parameters:
-	sizeof_value_raw = info.sizeof_value_raw;	// bytes
-	rows = info.rows;
-	cols = info.cols;
-	freqs = info.freqs;
-	dists = info.dists;
-	shuts = info.shuts;
-	phass = info.phass;
-	numtakes = info.numtakes;
-	// Calibration Matrix parameters:
-	int sizeof_value_cmx = info.sizeof_value_cmx;	// bytes
-	float laser_to_cam_offset_x = info.laser_to_cam_offset_x;
-	float laser_to_cam_offset_y = info.laser_to_cam_offset_y;
-	float laser_to_cam_offset_z = info.laser_to_cam_offset_z;
-	float dist_wall_cam = info.dist_wall_cam;
-	int error_code = info.error_code;
-}
-// Constructor: All parameters
-Info::Info(	char* dir_name_, char* file_name_, int sizeof_value_raw_, int rows_, int cols_,
-			std::vector<float> & freqs_, std::vector<float> & dists_, std::vector<float> & shuts_, std::vector<float> & phass_, int numtakes_, int error_code_,
-			int sizeof_value_cmx_, float laser_to_cam_offset_x_, float laser_to_cam_offset_y_, float laser_to_cam_offset_z_, float dist_wall_cam_) {
-
-	// External Parameters (file names):
-	dir_name = dir_name_;
-	file_name = file_name_;
-	if ((dir_name_ != NULL) && (file_name_ != NULL)) {
-		char inf_full_file_name_[1024];
-		char raw_full_file_name_[1024];
-		char cmx_full_file_name_[1024];
-		char cmd_full_file_name_[1024];
-		sprintf(inf_full_file_name_,"%s\\%s%s", dir_name_, file_name_, INF_FILENAME_SUFFIX);
-		sprintf(raw_full_file_name_,"%s\\%s%s", dir_name_, file_name_, RAW_FILENAME_SUFFIX);
-		sprintf(cmx_full_file_name_,"%s\\%s%s", dir_name_, file_name_, CMX_FILENAME_SUFFIX);
-		sprintf(cmd_full_file_name_,"%s\\%s%s", dir_name_, file_name_, CMD_FILENAME_SUFFIX);
-		inf_full_file_name = inf_full_file_name_;
-		raw_full_file_name = raw_full_file_name_;
-		cmx_full_file_name = cmx_full_file_name_;
-		cmd_full_file_name = cmd_full_file_name_;
-		raw_take_full_file_name.resize(numtakes_);
-		for (int i = 0; i < numtakes_; i++) {
-			char raw_take_full_file_name_i[1024];
-			sprintf (raw_take_full_file_name_i,"%s\\%s%s%03d%s", dir_name, file_name, NUMTAKE_FILENAME_APPEND, i, RAW_FILENAME_SUFFIX);
-			raw_take_full_file_name[i] = raw_take_full_file_name_i;
-		}
-	}
-	else {
-		inf_full_file_name = NULL;
-		raw_full_file_name = NULL;
-		cmx_full_file_name = NULL;
-		cmd_full_file_name = NULL;
-		raw_take_full_file_name.resize(numtakes_);
-		for (int i = 0; i < numtakes_; i++)
-			raw_take_full_file_name[i] = NULL;
-	}
-
-	// Info Parameters:
-	sizeof_value_raw = sizeof_value_raw_;
-	rows = rows_;
-	cols = cols_;
-	freqs = freqs_;
-	dists = dists_;
-	shuts = shuts_;
-	phass = phass_;
-	numtakes = numtakes_;
-	// Calibration Matrix parameters:
-	sizeof_value_cmx = sizeof_value_cmx_;
-	laser_to_cam_offset_x = laser_to_cam_offset_x_;
-	laser_to_cam_offset_y = laser_to_cam_offset_y_;
-	laser_to_cam_offset_z = laser_to_cam_offset_z_;
-	dist_wall_cam = dist_wall_cam_;
-
-	error_code = error_code_;
-
-}
-// Constructor Default
-Info::Info() {
-
-	// External Parameters (file names):
-	dir_name = NULL;
-	file_name = NULL;
-	inf_full_file_name = NULL;
-	raw_full_file_name = NULL;
-	cmx_full_file_name = NULL;
-	cmd_full_file_name = NULL;
-	raw_take_full_file_name.resize(0);
-
-	// Info Parameters:
-	sizeof_value_raw = 0;
-	rows = 0;
-	cols = 0;
-	freqs = std::vector<float>(0);;
-	dists = std::vector<float>(0);;
-	shuts = std::vector<float>(0);;
-	phass = std::vector<float>(0);;
-	numtakes = 0;
-	// Calibration Matrix parameters:
-	sizeof_value_cmx = 0;
-	laser_to_cam_offset_x = 0.0f;
-	laser_to_cam_offset_y = 0.0f;
-	laser_to_cam_offset_z = 0.0f;
-	dist_wall_cam = 0.0f;
-
-	error_code = 0;
-}
 
 
 
 
+
+// ----------------------------------------------------------------------------------------------------------------------------------------
 // ----- RAW DATA -------------------------------------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------------------------------------------------------
 
+// ----- CONSTRUCTORS ---------------------------- // Note that each Constructor just contains its corresponding Setter
+
+// Constructor Default
+RawData::RawData() {
+	set ();
+}
+// Constructor Copy
+// pointers are copied "as are", the data pointed is not duplicated. For this use .clone(...) (if implemented)
+RawData::RawData(RawData & raw_data) {
+	set (raw_data);
+}
+// Constructor All parameters
+RawData::RawData(Info & info_, unsigned short int* data_, int data_size_, int take_, int error_code_) { // by default: take_ = -1, error_code_ = 0
+	set (info_, data_, data_size_, take_, error_code_);
+}
 // Constructor
 // take: number of the raw_numtake file this is referencing to. take = -1 if refers to the normal raw file
 RawData::RawData(Info & info_, int take_) { // by default: take = -1
+	set (info_, take_);
+}
+
+
+// ----- SETTERS --------------------------------- // Note that each Constructor just contains its corresponding Setter
+
+// Setter Default
+void RawData::set () {
+	
+	// External Parameters
+	info = NULL;
+	take = -1;
+
+	// RawData Parameters
+	data = NULL;
+	data_size = 0;	
+	error_code = 0;
+}
+// Setter Copy
+// pointers are copied "as are", the data pointed is not duplicated. For this use .clone(...) (if implemented)
+void RawData::set (RawData & raw_data) {
+
+	// External Parameters
+	info = raw_data.info;
+	take = raw_data.take;	
+
+	// RawData Parameters
+	data = raw_data.data;
+	data_size = raw_data.data_size;	
+	error_code = raw_data.error_code;
+}
+// Setter All parameters
+void RawData::set (Info & info_, unsigned short int* data_, int data_size_, int take_, int error_code_) { // by default: take_ = -1, error_code_ = 0
+	
+	// External Parameters
+	info = &info_;
+	take = take_;	
+
+	// RawData Parameters
+	data = data_;
+	data_size = data_size_;	
+	error_code = error_code_;
+}
+// Setter from Info. It creates a CalibrationMatrix object from the .raw file noted in the info object
+// take: number of the raw_numtake file this is referencing to. take = -1 if refers to the normal raw file
+void RawData::set (Info & info_, int take_) { // by default: take = -1
 
 	// External Parameters (Info) and take
 	info = &info_;	// Info object pointer
@@ -307,43 +403,9 @@ RawData::RawData(Info & info_, int take_) { // by default: take = -1
 
 	error_code = 0;		// no errors
 }
-// Constructor Copy
-// pointers are copied "as are", the data pointed is not duplicated. For this use .clone(...) (if implemented)
-RawData::RawData(RawData & raw_data) {
 
-	// External Parameters
-	info = raw_data.info;
-	take = raw_data.take;	
 
-	// RawData Parameters
-	data = raw_data.data;
-	data_size = raw_data.data_size;	
-	error_code = raw_data.error_code;
-}
-// Constructor All parameters
-RawData::RawData(Info & info_, unsigned short int* data_, int data_size_, int take_, int error_code_) { // by default: take_ = -1, error_code_ = 0
-	
-	// External Parameters
-	info = &info_;
-	take = take_;	
-
-	// RawData Parameters
-	data = data_;
-	data_size = data_size_;	
-	error_code = error_code_;
-}
-// Constructor Default
-RawData::RawData() {
-	
-	// External Parameters
-	info = NULL;
-	take = -1;
-
-	// RawData Parameters
-	data = NULL;
-	data_size = 0;	
-	error_code = 0;
-}
+// ----- FUNCTIONS -------------------------------
 
 // Returns the index in data[] corresponding to the parameter indices
 // input r,c are considered like Matrix from 0 indexation. It also takes care on Pixels_storing
@@ -375,10 +437,71 @@ unsigned short int RawData::at(int freq_idx, int dist_idx, int shut_idx, int pha
 
 
 
+// ----------------------------------------------------------------------------------------------------------------------------------------
 // ----- CALIBRATION MATRIX ---------------------------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------------------------------------------------------
 
+// ----- CONSTRUCTORS ---------------------------- // Note that each Constructor just contains its corresponding Setter
+
+// Constructor Default
+CalibrationMatrix::CalibrationMatrix() {
+	set ();
+}
+// Constructor Copy
+// pointers are copied "as are", the data pointed is not duplicated. For this use .clone(...) (if implemented)
+CalibrationMatrix::CalibrationMatrix(CalibrationMatrix & cmx) {
+	set (cmx);
+}
+// Constructor All parameters
+CalibrationMatrix::CalibrationMatrix(Info & info_, float* data_, int data_size_, std::vector<float> & path_dist_0_, int error_code_) { // by default: error_code_ = 0
+	set (info_, data_, data_size_, path_dist_0_, error_code_);
+}
 // Constructor. It creates a CalibrationMatrix object from the .cmx file noted in the info object
 CalibrationMatrix::CalibrationMatrix(Info & info_) { // by default: pixels_storing_ = PIXELS_VALID
+	set (info_);
+}
+
+
+// ----- SETTERS --------------------------------- // Note that each Constructor just contains its corresponding Setter
+
+// Constructor Default
+void CalibrationMatrix::set () {
+
+	// External Parameters (RawData, Info)
+	info = NULL;
+
+	// Calibration Matrix Parameters
+	data = NULL;
+	data_size = 0;
+	path_dist_0 = std::vector<float>(0);
+	error_code = 0;
+}
+// Constructor Copy
+// pointers are copied "as are", the data pointed is not duplicated. For this use .clone(...) (if implemented)
+void CalibrationMatrix::set (CalibrationMatrix & cmx) {
+	// External Parameters (RawData, Info)
+	info = cmx.info;
+
+	// Calibration Matrix Parameters
+	data = cmx.data;
+	data_size = cmx.data_size;
+	path_dist_0 = cmx.path_dist_0;
+	error_code = cmx.error_code;
+}
+// Constructor All parameters
+void CalibrationMatrix::set (Info & info_, float* data_, int data_size_, std::vector<float> & path_dist_0_, int error_code_) { // by default: error_code_ = 0
+	
+	// External Parameters (RawData, Info)
+	info = &info_;
+
+	// Calibration Matrix Parameters
+	data = data_;
+	data_size = data_size_;
+	path_dist_0 = path_dist_0_;
+	error_code = error_code_;
+}
+// Constructor. It creates a CalibrationMatrix object from the .cmx file noted in the info object
+void CalibrationMatrix::set (Info & info_) { // by default: pixels_storing_ = PIXELS_VALID
 	
 	// External Parameters (Info)
 	info = &info_;
@@ -437,42 +560,9 @@ CalibrationMatrix::CalibrationMatrix(Info & info_) { // by default: pixels_stori
 
 	error_code = 0;		// no errors
 }
-// Constructor Copy
-// pointers are copied "as are", the data pointed is not duplicated. For this use .clone(...) (if implemented)
-CalibrationMatrix::CalibrationMatrix(CalibrationMatrix & cmx) {
-	// External Parameters (RawData, Info)
-	info = cmx.info;
 
-	// Calibration Matrix Parameters
-	data = cmx.data;
-	data_size = cmx.data_size;
-	path_dist_0 = cmx.path_dist_0;
-	error_code = cmx.error_code;
-}
-// Constructor All parameters
-CalibrationMatrix::CalibrationMatrix(Info & info_, float* data_, int data_size_, std::vector<float> & path_dist_0_, int error_code_) { // by default: error_code_ = 0
-	
-	// External Parameters (RawData, Info)
-	info = &info_;
 
-	// Calibration Matrix Parameters
-	data = data_;
-	data_size = data_size_;
-	path_dist_0 = path_dist_0_;
-	error_code = error_code_;
-}
-// Constructor Default
-CalibrationMatrix::CalibrationMatrix() {
-
-	// External Parameters (RawData, Info)
-	info = NULL;
-
-	// Calibration Matrix Parameters
-	data = NULL;
-	data_size = 0;
-	path_dist_0 = std::vector<float>(0);
-	error_code = 0;
-}
+// ----- FUNCTIONS -------------------------------
 
 // Returns the index in data[], corresponding to the parameter indices. 
 // input r,c are considered like Matrix from 0 indexation. It also takes care on Pixels_storing
@@ -514,6 +604,7 @@ float CalibrationMatrix::path_dist_0_at (int r, int c, Pixels_storing ps) { // d
 	return path_dist_0[path_dist_0_idx(r,c,ps)];
 }
 	
+
 // This is the Calibtration Matrix coefficient: c_{\omega}^{r,c}(\tau^{r,c}) in the Master Thesis document
 // Returns the value from the Calibration Matrix data at any path distance interpolating with the closest path distances. Path distances have to be equidistant in vector
 float CalibrationMatrix::c_coef (int freq_idx, int r, int c, float path_dist, Pixels_storing ps) { // default: ps = PIXELS_STORING_GLOBAL
@@ -570,10 +661,107 @@ float CalibrationMatrix::S_direct_vision (int freq_idx, int r, int c, Point & r_
 
 
 
+// ----------------------------------------------------------------------------------------------------------------------------------------
 // ----- FRAME ----------------------------------------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------------------------------------------------------
 
+// ----- CONSTRUCTORS ---------------------------- // Note that each Constructor just contains its corresponding Setter
+
+// Constructor Default
+Frame::Frame() {
+	set ();
+}
+// Constructor Copy
+// pointers are copied "as are", the data pointed is not duplicated. For this use .clone(...) (if implemented)
+Frame::Frame (Frame & frame) {
+	set (frame);
+}
+// Constructor All parameters
+Frame::Frame (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_,
+			  std::vector<float> & data_, Pixels_storing ps_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_) {
+	set (RawData_src_, freq_idx_, dist_idx_, shut_idx_, phas_idx_, data_, ps_, rows_, cols_, freq_, dist_, shut_, phas_);
+}
 // Constructor from RawData. RawData oriented
 Frame::Frame (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_, Pixels_storing ps_) { // by default: ps_ = PIXELS_STORING_GLOBAL
+	set (RawData_src_, freq_idx_, dist_idx_, shut_idx_, phas_idx_, ps_);
+}
+// Constructor from vector. Simulation oriented. For any Pixels_storing it consideres the vector matrix_vector properly arranged
+// If rows_ and cols_ are > 0, they will be the new rows and cols (interesting while simulating arbitrary rows and cols. Otherwise rows and cols are made from ps_
+Frame::Frame(std::vector<float> & data_, int rows_, int cols_, float freq_, float dist_ , float shut_, float phas_, Pixels_storing ps_) { // by default: r,c,f,d,s,p = 0, ps_ = PIXELS_STORING_GLOBAL
+	set (data_, rows_, cols_, freq_, dist_ , shut_, phas_, ps_);
+}
+// Constructor from ushort int*. Real Time capture oriented. rows_ and cols_ must be refered to the sizes of the total frame, regerdingless to the Pixels_storing
+Frame::Frame(unsigned short int* data_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_, int phas_idx_, Pixels_storing ps_) { // by default: ps_ = PIXELS_STORING_GLOBAL
+	set (data_, rows_, cols_, freq_, dist_, shut_, phas_, phas_idx_, ps_);
+}
+
+
+// ----- SETTERS --------------------------------- // Note that each Constructor just contains its corresponding
+
+// Setter Default
+void Frame::set () {
+	
+	// External Parameters (RawData, Info)
+	RawData_src = NULL;
+	freq_idx = 0;
+	dist_idx = 0;
+	shut_idx = 0;
+	phas_idx = 0;
+
+	// Frame Parameters
+	data = std::vector<float>(0);
+	ps = UNKNOWN_PIXELS_STORING;
+	rows = 0;
+	cols = 0;
+	freq = 0.0f;
+	dist = 0.0f;
+	shut = 0.0f;
+	phas = 0.0f;
+}
+// Setter Copy
+// pointers are copied "as are", the data pointed is not duplicated. For this use .clone(...) (if implemented)
+void Frame::set (Frame & frame) {
+
+	// External Parameters (RawData, Info)
+	RawData_src = frame.RawData_src;
+	freq_idx = frame.freq_idx;
+	dist_idx = frame.dist_idx;
+	shut_idx = frame.shut_idx;
+	phas_idx = frame.phas_idx;
+
+	// Frame Parameters
+	data = frame.data;
+	ps = frame.ps;
+	rows = frame.rows;
+	cols = frame.cols;
+	freq = frame.freq;
+	dist = frame.dist;
+	shut = frame.shut;
+	phas = frame.phas;
+}
+// Setter All parameters
+void Frame::set (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_,
+			  std::vector<float> & data_, Pixels_storing ps_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_) {
+
+	// External Parameters (RawData, Info)
+	RawData_src = &RawData_src_;
+	freq_idx = freq_idx_;
+	dist_idx = dist_idx_;
+	shut_idx = shut_idx_;
+	phas_idx = phas_idx_;
+
+	// Frame Parameters
+	data = data_;
+	ps = ps_;
+	rows = rows_;
+	cols = cols_;
+	freq = freq_;
+	dist = dist_;
+	shut = shut_;
+	phas = phas_;
+}
+// Setter from RawData. RawData oriented
+void Frame::set (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_, Pixels_storing ps_) { // by default: ps_ = PIXELS_STORING_GLOBAL
 	
 	// External Parameters (RawData, idices)
 	RawData_src = &RawData_src_;
@@ -603,9 +791,9 @@ Frame::Frame (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx
 			data[data_idx(r,c)] = (float)(RawData_src->at(freq_idx, dist_idx, shut_idx, phas_idx, r, c, ps) - 32768);
 	}	}
 }
-// Constructor from vector. Simulation oriented. For any Pixels_storing it consideres the vector matrix_vector properly arranged
-	// If rows_ and cols_ are > 0, they will be the new rows and cols (interesting while simulating arbitrary rows and cols. Otherwise rows and cols are made from ps_
-Frame::Frame(std::vector<float> & data_, int rows_, int cols_, float freq_, float dist_ , float shut_, float phas_, Pixels_storing ps_) { // by default: r,c,f,d,s,p = 0, ps_ = PIXELS_STORING_GLOBAL
+// Setter from vector. Simulation oriented. For any Pixels_storing it consideres the vector matrix_vector properly arranged
+// If rows_ and cols_ are > 0, they will be the new rows and cols (interesting while simulating arbitrary rows and cols. Otherwise rows and cols are made from ps_
+void Frame::set (std::vector<float> & data_, int rows_, int cols_, float freq_, float dist_ , float shut_, float phas_, Pixels_storing ps_) { // by default: r,c,f,d,s,p = 0, ps_ = PIXELS_STORING_GLOBAL
 	
 	// External Parameters (RawData, indices)
 	RawData_src = NULL;
@@ -633,8 +821,8 @@ Frame::Frame(std::vector<float> & data_, int rows_, int cols_, float freq_, floa
 	shut = shut_;
 	phas = phas_;
 }
-// Constructor from ushort int*. Real Time capture oriented. rows_ and cols_ must be refered to the sizes of the total frame, regerdingless to the Pixels_storing
-Frame::Frame(unsigned short int* data_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_, int phas_idx_, Pixels_storing ps_) { // by default: ps_ = PIXELS_STORING_GLOBAL
+// Setter from ushort int*. Real Time capture oriented. rows_ and cols_ must be refered to the sizes of the total frame, regerdingless to the Pixels_storing
+void Frame::set (unsigned short int* data_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_, int phas_idx_, Pixels_storing ps_) { // by default: ps_ = PIXELS_STORING_GLOBAL
 	
 	// External Parameters (RawData, indices)
 	RawData_src = NULL;
@@ -674,68 +862,9 @@ Frame::Frame(unsigned short int* data_, int rows_, int cols_, float freq_, float
 				data[data_idx(r,c)] = (float)(data_[idx_in_data] - 32768);
 	}	}	}
 }
-// Constructor Copy
-// pointers are copied "as are", the data pointed is not duplicated. For this use .clone(...) (if implemented)
-Frame::Frame (Frame & frame) {
 
-	// External Parameters (RawData, Info)
-	RawData_src = frame.RawData_src;
-	freq_idx = frame.freq_idx;
-	dist_idx = frame.dist_idx;
-	shut_idx = frame.shut_idx;
-	phas_idx = frame.phas_idx;
 
-	// Frame Parameters
-	data = frame.data;
-	ps = frame.ps;
-	rows = frame.rows;
-	cols = frame.cols;
-	freq = frame.freq;
-	dist = frame.dist;
-	shut = frame.shut;
-	phas = frame.phas;
-}
-// Constructor All parameters
-Frame::Frame (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_,
-			  std::vector<float> & data_, Pixels_storing ps_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_) {
-
-	// External Parameters (RawData, Info)
-	RawData_src = &RawData_src_;
-	freq_idx = freq_idx_;
-	dist_idx = dist_idx_;
-	shut_idx = shut_idx_;
-	phas_idx = phas_idx_;
-
-	// Frame Parameters
-	data = data_;
-	ps = ps_;
-	rows = rows_;
-	cols = cols_;
-	freq = freq_;
-	dist = dist_;
-	shut = shut_;
-	phas = phas_;
-}
-// Constructor Default
-Frame::Frame() {
-	
-	// External Parameters (RawData, Info)
-	RawData_src = NULL;
-	freq_idx = 0;
-	dist_idx = 0;
-	shut_idx = 0;
-	phas_idx = 0;
-
-	// Frame Parameters
-	data = std::vector<float>(0);
-	ps = UNKNOWN_PIXELS_STORING;
-	rows = 0;
-	cols = 0;
-	freq = 0.0f;
-	dist = 0.0f;
-	shut = 0.0f;
-	phas = 0.0f;
-}
+// ----- FUNCTIONS -------------------------------
 
 // r,c Matrix-like, 0-idx.
 int Frame::data_idx (int r, int c) {
@@ -764,11 +893,10 @@ void Frame::plot(int delay_ms) { // by default: delay_ms = 1000
 	}
 	
 	// show the image
-	cv::namedWindow("Frame", cv::WINDOW_AUTOSIZE);	// WINDOW_NORMAL, WINDOW_AUTOSIZE
-	cv::imshow("Frame", M_norm);
+	cv::namedWindow("Frame.plot()", cv::WINDOW_AUTOSIZE);	// WINDOW_NORMAL, WINDOW_AUTOSIZE
+	cv::imshow("Frame.plot()", M_norm);
 	cv::waitKey(delay_ms);
 }
-
 
 // plot frame amplitude with sinusoidal assumption
 void plot_frame(Frame & frame_00, Frame & frame_90, int delay_ms) { // by default: delay_ms = 1000
@@ -794,8 +922,8 @@ void plot_frame(Frame & frame_00, Frame & frame_90, int delay_ms) { // by defaul
 	}
 	
 	// show the image
-	cv::namedWindow("Frame", cv::WINDOW_AUTOSIZE);	// WINDOW_NORMAL, WINDOW_AUTOSIZE
-	cv::imshow("Frame", M_out);
+	cv::namedWindow("plot_frame(Frame,Frame)", cv::WINDOW_AUTOSIZE);	// WINDOW_NORMAL, WINDOW_AUTOSIZE
+	cv::imshow("plot_frame(Frame,Frame)", M_out);
 	cv::waitKey(delay_ms);
 
 }
@@ -811,7 +939,7 @@ void plot_frame_fov_measurement(Frame & frame_00, Frame & frame_90, bool loop) {
 	cv::Mat M_00, M_90;
 	int scale = 10;
 	bool first_iter = true;
-	cv::namedWindow("Frame", cv::WINDOW_AUTOSIZE);	// WINDOW_NORMAL, WINDOW_AUTOSIZE
+	cv::namedWindow("plot_frame_fov_measurement(Frame,Frame)", cv::WINDOW_AUTOSIZE);	// WINDOW_NORMAL, WINDOW_AUTOSIZE
 
 	// --- LOOP ------------------------------------------------------------------------------------------------
 	while(loop || first_iter) {
@@ -862,13 +990,17 @@ void plot_frame_fov_measurement(Frame & frame_00, Frame & frame_90, bool loop) {
 		cv::resize(M_00, M_00, cv::Size(), scale, scale, cv::INTER_NEAREST);
 
 		// show window
-		cv::imshow("Frame", M_00);
+		cv::imshow("plot_frame_fov_measurement(Frame,Frame)", M_00);
 		cv::waitKey(20);
 	}
 }
 
 
 
+
+// ----------------------------------------------------------------------------------------------------------------------------------------
+// ----- OTHER FUNCTIONS ------------------------------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------------------------------------------------------
 
 // sets a vector of floats form a char array from a given delimiter
 void char_array_to_float_vector_from_delimiter (char* char_array, std::vector<float> & float_vector, char delimiter) {
@@ -900,4 +1032,16 @@ void char_array_to_float_vector_from_delimiter (char* char_array, std::vector<fl
         }
     }  
 }
+
+// returns the corresponding index position of a vector from r,c considering Matrix-like r,c ordering 0-indexed.
+// Takes into account the Pixels_storing
+int rc2idx (int r, int c, Pixels_storing ps) { // default: ps = PIXELS_STORING_GLOBAL
+	
+	if (ps == PIXELS_VALID)
+		return CAMERA_PIX_X_VALID * r + c;
+	else if (ps == PIXELS_TOTAL)
+		return CAMERA_PIX_X * r + c;
+	return -1;
+}
+
 
