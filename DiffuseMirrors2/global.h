@@ -7,11 +7,24 @@
 #include <condition_variable> // std::condition_variable
 
 // enums
-enum Scene {DIRECT_VISION_WALL, DIRECT_VISION_ANY, DIRECT_VISION_ANY_SIMULATION, DIFFUSED_MIRROR, FOV_MEASUREMENT, RAW_DATA, CALIBRATION_MATRIX, UNKNOWN_SCENE, TEST, RAW_DATA_AND_CALIBRATION_MATRIX, DIRECT_VISION_SIMULATION};
+enum ShapeType { UNKNOWN, PT, LINE, TRIANGLE, QUAD };
+enum SceneType {DIRECT_VISION_WALL, DIRECT_VISION_ANY, DIRECT_VISION_ANY_SIMULATION, DIFFUSED_MIRROR, FOV_MEASUREMENT, RAW_DATA, CALIBRATION_MATRIX, UNKNOWN_SCENE, TEST, RAW_DATA_AND_CALIBRATION_MATRIX, DIRECT_VISION_SIMULATION};
 // The PMD camera stores 165x120 pixels but some of them in the edges can not be considered as valid pixel measurements
 enum Pixels_storing {PIXELS_TOTAL, PIXELS_VALID, UNKNOWN_PIXELS_STORING};
+enum Object3DType { CAMERA, LASER, WALL, OCCLUDER, FLOOR, VOLUME, WALL_PATCHES, CAMERA_FOV, LASER_RAY, VOLUME_PATCHES, PIXEL_PATCHES, UNKOWN};
+enum BoxSides { FRONT = 0, LEFT = 1, BACK = 2, RIGHT = 3, BOTTOM = 4, TOP = 5};
 //enum Source {DATA_FILE, DATA_REAL_TIME, SIMULATION, UNKNOWN_SRC};
 
+// classes data.h
+class Info;
+class RawData;
+class CalibrationMatrix;
+class Frame;
+// classes scene.h
+class Point;
+class Shape;
+class Object3D;
+class Scene;
 
 #define PIXELS_STORING_GLOBAL PIXELS_VALID		// PIXELS_TOTAL,    PIXELS_VALID,    UNKNOWN_PIXELS_STORING
 
@@ -85,6 +98,7 @@ const float VOLUME_GRID_Y_ANGLE_MAX = 180.0f;
 const float VOLUME_GRID_Y_ANGLE_STEP = 10.0f;
 
 // OBJECT3D_SET[i], i = constant index content
+/*
 const int CAMERA		 = 0;
 const int LASER			 = 1;
 const int WALL			 = 2;
@@ -96,21 +110,15 @@ const int CAMERA_FOV	 = 7;
 const int LASER_RAY		 = 8;
 const int VOLUME_PATCHES = 9;
 const int PIXEL_PATCHES  = 10;	// Only to represent the Direct-Vision-Any scene
+*/
 
 // Image Formation Model
 const float L_E = 1.0f;	// Le(l) in the paper. Radiance from the light point in the wall from the laser
 
-// vectors with all the object3D to be studied (and rendered)
-const int OBJECT3D_SET_SIZE = 11;
-class PointMesh;
-typedef std::vector<PointMesh*> Object3D;
-typedef std::vector<Object3D*> Object3D_Set;
-extern Object3D_Set OBJECT3D_SET;
+// SCENE MAIN
+extern Scene SCENEMAIN;
 
 // RawData and FrameObjects
-class Info;
-class RawData;
-class Frame;
 extern Info INFO;				// Info with the parameters of the .inf file
 extern RawData DATAPMD_READ;	// RawData Read from a File (.dat)
 extern RawData DATAPMD_CAPTURE;	// RawData Captured (directly from the PMD to this object)

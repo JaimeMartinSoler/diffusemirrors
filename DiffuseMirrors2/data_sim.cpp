@@ -2,7 +2,7 @@
 #include <vector>
 #include <map>
 #include "global.h"
-#include "shapes.h"
+
 #include "data_sim.h"
 #include "data.h"
 #include "scene.h"
@@ -17,8 +17,8 @@ void get_data_sim_diffused_mirror() {
 	// L_E;		// Le(l) in the paper. Radiance from the light point in the wall from the laser
 	
 	// Radiance from each volume patch. L(x) in the paper. 
-	std::cout << "\nHERE 00A: " << (*OBJECT3D_SET[VOLUME_PATCHES]).size();
-	int radiance_volume_patches_size = (*OBJECT3D_SET[VOLUME_PATCHES]).size();
+	std::cout << "\nHERE 00A: ";
+	int radiance_volume_patches_size = SCENEMAIN.o[VOLUME_PATCHES].s.size();	// TO-DO
 	std::cout << "\nHERE 00B";
 	std::vector<float> radiance_volume_patches(radiance_volume_patches_size);
 	get_radiance_volume_patches(radiance_volume_patches);
@@ -96,9 +96,9 @@ void get_data_sim_direct_vision_wall() {
 
 // gets the Radiance from each volume patch (radiance from each volume patch). L(x) in the paper. 
 // It deals with patches backing (not facing) the wall (they are considered ALWAYS facing the wall)
-// TO-DO: OCCLUSION
+// TO-DO: SOLVE THIS
 void get_radiance_volume_patches(std::vector<float> & radiance_volume_patches_) {
-
+	/*
 	// wall and laser ray intersection point
 	Point* laser_ray_from = (*(*OBJECT3D_SET[LASER])[0]).c;			// center of laser
 	Point* laser_ray_normal = (*(*OBJECT3D_SET[LASER])[0]).n[0];	// normal of laser
@@ -128,6 +128,7 @@ void get_radiance_volume_patches(std::vector<float> & radiance_volume_patches_) 
 		else
 			radiance_volume_patches_[iv] = - L_E * volume_patch_albedo * geometry_term;
 	}
+	*/
 }
 
 
@@ -138,7 +139,8 @@ void get_radiance_volume_patches(std::vector<float> & radiance_volume_patches_) 
 // 4 times higher combined L(x) than 1 wall patch (the comb of the previous ones) of area 4.0
 // Also used in the "MYSELF" part
 void get_radiance_volume_patches_x_area(std::vector<float> & radiance_volume_patches_x_area_, std::vector<float> & radiance_volume_patches_) {
-	
+	// TO-DO
+	/*
 	// volume patch
 	PointMesh* volume_patch;
 
@@ -146,14 +148,15 @@ void get_radiance_volume_patches_x_area(std::vector<float> & radiance_volume_pat
 		volume_patch = (*OBJECT3D_SET[VOLUME_PATCHES])[iv];
 		radiance_volume_patches_x_area_[iv] = radiance_volume_patches_[iv]*(*volume_patch).get_area();
 	}
+	*/
 }
 
 
 // gets the Radiance from the wall patch (radiance from each wall patch). L(w) in the paper. 
 // It deals with volume patches backing (not facing) wall patches (they are considered ALWAYS facing the wall)
-// TO-DO: OCCLUSION
+// TO-DO: Solve This
 void get_radiance_wall_patches(std::vector<float> & radiance_wall_patches_, std::vector<float> & radiance_volume_patches_) {
-	
+	/*
 	// wall patch center
 	Point* wall_patch_c;
 	// wall patch normal
@@ -187,6 +190,7 @@ void get_radiance_wall_patches(std::vector<float> & radiance_wall_patches_, std:
 				radiance_wall_patches_[iw] -= radiance_volume_patches_[iv] * wall_patch_albedo * geometry_term;
 		}
 	}
+	*/
 }
 
 
@@ -196,6 +200,8 @@ void get_radiance_wall_patches(std::vector<float> & radiance_wall_patches_, std:
 //   y axis = value = amplitude of the impulse response
 void get_transient_image(std::vector<std::multimap<float, float>> & transient_image_, std::vector<float> & radiance_volume_patches_) {
 
+	// TO-DO
+	/*
 	// laser center
 	Point* laser_c = (*(*OBJECT3D_SET[LASER])[0]).c;				// center of laser
 	// wall and laser ray intersection point
@@ -244,6 +250,7 @@ void get_transient_image(std::vector<std::multimap<float, float>> & transient_im
 		}
 		transient_image_[iw] = transient_pixel;
 	}
+	*/
 }
 
 
@@ -253,7 +260,9 @@ void get_transient_image(std::vector<std::multimap<float, float>> & transient_im
 //   x axis = key   = time (r) in ns
 //   y axis = value = amplitude of the impulse response
 void get_transient_image_simple(std::vector<std::multimap<float, float>> & transient_image_simple_) {
-
+	
+	// TO-DO
+	/*
 	// laser center
 	Point* laser_c = (*(*OBJECT3D_SET[LASER])[0]).c;				// center of laser
 	// camera center
@@ -281,6 +290,7 @@ void get_transient_image_simple(std::vector<std::multimap<float, float>> & trans
 		transient_pixel_simple.insert(std::pair<float, float>(r, alpha_r));
 		transient_image_simple_[i] = transient_pixel_simple;
 	}
+	*/
 }
 
 

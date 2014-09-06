@@ -4,7 +4,7 @@
 
 #include <windows.h>  // for MS Windows
 #include <GL/glut.h>  // GLUT, include glu.h and gl.h
-#include "shapes.h"
+#include "scene.h"
 
 
 // Initialize OpenGL Graphics 
@@ -21,26 +21,13 @@ void transform_UI();
 
 
 
-// It renders all the object3D of OBJECT3D_SET
-void render_OBJECT3D_SET();
-
-// It renders all the PointMesh of the Object3D obj
-void render_Object3D(Object3D* obj, int OBJECT3D_IDX);
-
-// It renders all the shapes of the PointMesh pm
-void render_PointMesh(PointMesh* pm, int OBJECT3D_IDX);
-
-// It renders a rectangle from 4 points
-void render_rectangle(Point* p0, Point* p1, Point* p2, Point* p3, float* gray_color, int OBJECT3D_IDX);
-
-// It renders a triangle from 3 points
-void render_triangle(Point* p0, Point* p1, Point* p2, float* gray_color, int OBJECT3D_IDX);
-
-// It renders a line from 2 points
-void render_line(Point* p0, Point* p1, Point* color);
-
-// It renders a point from 1 point
-void render_point(Point* p0);
+void render_Scene(Scene & scene);
+void render_Object3D(Object3D & o);
+void render_Shape(Shape & s, bool renderEdges = false);
+void render_Rectangle(Point & p0, Point & p1, Point & p2, Point & p3, float R, float G, float B, float A, bool renderEdges = false);
+void render_Triangle(Point & p0, Point & p1, Point & p2, float R, float G, float B, float A, bool renderEdges = false);
+void render_Line(Point & p0, Point & p1, float R, float G, float B, float A);
+void render_Point(Point & p0, float R, float G, float B, float A);
 
 
 

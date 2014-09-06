@@ -208,7 +208,6 @@ copy OpenCV\bin64\opencv_*.dll "$(OutDir)"</Command>
     <ClCompile Include="render.cpp" />
     <ClCompile Include="scene.cpp" />
     <ClCompile Include="SerialPort.cpp" />
-    <ClCompile Include="shapes.cpp" />
     <ClCompile Include="test.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -221,7 +220,6 @@ copy OpenCV\bin64\opencv_*.dll "$(OutDir)"</Command>
     <ClInclude Include="render.h" />
     <ClInclude Include="scene.h" />
     <ClInclude Include="SerialPort.h" />
-    <ClInclude Include="shapes.h" />
     <ClInclude Include="test.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

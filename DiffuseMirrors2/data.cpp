@@ -3,7 +3,7 @@
 #include <stdlib.h>     // atof
 
 #include "global.h"
-#include "shapes.h"
+
 #include "data.h"
 #include "data_sim.h"
 #include "capturetool2.h"
@@ -547,8 +547,8 @@ void CalibrationMatrix::set (Info & info_) { // by default: pixels_storing_ = PI
 	// TO-DO: Implement this with a local variable SHAPES_LOCAL_OS
 	std::vector<float> dist_laser_rc, dist_cam_rc;		// these dists are ordered as WALL_PATCHES and it is, by rows, from down to top, we want it from top to down
 	set_scene_calibration_matrix (info, PIXELS_TOTAL);	// set the corresponding scene (camera, laser, wall and wall_patches)
-	dist_2_centers( (*(*OBJECT3D_SET[LASER])[0]).c , (*OBJECT3D_SET[WALL_PATCHES]), dist_laser_rc);
-	dist_2_centers( (*(*OBJECT3D_SET[CAMERA])[0]).c, (*OBJECT3D_SET[WALL_PATCHES]), dist_cam_rc);
+	// dist_centers( (*(*OBJECT3D_SET[LASER])[0]).c , (*OBJECT3D_SET[WALL_PATCHES]), dist_laser_rc); // TO-DO
+	// dist_centers( (*(*OBJECT3D_SET[CAMERA])[0]).c, (*OBJECT3D_SET[WALL_PATCHES]), dist_cam_rc); // TO-DO
 	clear_scene();										// clear scene
 	// path_dist_0
 	path_dist_0.resize (info->rows * info->cols);
@@ -651,8 +651,8 @@ float CalibrationMatrix::c_coef (int freq_idx, int r, int c, float path_dist, Pi
 // Uses c(...)
 float CalibrationMatrix::S_direct_vision (int freq_idx, int r, int c, Point & r_src, Point & r_x,  Point & r_cam, float relative_albedo, Pixels_storing ps) { // by default: relative_albedo = 1.0f, ps = PIXELS_STORING_GLOBAL
 
-	float dist_src_x = dist_2(&r_src, &r_x);	// TO-DO: This will take references, not pointers
-	float dist_cam_x = dist_2(&r_cam, &r_x);	// TO-DO: This will take references, not pointers
+	float dist_src_x = dist(r_src, r_x);	// TO-DO: This will take references, not pointers
+	float dist_cam_x = dist(r_cam, r_x);	// TO-DO: This will take references, not pointers
 	float path_dist = dist_src_x + dist_cam_x;
 
 	return c_coef (freq_idx, r, c, path_dist, ps) * relative_albedo / (dist_src_x * dist_src_x);

@@ -2,7 +2,7 @@
 #include "capturetool2.h"
 #include "data.h"
 #include "global.h"
-#include "shapes.h"
+
 #include "scene.h"
 #include <stdio.h>
 #include <stdlib.h>     // atof
@@ -981,9 +981,9 @@ void create_cmx_from_raw(Info & info_) {
 	int shut_idx = raw_data.info->shuts.size() - 1;	//always, the calibration matrix is 1-shutter oriented
 	// dist_src_pix_rc vector
 	std::vector<float> dist_src_pix_pow2_rc, v_aux;
-	set_scene_calibration_matrix (&info_, PIXELS_TOTAL);	// set the corresponding scene (camera, laser, wall and wall_patches)
-	dist_2_pow2_centers( (*(*OBJECT3D_SET[LASER])[0]).c, (*OBJECT3D_SET[WALL_PATCHES]), v_aux);
-	clear_scene();										// clear scene
+	set_scene_calibration_matrix (&info_, PIXELS_TOTAL);	// set the corresponding scene (camera, laser, wall and wall_patches) // TO-DO: create this
+	//dist_2_pow2_centers( (*(*OBJECT3D_SET[LASER])[0]).c, (*OBJECT3D_SET[WALL_PATCHES]), v_aux);	 // TO-DO: create this
+	//clear_scene();										// clear scene	 // TO-DO: create this
 	dist_src_pix_pow2_rc.resize(v_aux.size());	// v_aux is ordered as WALL_PATCHES and it is, by rows, from down to top, we want it from top to down
 	for (size_t r = 0; r < raw_data.info->rows; r++) {		// should be: raw_data.info->heigth = CAMERA_PIX_Y
 		for (size_t c = 0; c < raw_data.info->cols; c++) {		// should be: raw_data.info->width  = CAMERA_PIX_X

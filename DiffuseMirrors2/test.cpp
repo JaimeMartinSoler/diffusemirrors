@@ -7,7 +7,6 @@
 #include "scene.h"
 #include "data_sim.h"
 #include "data.h"
-#include "shapes.h"
 #include "capturetool2.h"
 // http://eigen.tuxfamily.org/dox/group__QuickRefPage.html
 #include <Eigen/Dense>
@@ -37,6 +36,8 @@ void test_create_raw_from_raw_takes() {
 	
 	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\test_04";
 	char file_name[1024] = "PMD";
+	//char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\test_03";
+	//char file_name[1024] = "PMD";
 	Info info(dir_name, file_name);
 
 	RawData raw_data_take_0 (info, 0);
@@ -161,10 +162,10 @@ void test_get_area() {
 	Point* p1 = new Point(3.0f, 1.0f, 1.0f);
 	Point* p2 = new Point(3.0f, 2.0f, 1.0f);
 	Point* p3 = new Point(1.0f, 3.0f, 1.0f);
-	PointMesh* rect_0 = new PointMesh(vp_rectangle(p0, p1, p2, p3), RECTANGLE, p0, 1.0f);
-	PointMesh* tri_0  = new PointMesh(vp_triangle(p0, p1, p2), TRIANGLE, p0, 1.0f);
-	float area_rect_0 = (*rect_0).get_area();
-	float area_tri_0  = (*tri_0).get_area();
+	//PointMesh* rect_0 = new PointMesh(vp_rectangle(p0, p1, p2, p3), RECTANGLE, p0, 1.0f);
+	//PointMesh* tri_0  = new PointMesh(vp_triangle(p0, p1, p2), TRIANGLE, p0, 1.0f);
+	//float area_rect_0 = (*rect_0).get_area();
+	//float area_tri_0  = (*tri_0).get_area();
 	int erase_me = 0;
 }
 
@@ -175,13 +176,13 @@ void test_geometry_term() {
 	Point v1(1.0f, 1.0f, 0.0f);
 	// float cos_01 = cos_vectors(new Point(1.0f, 0.0f, 0.0f), new Point(1.0f, 1.0f, 0.0f));	// this creates 2 points in the memory heap permanently (till deletion in the code). BAD
 	//float cos_01 = cos_vectors(&(Point(1.0f, 0.0f, 0.0f)), &(Point(1.0f, 1.0f, 1.0f)));		// this creates 2 points ONLY in the scope and they will be AUTOMATICALLY DELETED  . GOOD
-	float cos_01 = get_cos_vectors(&(Point(v0)), &(Point(1.0f, 1.0f, 1.0f)));		// this creates 2 points ONLY in the scope and they will be AUTOMATICALLY DELETED  . GOOD
+	//float cos_01 = get_cos_vectors(&(Point(v0)), &(Point(1.0f, 1.0f, 1.0f)));		// this creates 2 points ONLY in the scope and they will be AUTOMATICALLY DELETED  . GOOD
 
 	Point p0(0.0f, 0.0f, 0.0f);
 	Point n0(0.0f, 0.0f, -1.0f); n0.normalize();
 	Point p1(0.0f, 0.0f, -1.0f);
 	Point n1(0.0f, 1.0f, 1.0f); n1.normalize();
-	float gt_01 = get_geometry_term(&p0, &n0, &p1, &n1);
+	//float gt_01 = get_geometry_term(&p0, &n0, &p1, &n1);
 
 }
 
