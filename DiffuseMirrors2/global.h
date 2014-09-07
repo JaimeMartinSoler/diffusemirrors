@@ -12,7 +12,7 @@ enum SceneType {DIRECT_VISION_WALL, DIRECT_VISION_ANY, DIRECT_VISION_ANY_SIMULAT
 // The PMD camera stores 165x120 pixels but some of them in the edges can not be considered as valid pixel measurements
 enum Pixels_storing {PIXELS_TOTAL, PIXELS_VALID, UNKNOWN_PIXELS_STORING};
 enum Object3DType { CAMERA, LASER, WALL, OCCLUDER, FLOOR, VOLUME, WALL_PATCHES, CAMERA_FOV, LASER_RAY, VOLUME_PATCHES, PIXEL_PATCHES, UNKOWN};
-enum BoxSides { FRONT = 0, LEFT = 1, BACK = 2, RIGHT = 3, BOTTOM = 4, TOP = 5};
+enum BoxSides { FRONT = 0, RIGHT = 1, BACK = 2, LEFT = 3, BOTTOM = 4, TOP = 5 };
 //enum Source {DATA_FILE, DATA_REAL_TIME, SIMULATION, UNKNOWN_SRC};
 
 // classes data.h

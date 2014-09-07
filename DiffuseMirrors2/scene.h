@@ -80,7 +80,9 @@ public:
 	// translation (setter)
 	void Point::tra(Point const & pr);
 	// rotation optimal (cosT and sinT already calculated) absolute (from (0,0,0)), radians (setters). All rot functions (from any class) call this 4 functions internally
-	void Point::rotOpt(Point & axis_norm, float cosT, float sinT);
+	void Point::rotOpt(	float const & r11, float const & r12, float const & r13,
+						float const & r21, float const & r22, float const & r23,
+						float const & r31, float const & r32, float const & r33);
 	void Point::rotxOpt(float cosT, float sinT);
 	void Point::rotyOpt(float cosT, float sinT);
 	void Point::rotzOpt(float cosT, float sinT);
@@ -363,7 +365,10 @@ public:
 	void Scene::setCamera(Point & posC, Point & axisN, float deg, Point & size, Point & c_relToP0);
 	void Scene::setCamera(Point & posC, Point & axisN, float deg, Point & size, Point & c_relToP0,
 		std::vector<std::vector<float>> & albedoVV, std::vector<std::vector<float>> & RVV, std::vector<std::vector<float>> & GVV, std::vector<std::vector<float>> & BVV, std::vector<std::vector<float>> & AVV);
-
+	// Setter Laser
+	void Scene::setLaser(Point & posC, Point & axisN, float deg, Point & size, Point & c_relToP0);
+	void Scene::setLaser(Point & posC, Point & axisN, float deg, Point & size, Point & c_relToP0,
+		std::vector<std::vector<float>> & albedoVV, std::vector<std::vector<float>> & RVV, std::vector<std::vector<float>> & GVV, std::vector<std::vector<float>> & BVV, std::vector<std::vector<float>> & AVV);
 	// Setter Scene Direct Vision
 	void Scene::setScene_DirectVision();
 	
@@ -391,6 +396,11 @@ public:
 // ----------------------------------------------------------------------------------------------------------------------------------------
 float mean(std::vector<float> & vf);
 Point mean(std::vector<Point> & vp);
+void setRodriguesMatrix(float & r11, float & r12, float & r13,
+	float & r21, float & r22, float & r23,
+	float & r31, float & r32, float & r33,
+	float const & wx, float const & wy, float const & wz, float const & rad);
+
 
 // MAIN OPERATORS
 int main_scene(int argc, char**argv);

@@ -169,10 +169,17 @@ void Point::tra(Point const & pr) {
 	x += pr.x; y += pr.y; z += pr.z;
 }
 // rotation optimal (cosT and sinT already calculated) absolute (from (0,0,0)), radians (setters). All rot functions call this functions internally
-void Point::rotOpt(Point & axis_norm, float cosT, float sinT) {
+void Point::rotOpt(	float const & r11, float const & r12, float const & r13, 
+					float const & r21, float const & r22, float const & r23, 
+					float const & r31, float const & r32, float const & r33) {
 	// Rodrigues' Rotation Formula:
 	// http://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula
-	(*this) = (*this) * cosT + axis_norm.cross(*this) * sinT + axis_norm * (axis_norm.dot(*this)) * (1 - cosT);
+	//(*this) = (*this) * cosT + axis_norm.cross(*this) * sinT + axis_norm * (axis_norm.dot(*this)) * (1 - cosT);
+	float xc = x;
+	float yc = y;
+	x = r11*xc + r12*yc + r13*z;
+	y = r21*xc + r22*yc + r23*z;
+	z = r31*xc + r32*yc + r33*z;
 }
 void Point::rotxOpt(float cosT, float sinT) {
 	float y_copy = y;
@@ -191,7 +198,9 @@ void Point::rotzOpt(float cosT, float sinT) {
 }
 // rotation absolute (from (0,0,0)), radians (setters)
 void Point::rot(Point & axis_norm, float rad) {
-	rotOpt(axis_norm, cos(rad), sin(rad));
+	float r11, r12, r13, r21, r22, r23, r31, r32, r33;
+	setRodriguesMatrix(r11, r12, r13, r21, r22, r23, r31, r32, r33, axis_norm.x, axis_norm.y, axis_norm.z, rad);
+	rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33);
 }
 void Point::rotx(float rad) {
 	rotxOpt(cos(rad), sin(rad));
@@ -204,8 +213,7 @@ void Point::rotz(float rad) {
 }
 // rotation absolute (from (0,0,0)), degrees (setters)
 void Point::rotDeg(Point & axis_norm, float deg) {
-	float rad = deg * PI / 180.0f;
-	rotOpt(axis_norm, cos(rad), sin(rad));
+	rot(axis_norm, deg * PI / 180.0f);
 }
 void Point::rotxDeg(float deg) {
 	float rad = deg * PI / 180.0f;
@@ -221,8 +229,10 @@ void Point::rotzDeg(float deg) {
 }
 // rotation relative (from pr), radians (setters)
 void Point::rotFromP(Point & axis_norm, float rad, Point & pr) {
+	float r11, r12, r13, r21, r22, r23, r31, r32, r33;
+	setRodriguesMatrix(r11, r12, r13, r21, r22, r23, r31, r32, r33, axis_norm.x, axis_norm.y, axis_norm.z, rad);
 	x -= pr.x; y -= pr.y; z -= pr.z;
-	rotOpt(axis_norm, cos(rad), sin(rad));
+	rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33);
 	x += pr.x; y += pr.y; z += pr.z;
 }
 void Point::rotxFromP(float rad, Point & pr) {
@@ -242,28 +252,16 @@ void Point::rotzFromP(float rad, Point & pr) {
 }
 // rotation relative (from pr), degrees (setters)
 void Point::rotDegFromP(Point & axis_norm, float deg, Point & pr) {
-	float rad = deg * PI / 180.0f;
-	x -= pr.x; y -= pr.y; z -= pr.z;
-	rotOpt(axis_norm, cos(rad), sin(rad));
-	x += pr.x; y += pr.y; z += pr.z;
+	rotFromP(axis_norm, deg * PI / 180.0f, pr);
 }
 void Point::rotxDegFromP(float deg, Point & pr) {
-	float rad = deg * PI / 180.0f;
-	x -= pr.x; y -= pr.y; z -= pr.z;
-	rotxOpt(cos(rad), sin(rad));
-	x += pr.x; y += pr.y; z += pr.z;
+	rotxFromP(deg * PI / 180.0f, pr);
 }
 void Point::rotyDegFromP(float deg, Point & pr) {
-	float rad = deg * PI / 180.0f;
-	x -= pr.x; y -= pr.y; z -= pr.z;
-	rotyOpt(cos(rad), sin(rad));
-	x += pr.x; y += pr.y; z += pr.z;
+	rotyFromP(deg * PI / 180.0f, pr);
 }
 void Point::rotzDegFromP(float deg, Point & pr) {
-	float rad = deg * PI / 180.0f;
-	x -= pr.x; y -= pr.y; z -= pr.z;
-	rotzOpt(cos(rad), sin(rad));
-	x += pr.x; y += pr.y; z += pr.z;
+	rotzFromP(deg * PI / 180.0f, pr);
 }
 
 
@@ -401,11 +399,11 @@ void Shape::traCto(Point & Cto) {
 }
 // rotation absolute (from (0,0,0)), radians (setters)
 void Shape::rot(Point & axis_norm, float rad) {
-	float cosT = cos(rad);
-	float sinT = sin(rad);
+	float r11, r12, r13, r21, r22, r23, r31, r32, r33;
+	setRodriguesMatrix(r11, r12, r13, r21, r22, r23, r31, r32, r33, axis_norm.x, axis_norm.y, axis_norm.z, rad);
 	for (size_t i = 0; i < p.size(); i++)
-		p[i].rotOpt(axis_norm, cosT, sinT);
-	c.rotOpt(axis_norm, cosT, sinT);
+		p[i].rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33);
+	c.rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33);
 }
 void Shape::rotx(float rad) {
 	float cosT = cos(rad);
@@ -443,15 +441,15 @@ void Shape::rotzDeg(float deg) {
 }
 // rotation relative (from pr), radians (setters)
 void Shape::rotFromP(Point & axis_norm, float rad, Point & pr) {
-	float cosT = cos(rad);
-	float sinT = sin(rad);
+	float r11, r12, r13, r21, r22, r23, r31, r32, r33;
+	setRodriguesMatrix(r11, r12, r13, r21, r22, r23, r31, r32, r33, axis_norm.x, axis_norm.y, axis_norm.z, rad);
 	for (size_t i = 0; i < p.size(); i++) {
 		p[i].x -= pr.x; p[i].y -= pr.y; p[i].z -= pr.z;
-		p[i].rotOpt(axis_norm, cosT, sinT);
+		p[i].rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33);
 		p[i].x += pr.x; p[i].y += pr.y; p[i].z += pr.z;
 	}
 	c.x -= pr.x; c.y -= pr.y; c.z -= pr.z;
-	c.rotOpt(axis_norm, cosT, sinT);
+	c.rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33);
 	c.x += pr.x; c.y += pr.y; c.z += pr.z;
 }
 void Shape::rotxFromP(float rad, Point & pr) {
@@ -505,11 +503,11 @@ void Shape::rotzDegFromP(float deg, Point & pr) {
 }
 // rotation relative (from c), radians (setters)
 void Shape::rotFromC(Point & axis_norm, float rad) {
-	float cosT = cos(rad);
-	float sinT = sin(rad);
+	float r11, r12, r13, r21, r22, r23, r31, r32, r33;
+	setRodriguesMatrix(r11, r12, r13, r21, r22, r23, r31, r32, r33, axis_norm.x, axis_norm.y, axis_norm.z, rad);
 	for (size_t i = 0; i < p.size(); i++) {
 		p[i].x -= c.x; p[i].y -= c.y; p[i].z -= c.z;
-		p[i].rotOpt(axis_norm, cosT, sinT);
+		p[i].rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33);
 		p[i].x += c.x; p[i].y += c.y; p[i].z += c.z;
 	}
 }
@@ -652,11 +650,11 @@ void Object3D::set(Pixels_storing ps_) {
 }
 // Setter Box
 void Object3D::setBox(Point & boxPC, Point & boxRaxisN, float deg, Point & boxS, Point & boxC_relToP0) {
-	std::vector<float> albedoV_stub(0);
-	std::vector<float> RV_stub(0);
-	std::vector<float> GV_stub(0);
-	std::vector<float> BV_stub(0);
-	std::vector<float> AV_stub(0);
+	std::vector<float> albedoV_stub;
+	std::vector<float> RV_stub;
+	std::vector<float> GV_stub;
+	std::vector<float> BV_stub;
+	std::vector<float> AV_stub;
 	setBox(boxPC, boxRaxisN, deg, boxS, boxC_relToP0, albedoV_stub, RV_stub, GV_stub, BV_stub, AV_stub);
 
 }
@@ -664,6 +662,7 @@ void Object3D::setBox(Point & boxPC, Point & boxRaxisN, float deg, Point & boxS,
 		std::vector<float> & albedoV, std::vector<float> & RV, std::vector<float> & GV, std::vector<float> & BV, std::vector<float> & AV) {
 	
 	int s_size = 6;
+	s.clear();
 	s.resize(s_size);
 	Point p0, p1, p2, p3;
 
@@ -690,42 +689,42 @@ void Object3D::setBox(Point & boxPC, Point & boxRaxisN, float deg, Point & boxS,
 	p2 = Point(0.0f + boxS.x, 0.0f + boxS.y, 0.0f);
 	p3 = Point(0.0f, 0.0f + boxS.y, 0.0f);
 	s[FRONT].set(p0, p1, p2, p3, boxC_relToP0);
-	s[FRONT].set(albedoV[0], RV[0], GV[0], BV[0], AV[0], QUAD);
-	// rectangle 1: LEFT
+	s[FRONT].set(albedoV[FRONT], RV[FRONT], GV[FRONT], BV[FRONT], AV[FRONT], QUAD);
+	// rectangle 1: RIGHT
 	p0 = Point(0.0f + boxS.x, 0.0f, 0.0f);
 	p1 = Point(0.0f + boxS.x, 0.0f, 0.0f - boxS.z);
 	p2 = Point(0.0f + boxS.x, 0.0f + boxS.y, 0.0f - boxS.z);
 	p3 = Point(0.0f + boxS.x, 0.0f + boxS.y, 0.0f);
-	s[LEFT].set(p0, p1, p2, p3, p0);
-	s[LEFT].set(albedoV[1], RV[1], GV[1], BV[1], AV[1], QUAD);
+	s[RIGHT].set(p0, p1, p2, p3, p0);
+	s[RIGHT].set(albedoV[RIGHT], RV[RIGHT], GV[RIGHT], BV[RIGHT], AV[RIGHT], QUAD);
 	// rectangle 2: BACK
 	p0 = Point(0.0f + boxS.x, 0.0f, 0.0f - boxS.z);
 	p1 = Point(0.0f, 0.0f, 0.0f - boxS.z);
 	p2 = Point(0.0f, 0.0f + boxS.y, 0.0f - boxS.z);
 	p3 = Point(0.0f + boxS.x, 0.0f + boxS.y, 0.0f - boxS.z);
 	s[BACK].set(p0, p1, p2, p3, p0);
-	s[BACK].set(albedoV[2], RV[2], GV[2], BV[2], AV[2], QUAD);
-	// rectangle 3: RIGHT
+	s[BACK].set(albedoV[BACK], RV[BACK], GV[BACK], BV[BACK], AV[BACK], QUAD);
+	// rectangle 3: LEFT
 	p0 = Point(0.0f, 0.0f, 0.0f - boxS.z);
 	p1 = Point(0.0f, 0.0f, 0.0f);
 	p2 = Point(0.0f, 0.0f + boxS.y, 0.0f);
 	p3 = Point(0.0f, 0.0f + boxS.y, 0.0f - boxS.z);
-	s[RIGHT].set(p0, p1, p2, p3, p0);
-	s[RIGHT].set(albedoV[3], RV[3], GV[3], BV[3], AV[3], QUAD);
+	s[LEFT].set(p0, p1, p2, p3, p0);
+	s[LEFT].set(albedoV[LEFT], RV[LEFT], GV[LEFT], BV[LEFT], AV[LEFT], QUAD);
 	// rectangle 4: BOTTOM
 	p0 = Point(0.0f, 0.0f, 0.0f - boxS.z);
 	p1 = Point(0.0f + boxS.x, 0.0f, 0.0f - boxS.z);
 	p2 = Point(0.0f + boxS.x, 0.0f, 0.0f);
 	p3 = Point(0.0f, 0.0f, 0.0f);
 	s[BOTTOM].set(p0, p1, p2, p3, p0);
-	s[BOTTOM].set(albedoV[4], RV[4], GV[4], BV[4], AV[4], QUAD);
+	s[BOTTOM].set(albedoV[BOTTOM], RV[BOTTOM], GV[BOTTOM], BV[BOTTOM], AV[BOTTOM], QUAD);
 	// rectangle 5: TOP
 	p0 = Point(0.0f, 0.0f + boxS.y, 0.0f);
 	p1 = Point(0.0f + boxS.x, 0.0f + boxS.y, 0.0f);
 	p2 = Point(0.0f + boxS.x, 0.0f + boxS.y, 0.0f - boxS.z);
 	p3 = Point(0.0f, 0.0f + boxS.y, 0.0f - boxS.z);
 	s[TOP].set(p0, p1, p2, p3, p0);
-	s[TOP].set(albedoV[5], RV[5], GV[5], BV[5], AV[5], QUAD);
+	s[TOP].set(albedoV[TOP], RV[TOP], GV[TOP], BV[TOP], AV[TOP], QUAD);
 	
 	// Transformaitons
 	traCto(boxPC);
@@ -761,12 +760,12 @@ void Object3D::traCto(Point & Cto) {
 }
 // rotation absolute (from (0,0,0)), radians (setters)
 void Object3D::rot(Point & axis_norm, float rad) {
-	float cosT = cos(rad);
-	float sinT = sin(rad);
+	float r11, r12, r13, r21, r22, r23, r31, r32, r33;
+	setRodriguesMatrix(r11, r12, r13, r21, r22, r23, r31, r32, r33, axis_norm.x, axis_norm.y, axis_norm.z, rad);
 	for (size_t j = 0; j < s.size(); j++) {
 		for (size_t i = 0; i < s[j].p.size(); i++)
-			s[j].p[i].rotOpt(axis_norm, cosT, sinT);
-		s[j].c.rotOpt(axis_norm, cosT, sinT);
+			s[j].p[i].rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33);
+		s[j].c.rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33);
 	}
 }
 void Object3D::rotx(float rad) {
@@ -811,16 +810,16 @@ void Object3D::rotzDeg(float deg) {
 }
 // rotation relative (from pr), radians (setters)
 void Object3D::rotFromP(Point & axis_norm, float rad, Point & pr) {
-	float cosT = cos(rad);
-	float sinT = sin(rad);
+	float r11, r12, r13, r21, r22, r23, r31, r32, r33;
+	setRodriguesMatrix(r11, r12, r13, r21, r22, r23, r31, r32, r33, axis_norm.x, axis_norm.y, axis_norm.z, rad);
 	for (size_t j = 0; j < s.size(); j++) {
 		for (size_t i = 0; i < s[j].p.size(); i++) {
 			s[j].p[i].x -= pr.x; s[j].p[i].y -= pr.y; s[j].p[i].z -= pr.z;
-			s[j].p[i].rotOpt(axis_norm, cosT, sinT);
+			s[j].p[i].rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33);
 			s[j].p[i].x += pr.x; s[j].p[i].y += pr.y; s[j].p[i].z += pr.z;
 		}
 		s[j].c.x -= pr.x; s[j].c.y -= pr.y; s[j].c.z -= pr.z;
-		s[j].c.rotOpt(axis_norm, cosT, sinT);
+		s[j].c.rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33);
 		s[j].c.x += pr.x; s[j].c.y += pr.y; s[j].c.z += pr.z;
 	}
 }
@@ -881,18 +880,18 @@ void Object3D::rotzDegFromP(float deg, Point & pr) {
 }
 // rotation relative (from c), radians (setters)
 void Object3D::rotFromC(Point & axis_norm, float rad) {
-	float cosT = cos(rad);
-	float sinT = sin(rad);
+	float r11, r12, r13, r21, r22, r23, r31, r32, r33;
+	setRodriguesMatrix(r11, r12, r13, r21, r22, r23, r31, r32, r33, axis_norm.x, axis_norm.y, axis_norm.z, rad);
 	for (size_t j = 0; j < s.size(); j++) {
 		for (size_t i = 0; i < s[j].p.size(); i++) {
-			s[j].p[i].x -= s[j].c.x; s[j].p[i].y -= s[j].c.y; s[j].p[i].z -= s[j].c.z;
-			s[j].p[i].rotOpt(axis_norm, cosT, sinT);
-			s[j].p[i].x += s[j].c.x; s[j].p[i].y += s[j].c.y; s[j].p[i].z += s[j].c.z;
+			s[j].p[i].x -= s[0].c.x; s[j].p[i].y -= s[0].c.y; s[j].p[i].z -= s[0].c.z;
+			s[j].p[i].rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33);
+			s[j].p[i].x += s[0].c.x; s[j].p[i].y += s[0].c.y; s[j].p[i].z += s[0].c.z;
 		}
 		if (j >= 1) {
-			s[j].c.x -= s[j].c.x; s[j].c.y -= s[j].c.y; s[j].c.z -= s[j].c.z;
-			s[j].c.rotOpt(axis_norm, cosT, sinT);
-			s[j].c.x += s[j].c.x; s[j].c.y += s[j].c.y; s[j].c.z += s[j].c.z;
+			s[j].c.x -= s[0].c.x; s[j].c.y -= s[0].c.y; s[j].c.z -= s[0].c.z;
+			s[j].c.rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33);
+			s[j].c.x += s[0].c.x; s[j].c.y += s[0].c.y; s[j].c.z += s[0].c.z;
 		}
 	}
 }
@@ -901,14 +900,14 @@ void Object3D::rotxFromC(float rad) {
 	float sinT = sin(rad);
 	for (size_t j = 0; j < s.size(); j++) {
 		for (size_t i = 0; i < s[j].p.size(); i++) {
-			s[j].p[i].x -= s[j].c.x; s[j].p[i].y -= s[j].c.y; s[j].p[i].z -= s[j].c.z;
+			s[j].p[i].x -= s[0].c.x; s[j].p[i].y -= s[0].c.y; s[j].p[i].z -= s[0].c.z;
 			s[j].p[i].rotxOpt(cosT, sinT);
-			s[j].p[i].x += s[j].c.x; s[j].p[i].y += s[j].c.y; s[j].p[i].z += s[j].c.z;
+			s[j].p[i].x += s[0].c.x; s[j].p[i].y += s[0].c.y; s[j].p[i].z += s[0].c.z;
 		}
 		if (j >= 1) {
-			s[j].c.x -= s[j].c.x; s[j].c.y -= s[j].c.y; s[j].c.z -= s[j].c.z;
+			s[j].c.x -= s[0].c.x; s[j].c.y -= s[0].c.y; s[j].c.z -= s[0].c.z;
 			s[j].c.rotxOpt(cosT, sinT);
-			s[j].c.x += s[j].c.x; s[j].c.y += s[j].c.y; s[j].c.z += s[j].c.z;
+			s[j].c.x += s[0].c.x; s[j].c.y += s[0].c.y; s[j].c.z += s[0].c.z;
 		}
 	}
 }
@@ -917,14 +916,14 @@ void Object3D::rotyFromC(float rad) {
 	float sinT = sin(rad);
 	for (size_t j = 0; j < s.size(); j++) {
 		for (size_t i = 0; i < s[j].p.size(); i++) {
-			s[j].p[i].x -= s[j].c.x; s[j].p[i].y -= s[j].c.y; s[j].p[i].z -= s[j].c.z;
+			s[j].p[i].x -= s[0].c.x; s[j].p[i].y -= s[0].c.y; s[j].p[i].z -= s[0].c.z;
 			s[j].p[i].rotyOpt(cosT, sinT);
-			s[j].p[i].x += s[j].c.x; s[j].p[i].y += s[j].c.y; s[j].p[i].z += s[j].c.z;
+			s[j].p[i].x += s[0].c.x; s[j].p[i].y += s[0].c.y; s[j].p[i].z += s[0].c.z;
 		}
 		if (j >= 1) {
-			s[j].c.x -= s[j].c.x; s[j].c.y -= s[j].c.y; s[j].c.z -= s[j].c.z;
+			s[j].c.x -= s[0].c.x; s[j].c.y -= s[0].c.y; s[j].c.z -= s[0].c.z;
 			s[j].c.rotyOpt(cosT, sinT);
-			s[j].c.x += s[j].c.x; s[j].c.y += s[j].c.y; s[j].c.z += s[j].c.z;
+			s[j].c.x += s[0].c.x; s[j].c.y += s[0].c.y; s[j].c.z += s[0].c.z;
 		}
 	}
 }
@@ -933,14 +932,14 @@ void Object3D::rotzFromC(float rad) {
 	float sinT = sin(rad);
 	for (size_t j = 0; j < s.size(); j++) {
 		for (size_t i = 0; i < s[j].p.size(); i++) {
-			s[j].p[i].x -= s[j].c.x; s[j].p[i].y -= s[j].c.y; s[j].p[i].z -= s[j].c.z;
+			s[j].p[i].x -= s[0].c.x; s[j].p[i].y -= s[0].c.y; s[j].p[i].z -= s[0].c.z;
 			s[j].p[i].rotzOpt(cosT, sinT);
-			s[j].p[i].x += s[j].c.x; s[j].p[i].y += s[j].c.y; s[j].p[i].z += s[j].c.z;
+			s[j].p[i].x += s[0].c.x; s[j].p[i].y += s[0].c.y; s[j].p[i].z += s[0].c.z;
 		}
 		if (j >= 1) {
-			s[j].c.x -= s[j].c.x; s[j].c.y -= s[j].c.y; s[j].c.z -= s[j].c.z;
+			s[j].c.x -= s[0].c.x; s[j].c.y -= s[0].c.y; s[j].c.z -= s[0].c.z;
 			s[j].c.rotzOpt(cosT, sinT);
-			s[j].c.x += s[j].c.x; s[j].c.y += s[j].c.y; s[j].c.z += s[j].c.z;
+			s[j].c.x += s[0].c.x; s[j].c.y += s[0].c.y; s[j].c.z += s[0].c.z;
 		}
 	}
 }
@@ -1040,18 +1039,22 @@ void Scene::add(Object3D & o0) {
 
 // Setter Camera
 void Scene::setCamera(Point & posC, Point & axisN, float deg, Point & size, Point & c_relToP0) {
+	std::vector<std::vector<float>> albedoVV_stub;
+	std::vector<std::vector<float>> RVV_stub;
+	std::vector<std::vector<float>> GVV_stub;
+	std::vector<std::vector<float>> BVV_stub;
+	std::vector<std::vector<float>> AVV_stub;
+	setCamera(posC, axisN, deg, size, c_relToP0, albedoVV_stub, RVV_stub, GVV_stub, BVV_stub, AVV_stub);
 }
 void Scene::setCamera(Point & posC, Point & axisN, float deg, Point & size, Point & c_relToP0,
 	std::vector<std::vector<float>> & albedoVV, std::vector<std::vector<float>> & RVV, std::vector<std::vector<float>> & GVV, std::vector<std::vector<float>> & BVV, std::vector<std::vector<float>> & AVV) {
 	
-	std::cout << "\nHere setCamera() - 000";
 	o[CAMERA].clear();
 	o[CAMERA].ot = CAMERA;
 	o[CAMERA].ps = UNKNOWN_PIXELS_STORING;
 	int s_per_box = 6;
 	int boxes = 4;
 	int s_size = boxes * s_per_box;
-	std::cout << "\nHere setCamera() - 001";
 	
 	int albedo_default = 1.0f;
 	int R_default = 1.0f;
@@ -1078,52 +1081,199 @@ void Scene::setCamera(Point & posC, Point & axisN, float deg, Point & size, Poin
 			AVV[bi].push_back(A_default);
 	}
 	
-	std::cout << "\nHere setCamera() - 002";
 	// Main box of the camera
-	Object3D mainBox (stub0, stub0, 0, size, c_relToP0, albedoVV[0], RVV[0], GVV[0], BVV[0], AVV[0]);
-	std::cout << "\nHere setCamera() - 002 - 001";
+	Object3D mainBox(c_relToP0, stub0, 0, size, c_relToP0, albedoVV[0], RVV[0], GVV[0], BVV[0], AVV[0]);
 	o[CAMERA].add(mainBox);
-	std::cout << "\nHere setCamera() - 002 - 002";
 
 	// Stick box of the camera
-	float base_heigth = 0.05f;
-	Point stickC = mean(mainBox.s[BOTTOM].p);
-	Point stickS (0.05f, posC.y - base_heigth - c_relToP0.y, 0.05f);
-	Point stickP (stickC.x - stickS.x/2.0f, stickC.y - stickS.y, stickC.z - stickS.z/2.0f);
-	Object3D stickBox (stickP, stub0, 0.0f, stickS, stickC, albedoVV[1], RVV[1], GVV[1], BVV[1], AVV[1]);
+	float base_height = 0.02f;
+	Point stickPC = mean(mainBox.s[BOTTOM].p);
+	Point stickS (0.025f, posC.y - base_height - c_relToP0.y, 0.025f);
+	Point stickC (stickS.x/2.0f, stickS.y, -stickS.z/2.0f);
+	Object3D stickBox(stickPC, stub0, 0.0f, stickS, stickC, albedoVV[1], RVV[1], GVV[1], BVV[1], AVV[1]);
 	o[CAMERA].add(stickBox);
 
 	// Base box of the camera
-	Point baseC = mean(stickBox.s[BOTTOM].p);
-	Point baseS (0.3f, base_heigth,0.3f);
-	Point baseP (baseC.x - baseS.x/2.0f, baseC.y - baseS.y, baseC.z - baseS.z/2.0f);
-	Object3D baseBox (baseP, stub0, 0.0f, baseS, baseC, albedoVV[2], RVV[2], GVV[2], BVV[2], AVV[2]);
+	Point basePC = mean(stickBox.s[BOTTOM].p);
+	Point baseS (0.14f, base_height, 0.14f);
+	Point baseC(baseS.x / 2.0f, baseS.y, -baseS.z / 2.0f);
+	Object3D baseBox (basePC, stub0, 0.0f, baseS, baseC, albedoVV[2], RVV[2], GVV[2], BVV[2], AVV[2]);
 	o[CAMERA].add(baseBox);
 
 	// Lens box of the camera
-	Point lensC = mean(mainBox.s[FRONT].p);
+	Point lensPC = mean(mainBox.s[FRONT].p);
 	Point lensS (0.08f, 0.08f, 0.1f);
-	Point lensP (lensC.x - lensS.x/2.0f, lensC.y - lensS.y/2.0f, lensC.z + lensS.z);
-	Object3D lensBox (lensP, stub0, 0.0f, lensS, lensC, albedoVV[3], RVV[3], GVV[3], BVV[3], AVV[3]);
+	Point lensC(lensS.x / 2.0f, lensS.y / 2.0f, -lensS.z);
+	Object3D lensBox (lensPC, stub0, 0.0f, lensS, lensC, albedoVV[3], RVV[3], GVV[3], BVV[3], AVV[3]);
+	lensBox.s.erase(lensBox.s.begin() + FRONT);
 	o[CAMERA].add(lensBox);
 	
-	std::cout << "\nHere setCamera() - 003";
 	// Transformaitons
 	o[CAMERA].traCto(posC);
-	o[CAMERA].rotDegFromC(axisN,deg);
+	o[CAMERA].rotDegFromC(axisN, deg);
+}
+// Setter Laser
+void Scene::setLaser(Point & posC, Point & axisN, float deg, Point & size, Point & c_relToP0) {
+	std::vector<std::vector<float>> albedoVV_stub;
+	std::vector<std::vector<float>> RVV_stub;
+	std::vector<std::vector<float>> GVV_stub;
+	std::vector<std::vector<float>> BVV_stub;
+	std::vector<std::vector<float>> AVV_stub;
+	setLaser(posC, axisN, deg, size, c_relToP0, albedoVV_stub, RVV_stub, GVV_stub, BVV_stub, AVV_stub);
+}
+void Scene::setLaser(Point & posC, Point & axisN, float deg, Point & size, Point & c_relToP0,
+	std::vector<std::vector<float>> & albedoVV, std::vector<std::vector<float>> & RVV, std::vector<std::vector<float>> & GVV, std::vector<std::vector<float>> & BVV, std::vector<std::vector<float>> & AVV) {
+
+	o[LASER].clear();
+	o[LASER].ot = LASER;
+	o[LASER].ps = UNKNOWN_PIXELS_STORING;
+	int s_per_box = 6;
+	int boxes = 3;
+	int s_size = boxes * s_per_box;
+
+	int albedo_default = 1.0f;
+	int R_default = 1.0f;
+	int G_default = 1.0f;
+	int B_default = 1.0f;
+	int A_default = 1.0f;
+	albedoVV.resize(boxes);
+	RVV.resize(boxes);
+	GVV.resize(boxes);
+	BVV.resize(boxes);
+	AVV.resize(boxes);
+	Point stub0(0.0f, 0.0f, 0.0f);
+
+	for (int bi = 0; bi < boxes; bi++) {
+		for (size_t ai = albedoVV[bi].size(); ai < s_size; ai++)
+			albedoVV[bi].push_back(albedo_default);
+		for (size_t Ri = RVV[bi].size(); Ri < s_size; Ri++)
+			RVV[bi].push_back(R_default);
+		for (size_t Gi = GVV[bi].size(); Gi < s_size; Gi++)
+			GVV[bi].push_back(G_default);
+		for (size_t Bi = BVV[bi].size(); Bi < s_size; Bi++)
+			BVV[bi].push_back(B_default);
+		for (size_t Ai = AVV[bi].size(); Ai < s_size; Ai++)
+			AVV[bi].push_back(A_default);
+	}
+
+	// Main box of the laser
+	Object3D mainBox(c_relToP0, stub0, 0, size, c_relToP0, albedoVV[0], RVV[0], GVV[0], BVV[0], AVV[0]);
+	o[LASER].add(mainBox);
+
+	// Stick box of the laser
+	float base_height = 0.02f;
+	Point stickPC = mean(mainBox.s[BOTTOM].p);
+	Point stickS(0.025f, posC.y - base_height - c_relToP0.y, 0.025f);
+	Point stickC(stickS.x / 2.0f, stickS.y, -stickS.z / 2.0f);
+	Object3D stickBox(stickPC, stub0, 0.0f, stickS, stickC, albedoVV[1], RVV[1], GVV[1], BVV[1], AVV[1]);
+	o[LASER].add(stickBox);
+
+	// Base box of the laser
+	Point basePC = mean(stickBox.s[BOTTOM].p);
+	Point baseS(0.14f, base_height, 0.14f);
+	Point baseC(baseS.x / 2.0f, baseS.y, -baseS.z / 2.0f);
+	Object3D baseBox(basePC, stub0, 0.0f, baseS, baseC, albedoVV[2], RVV[2], GVV[2], BVV[2], AVV[2]);
+	o[LASER].add(baseBox);
+
+	// Transformaitons
+	o[LASER].traCto(posC);
+	o[LASER].rotDegFromC(axisN, deg);
 }
 
 // Setter Scene Direct Vision
 void Scene::setScene_DirectVision() {
-	
+
 	// CAMERA (0)
-	Point camPosC (0.0f, 0.75f, 0.0f);	// pos of the center of the camera
-	Point camAxisN (0.0f, 1.0f, 0.0f);	// normal axis of rotation from the center of the camera (axis Y in this case)
+	Point camPosC(0.0f, 0.75f, 0.0f);	// pos of the center of the camera
+	Point camAxisN(0.0f, 1.0f, 0.0f);	// normal axis of rotation from the center of the camera (axis Y in this case)
 	float camDeg = 180.0f;				// degrees of rotation of the camera around axis normal axis of rotaiton
-	Point camS (0.15f, 0.15f, 0.04f);	// size of the main box of the camera
-	Point camC_relToP0 (camS.x / 2.0f, camS.y / 2.0f, 0.0f);	// pos of the centre, relative to the first point of the main box before transformations
-	std::vector<std::vector<float>> albedoVV(0), RVV(0), GVV(0), BVV(0), AVV(0);
-	setCamera(camPosC, camAxisN, camDeg, camS, camC_relToP0, albedoVV, RVV, GVV, BVV, AVV);
+	Point camS(0.15f, 0.15f, 0.04f);	// size of the main box of the camera
+	Point camC_relToP0(camS.x / 2.0f, camS.y / 2.0f, 0.0f);	// pos of the centre, relative to the first point of the main box before transformations
+	//std::vector<std::vector<float>> camAlbedoVV(0), camRVV(0), camGVV(0), camBVV(0), camAVV(0);
+	int cam_s_per_box = 6;
+	int cam_boxes = 4;
+	std::vector<std::vector<float>> camAlbedoVV(cam_boxes, std::vector<float>(cam_s_per_box));
+	std::vector<std::vector<float>> camRVV(cam_boxes, std::vector<float>(cam_s_per_box));
+	std::vector<std::vector<float>> camGVV(cam_boxes, std::vector<float>(cam_s_per_box));
+	std::vector<std::vector<float>> camBVV(cam_boxes, std::vector<float>(cam_s_per_box));
+	std::vector<std::vector<float>> camAVV(cam_boxes, std::vector<float>(cam_s_per_box));
+	for (int b = 0; b < cam_boxes; b++) {
+		camRVV[b][FRONT] = 0.5f;  camRVV[b][RIGHT] = 0.8f;  camRVV[b][BACK] = 0.4f;  camRVV[b][LEFT] = 0.3f;  camRVV[b][BOTTOM] = 0.25f;  camRVV[b][TOP] = 0.65f;
+		camGVV[b][FRONT] = 0.5f;  camGVV[b][RIGHT] = 0.8f;  camGVV[b][BACK] = 0.4f;  camGVV[b][LEFT] = 0.3f;  camGVV[b][BOTTOM] = 0.25f;  camGVV[b][TOP] = 0.65f;
+		camBVV[b][FRONT] = 0.5f;  camBVV[b][RIGHT] = 0.8f;  camBVV[b][BACK] = 0.4f;  camBVV[b][LEFT] = 0.3f;  camBVV[b][BOTTOM] = 0.25f;  camBVV[b][TOP] = 0.65f;
+		for (int s = FRONT; s <= TOP; s++) {
+			camAlbedoVV[b][s] = 1.0f;
+			camAVV[b][s] = 1.0f;
+	}	}
+	setCamera(camPosC, camAxisN, camDeg, camS, camC_relToP0, camAlbedoVV, camRVV, camGVV, camBVV, camAVV);
+
+	// LASER (1)
+	Point lasPosC(-0.15f, 0.75f, 0.0f);
+	Point lasAxisN(0.0f, 1.0f, 0.0f);
+	float lasDeg = 180.0f;
+	Point lasS(0.1f, 0.1f, 0.15f);
+	Point lasC_relToP0(lasS.x / 2.0f, lasS.y / 2.0f, 0.0f);
+	//std::vector<std::vector<float>> lasAlbedoVV(0), lasRVV(0), lasGVV(0), lasBVV(0), lasAVV(0);
+	int las_s_per_box = 6;
+	int las_boxes = 4;
+	std::vector<std::vector<float>> lasAlbedoVV(las_boxes, std::vector<float>(las_s_per_box));
+	std::vector<std::vector<float>> lasRVV(las_boxes, std::vector<float>(las_s_per_box));
+	std::vector<std::vector<float>> lasGVV(las_boxes, std::vector<float>(las_s_per_box));
+	std::vector<std::vector<float>> lasBVV(las_boxes, std::vector<float>(las_s_per_box));
+	std::vector<std::vector<float>> lasAVV(las_boxes, std::vector<float>(las_s_per_box));
+	for (int b = 0; b < las_boxes; b++) {
+		lasRVV[b][FRONT] = 0.5f;  lasRVV[b][RIGHT] = 0.8f;  lasRVV[b][BACK] = 0.4f;  lasRVV[b][LEFT] = 0.3f;  lasRVV[b][BOTTOM] = 0.25f;  lasRVV[b][TOP] = 0.65f;
+		lasGVV[b][FRONT] = 0.5f;  lasGVV[b][RIGHT] = 0.8f;  lasGVV[b][BACK] = 0.4f;  lasGVV[b][LEFT] = 0.3f;  lasGVV[b][BOTTOM] = 0.25f;  lasGVV[b][TOP] = 0.65f;
+		lasBVV[b][FRONT] = 0.5f;  lasBVV[b][RIGHT] = 0.8f;  lasBVV[b][BACK] = 0.4f;  lasBVV[b][LEFT] = 0.3f;  lasBVV[b][BOTTOM] = 0.25f;  lasBVV[b][TOP] = 0.65f;
+		for (int s = FRONT; s <= TOP; s++) {
+			lasAlbedoVV[b][s] = 1.0f;
+			lasAVV[b][s] = 1.0f;
+	}	}
+	setLaser(lasPosC, lasAxisN, lasDeg, lasS, lasC_relToP0, lasAlbedoVV, lasRVV, lasGVV, lasBVV, lasAVV);
+
+	// WALL (2)
+	Point wallPosC(-1.625f + 2.0f, 0.2f + 0.75f, -2.0f);
+	Point walS(2.0f, 1.5f, 0.05f);
+	Point walAxisN(0.0f, 1.0f, 0.0f);
+	float walDeg = 0.0f;
+	Point walC_relToP0(walS.x / 2.0f, walS.y / 2.0f, 0.0f);
+	//std::vector<float> walAlbedoV(0), walRVV(0), walGV(0), walBV(0), walAV(0);
+	int wal_s_per_box = 6;
+	std::vector<float> walAlbedoV(wal_s_per_box);
+	std::vector<float> walRV(wal_s_per_box);
+	std::vector<float> walGV(wal_s_per_box);
+	std::vector<float> walBV(wal_s_per_box);
+	std::vector<float> walAV(wal_s_per_box);
+	walRV[FRONT] = 0.85f;  walRV[RIGHT] = 0.3f;  walRV[BACK] = 0.5f;  walRV[LEFT] = 0.8f;  walRV[BOTTOM] = 0.25f;  walRV[TOP] = 0.65f;
+	walGV[FRONT] = 0.85f;  walGV[RIGHT] = 0.3f;  walGV[BACK] = 0.5f;  walGV[LEFT] = 0.8f;  walGV[BOTTOM] = 0.25f;  walGV[TOP] = 0.65f;
+	walBV[FRONT] = 0.85f;  walBV[RIGHT] = 0.3f;  walBV[BACK] = 0.5f;  walBV[LEFT] = 0.8f;  walBV[BOTTOM] = 0.25f;  walBV[TOP] = 0.65f;
+	for (int s = FRONT; s <= TOP; s++) {
+		walAlbedoV[s] = 1.0f;
+		walAV[s] = 1.0f;
+	}
+	o[WALL].setBox(wallPosC, walAxisN, walDeg, walS, walC_relToP0, walAlbedoV, walRV, walGV, walBV, walAV);
+
+	// FLOOR (4)
+	Point flolPosC(-1.625f, 0.0f, 0.7f);
+	Point floS(4.0f, 6.0f, 0.2f);
+	Point floAxisN(1.0f, 0.0f, 0.0f);
+	float floDeg = -90.0f;
+	Point floC_relToP0(0.0f, 0.0f, 0.0f);
+	//std::vector<float> floAlbedoV(0), floRVV(0), floGV(0), floBV(0), floAV(0);
+	int flo_s_per_box = 6;
+	std::vector<float> floAlbedoV(flo_s_per_box);
+	std::vector<float> floRV(flo_s_per_box);
+	std::vector<float> floGV(flo_s_per_box);
+	std::vector<float> floBV(flo_s_per_box);
+	std::vector<float> floAV(flo_s_per_box);
+	floRV[FRONT] = 0.45f;  floRV[RIGHT] = 0.3f;  floRV[BACK] = 0.25f;  floRV[LEFT] = 0.8f;  floRV[BOTTOM] = 0.4f;  floRV[TOP] = 0.5f;
+	floGV[FRONT] = 0.45f;  floGV[RIGHT] = 0.3f;  floGV[BACK] = 0.25f;  floGV[LEFT] = 0.8f;  floGV[BOTTOM] = 0.4f;  floGV[TOP] = 0.5f;
+	floBV[FRONT] = 0.45f;  floBV[RIGHT] = 0.3f;  floBV[BACK] = 0.25f;  floBV[LEFT] = 0.8f;  floBV[BOTTOM] = 0.4f;  floBV[TOP] = 0.5f;
+	for (int s = FRONT; s <= TOP; s++) {
+		floAlbedoV[s] = 1.0f;
+		floAV[s] = 1.0f;
+	}
+	o[FLOOR].setBox(flolPosC, floAxisN, floDeg, floS, floC_relToP0, floAlbedoV, floRV, floGV, floBV, floAV);
 }
 
 
@@ -1142,7 +1292,19 @@ Point mean(std::vector<Point> & vp) {
 		mean += vp[i];
 	return mean / vp.size();
 }
-
+void setRodriguesMatrix(float & r11, float & r12, float & r13,
+	float & r21, float & r22, float & r23,
+	float & r31, float & r32, float & r33,
+	float const & wx, float const & wy, float const & wz, float const & rad) {
+	// constants
+	float cosT = cos(rad);
+	float l_cosT = 1.0f - cosT;
+	float sinT = sin(rad);
+	// Rodrigues' Rotation Matrix: http://mathworld.wolfram.com/RodriguesRotationFormula.html
+	r11 = cosT + wx * wx * l_cosT;			r12 = wx * wy * l_cosT - wz * sinT;		r13 = wy * sinT + wx * wz * l_cosT;
+	r21 = wz * sinT + wx * wy * l_cosT;		r22 = cosT + wy * wy * l_cosT;			r23 = -wx * sinT + wy * wz * l_cosT;
+	r31 = -wy * sinT + wx * wz * l_cosT;	r32 = wx * sinT + wy * wz * l_cosT;		r33 = cosT + wz * wz * l_cosT;
+}
 
 // MAIN SCENE
 int main_scene(int argc, char**argv) {
