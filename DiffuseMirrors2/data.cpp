@@ -39,12 +39,14 @@ Info::Info(	char* dir_name_, char* file_name_, int sizeof_value_raw_, int rows_,
 	set (dir_name_, file_name_, sizeof_value_raw_, rows_, cols_, freqV_, distV_, shutV_, phasV_, numtakes_, error_code_,
 		 sizeof_value_cmx_, laser_to_cam_offset_x_, laser_to_cam_offset_y_, laser_to_cam_offset_z_, dist_wall_cam_);
 }
-
 // Constructor from file
 Info::Info(char* dir_name_, char* file_name_) {
 	set (dir_name_, file_name_);
 }
-
+// Destructor
+Info::~Info() {
+	// empty: crashes ´when trying to delete any char*
+}
 
 // ----- SETTERS --------------------------------- // Note that each Constructor just contains its corresponding Setter
 
@@ -299,12 +301,15 @@ RawData::RawData(RawData & raw_data) {
 RawData::RawData(Info & info_, unsigned short int* data_, int data_size_, int take_, int error_code_) { // by default: take_ = -1, error_code_ = 0
 	set (info_, data_, data_size_, take_, error_code_);
 }
-// Constructor
-// take: number of the raw_numtake file this is referencing to. take = -1 if refers to the normal raw file
+// Constructor from Info. It creates a CalibrationMatrix object from the .raw file noted in the info object
+	// take: number of the raw_numtake file this is referencing to. take = -1 if refers to the normal raw file
 RawData::RawData(Info & info_, int take_) { // by default: take = -1
 	set (info_, take_);
 }
-
+// Destructor
+RawData::~RawData() {
+	delete [] data;
+}
 
 // ----- SETTERS --------------------------------- // Note that each Constructor just contains its corresponding Setter
 
@@ -460,7 +465,10 @@ CalibrationMatrix::CalibrationMatrix(Info & info_, float* data_, int data_size_,
 CalibrationMatrix::CalibrationMatrix(Info & info_) { // by default: pixels_storing_ = PIXELS_VALID
 	set (info_);
 }
-
+// Destructor
+CalibrationMatrix::~CalibrationMatrix() {
+	delete [] data;
+}
 
 // ----- SETTERS --------------------------------- // Note that each Constructor just contains its corresponding Setter
 

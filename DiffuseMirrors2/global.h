@@ -76,7 +76,7 @@ const int CAMERA_PIX_X = 165;	// Real: 165
 const int CAMERA_PIX_Y = 120;	// Real: 120
 // Bad pixels left and right
 const int CAMERA_PIX_X_BAD_LEFT = 1;	// = 1
-const int CAMERA_PIX_X_BAD_RIGHT = 2;	// = 1
+const int CAMERA_PIX_X_BAD_RIGHT = 2;	// = 2
 const int CAMERA_PIX_X_BAD = CAMERA_PIX_X_BAD_LEFT + CAMERA_PIX_X_BAD_RIGHT;
 const int CAMERA_PIX_X_VALID = CAMERA_PIX_X - CAMERA_PIX_X_BAD;
 // Bad pixels bottom and top

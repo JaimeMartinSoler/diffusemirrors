@@ -915,7 +915,8 @@ void countdown(bool ask_number, int default_time, bool show_text) { // by defaul
 
 // creates a the corresponding averaged raw file from the raw takes files
 void create_raw_from_raw_takes (Info & info) {
-
+	
+	RawData raw_data = RawData();	
 	int elements = info.freqV.size() * info.distV.size() * info.shutV.size() * info.phasV.size() * info.rows * info.cols;
 	float* raw_float_store = new float[elements];	// this will temporally store the sum of the corresponding values. We need float as long as with short int may cause overload
 	for (int pos = 0; pos < elements; pos++)
@@ -923,7 +924,7 @@ void create_raw_from_raw_takes (Info & info) {
 
 	// store all the data
 	for (int take = 0; take < info.numtakes; take++) {
-		RawData raw_data(info, take);	// we load .raw files them one by one for memory efficiency reasons
+		raw_data.set(info, take);	// we load .raw files them one by one for memory efficiency reasons
 		if (elements != raw_data.data_size) {
 			std::cout << "\nError in: create_raw_from_raw_takes(Info* info), elements = " << elements <<" != raw_data.data_size = " << raw_data.data_size;
 			return;
@@ -974,21 +975,18 @@ void create_cmx_from_raw(Info & info_) {
 
 	RawData raw_data(info_);	// this will load all the data into the memory
 	
-	// IMPORTANT:    cmx_data_value = c * Em * albedo = H * dist_src_pix_rc,    dist_src_pix_rc = |r_src - r_x0(r,c)|^2,
+	// IMPORTANT:    cmx_data_value = c * Em * albedo = H * distSrcPix_rc_pow2,    distSrcPix_rc_pow2 = |r_src - r_x0(r,c)|^2,
 	float cmx_data_value;
 	float raw_data_value;
 	int phase_idx = 0;										// always
 	int shut_idx = raw_data.info->shutV.size() - 1;	//always, the calibration matrix is 1-shutter oriented
-	// dist_src_pix_rc vector
-	std::vector<float> dist_src_pix_pow2_rc, v_aux;
-	set_scene_calibration_matrix (&info_, PIXELS_TOTAL);	// set the corresponding scene (camera, laser, wall and wall_patches) // TO-DO: create this
-	//dist_2_pow2_centers( (*(*OBJECT3D_SET[LASER])[0]).c, (*OBJECT3D_SET[WALL_PATCHES]), v_aux);	 // TO-DO: create this
-	//clear_scene();										// clear scene	 // TO-DO: create this
-	dist_src_pix_pow2_rc.resize(v_aux.size());	// v_aux is ordered as WALL_PATCHES and it is, by rows, from down to top, we want it from top to down
-	for (size_t r = 0; r < raw_data.info->rows; r++) {		// should be: raw_data.info->heigth = CAMERA_PIX_Y
-		for (size_t c = 0; c < raw_data.info->cols; c++) {		// should be: raw_data.info->width  = CAMERA_PIX_X
-			dist_src_pix_pow2_rc[r*raw_data.info->cols + c] = v_aux[(raw_data.info->rows-1-r)*raw_data.info->cols + c];	// TO-DO: modify this when indexing is fixed in scene
-	}	}
+	// distSrcPix_rc_pow2V vector
+	std::vector<float> distSrcPix_rc_pow2V (numPix(PIXELS_TOTAL));
+	SCENEMAIN.clear();	
+	SCENEMAIN.setScene_CalibrationMatrix(info_.laser_to_cam_offset_x, info_.laser_to_cam_offset_y, info_.laser_to_cam_offset_z, info_.dist_wall_cam);
+	for (size_t i = 0; i < distSrcPix_rc_pow2V.size(); i++)	// TO-DO: CHECK
+		distSrcPix_rc_pow2V[i] = (SCENEMAIN.o[LASER].s[0].c - SCENEMAIN.o[WALL_PATCHES].s[i].c).modPow2();
+	SCENEMAIN.clear();
 	// fwrite parameters
 	float* cmx_data_value_ptr = &cmx_data_value;
 	size_t cmx_bytes_per_value = sizeof(float);
@@ -996,7 +994,7 @@ void create_cmx_from_raw(Info & info_) {
 	FILE* cmx_file = fopen(raw_data.info->cmx_full_file_name,"wb");
 	
 	// in data.h (about the .cmx ordering):
-	// data ordereing: for(freq) { for(dist) { for(heigth){ for(width){ // here... }}}}
+	// data ordereing: for(freq) { for(dist) { for(rows){ for(cols){ // here... }}}}
 	for (size_t fi = 0; fi < raw_data.info->freqV.size(); fi++) {
 		for (size_t di = 0; di < raw_data.info->distV.size(); di++) {
 			//for (phase_idx = 0, always) 
@@ -1009,8 +1007,8 @@ void create_cmx_from_raw(Info & info_) {
 					// by default image is up-down-fliped so heigth_RawData = (heigth_Frame-1-h)
 					raw_data_value = (float)(raw_data.at(fi, di, shut_idx, phase_idx, r, c, PIXELS_TOTAL) - 32768);
 					
-					//cmx_data_value = c * Em * albedo = H * dist_src_pix_rc,    dist_src_pix_rc = |r_src - r_x0(r,c)|^2,
-					cmx_data_value = raw_data_value * dist_src_pix_pow2_rc[r*raw_data.info->cols + c];
+					//cmx_data_value = c * Em * albedo = H * distSrcPix_rc_pow2,    distSrcPix_rc_pow2 = |r_src - r_x0(r,c)|^2,
+					cmx_data_value = raw_data_value * distSrcPix_rc_pow2V[r*raw_data.info->cols + c];
 
 					// Store cmx_data_value in the Calibration Matrix
 					fwrite(cmx_data_value_ptr, cmx_bytes_per_value, cmx_elements_per_write, cmx_file);
@@ -1076,7 +1074,7 @@ int PMD_params_to_file (std::vector<float> & freqV, std::vector<float> & distV, 
 	for (size_t si = 0; si < shutV.size(); si++)
 		period_shut_tot +=  shutV_float[si] / (1000000.0f * DUTYCYCLE);
 	time_tot_s = period_shut_tot * freqV.size() * distV.size() * numtakes;
-	if (check_time(time_tot_s, true, false) == 0)
+	if (check_time(time_tot_s, true, true) == 0)
 		return -2;	// if did not want to continue
 	
 	// Start countdown

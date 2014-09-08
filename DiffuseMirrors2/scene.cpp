@@ -147,9 +147,12 @@ void Point::print(char* txt_left, char* txt_right) {
 	print();
 	std::cout << txt_right;
 }
-// mod
+// mod, modPow2
 float Point::mod() {
 	return sqrt(x*x + y*y + z*z);
+}
+float Point::modPow2() {
+	return x*x + y*y + z*z;
 }
 // normal (get, set)
 Point Point::normal() { 
@@ -745,15 +748,17 @@ void Object3D::setScreenFoVmeasP(Point & camC, Point & camN, PixStoring ps_) {
 	ps = ps_;
 	float pixelSr = CAMERA_FOV_Y_METERS / ((float)CAMERA_PIX_Y);	// pixel size 
 	float pixelSc = CAMERA_FOV_X_METERS / ((float)CAMERA_PIX_X);
-	for (int r = 0; r < rows(ps); r++) {
-		for (int c = 0; c < cols(ps); c++) {
-			s[rc2idx(r, c, ps)].p.resize(QUAD);
-			//s[rc2idx(r, c, ps)].set(1.0f, 1.0f, 1.0f, 1.0f, 1.0f, QUAD);	// erse_me
-			s[rc2idx(r, c, ps)].p[0].set(c * pixelSc, -r * pixelSr - pixelSr, 0.0f);
-			s[rc2idx(r, c, ps)].p[1].set(c * pixelSc + pixelSc, -r * pixelSr - pixelSr, 0.0f);
-			s[rc2idx(r, c, ps)].p[2].set(c * pixelSc + pixelSc, -r * pixelSr, 0.0f);
-			s[rc2idx(r, c, ps)].p[3].set(c * pixelSc, -r * pixelSr, 0.0f);
-			s[rc2idx(r, c, ps)].c.set(c * pixelSc + pixelSc / 2.0f, -r * pixelSr - pixelSr / 2.0f, 0.0f);
+	int rOffset = 0, cOffset = 0;
+	if (ps_ == PIXELS_VALID) {rOffset = CAMERA_PIX_Y_BAD_TOP; cOffset = CAMERA_PIX_X_BAD_LEFT;}
+	for (int r = 0; r < rows(ps_); r++) {
+		for (int c = 0; c < cols(ps_); c++) {
+			s[rc2idx(r, c, ps_)].p.resize(QUAD);
+			//s[rc2idx(r, c, ps_)].set(1.0f, 1.0f, 1.0f, 1.0f, 1.0f, QUAD);	// erse_me
+			s[rc2idx(r, c, ps_)].p[0].set((c + cOffset) * pixelSc, -(r + rOffset) * pixelSr - pixelSr, 0.0f);
+			s[rc2idx(r, c, ps_)].p[1].set((c + cOffset) * pixelSc + pixelSc, -(r + rOffset) * pixelSr - pixelSr, 0.0f);
+			s[rc2idx(r, c, ps_)].p[2].set((c + cOffset) * pixelSc + pixelSc, -(r + rOffset) * pixelSr, 0.0f);
+			s[rc2idx(r, c, ps_)].p[3].set((c + cOffset) * pixelSc, -(r + rOffset) * pixelSr, 0.0f);
+			s[rc2idx(r, c, ps_)].c.set((c + cOffset) * pixelSc + pixelSc / 2.0f, -(r + rOffset) * pixelSr - pixelSr / 2.0f, 0.0f);
 	}	}
 	// setting the relative to the camera position of the screen as the original camera FoV meas
 	Point sreenC(CAMERA_FOV_X_METERS / 2.0f, -CAMERA_FOV_Y_METERS / 2.0f, 0.0f);	// actual center of screen, indep of ps
@@ -1065,9 +1070,11 @@ void Scene::set(SceneType sceneType_) {
 
 // ----- FUNCITONS -------------------------------
 
-// clear, add Object3D to Scene
+// clear (auto resizes to SCENE_SIZE), add Object3D to Scene
 void Scene::clear() {
 	o.clear();
+	o.resize(SCENE_SIZE);
+	sceneType = UNKNOWN_SCT;
 }
 void Scene::add(Object3D & o0) {
 	if (o0.ot == UNKOWN_OBT) {
@@ -1252,7 +1259,7 @@ void Scene::setWallPatches(PixStoring ps_) {
 	}
 }
 // Setter Camera FoV (7)
-void Scene::setCameraFoV(float R_, float G_, float B_, float A_, PixStoring ps_) {
+void Scene::setCameraFoV(float R_, float G_, float B_, float A_, PixStoring ps_, float distDefault) {
 
 	// Set the Object3D
 	o[CAMERA_FOV].s.resize(8);
@@ -1264,11 +1271,18 @@ void Scene::setCameraFoV(float R_, float G_, float B_, float A_, PixStoring ps_)
 	screenFoVmeasN.setScreenFoVmeasN(o[CAMERA].s[0].c, o[CAMERA].normalQUAD(), ps_);
 
 	// Get intersections
-	Point p0 = int_linePN_object3D(o[CAMERA].s[0].c, screenFoVmeasN.s[rc2idx(rows(ps_) - 1, 0, ps_)].p[0], o[WALL]);
-	Point p1 = int_linePN_object3D(o[CAMERA].s[0].c, screenFoVmeasN.s[rc2idx(rows(ps_) - 1, cols(ps_) - 1, ps_)].p[1], o[WALL]);
-	Point p2 = int_linePN_object3D(o[CAMERA].s[0].c, screenFoVmeasN.s[rc2idx(0, cols(ps_) - 1, ps_)].p[2], o[WALL]);
-	Point p3 = int_linePN_object3D(o[CAMERA].s[0].c, screenFoVmeasN.s[rc2idx(0, 0, ps_)].p[3], o[WALL]);
-
+	Point p0, p1, p2, p3;
+	if (o[WALL].s.size() > 0) {
+		p0.set(int_linePN_object3D(o[CAMERA].s[0].c, screenFoVmeasN.s[rc2idx(rows(ps_) - 1, 0, ps_)].p[0], o[WALL]));
+		p1.set(int_linePN_object3D(o[CAMERA].s[0].c, screenFoVmeasN.s[rc2idx(rows(ps_) - 1, cols(ps_) - 1, ps_)].p[1], o[WALL]));
+		p2.set(int_linePN_object3D(o[CAMERA].s[0].c, screenFoVmeasN.s[rc2idx(0, cols(ps_) - 1, ps_)].p[2], o[WALL]));
+		p3.set(int_linePN_object3D(o[CAMERA].s[0].c, screenFoVmeasN.s[rc2idx(0, 0, ps_)].p[3], o[WALL]));
+	} else {
+		p0.set(o[CAMERA].s[0].c + screenFoVmeasN.s[rc2idx(rows(ps_) - 1, 0, ps_)].p[0] * distDefault);
+		p1.set(o[CAMERA].s[0].c + screenFoVmeasN.s[rc2idx(rows(ps_) - 1, cols(ps_) - 1, ps_)].p[1] * distDefault);
+		p2.set(o[CAMERA].s[0].c + screenFoVmeasN.s[rc2idx(0, cols(ps_) - 1, ps_)].p[2] * distDefault);
+		p3.set(o[CAMERA].s[0].c + screenFoVmeasN.s[rc2idx(0, 0, ps_)].p[3] * distDefault);
+	}
 	// Set the lines
 	o[CAMERA_FOV].s[0].set(o[CAMERA].s[0].c, p0, o[CAMERA].s[0].c);		o[CAMERA_FOV].s[0].set(1.0f, R_, G_, B_, A_, LINE);
 	o[CAMERA_FOV].s[1].set(o[CAMERA].s[0].c, p1, o[CAMERA].s[0].c);		o[CAMERA_FOV].s[1].set(1.0f, R_, G_, B_, A_, LINE);
@@ -1488,6 +1502,7 @@ void Scene::updatePixelPatches_Simulation(Frame & frame00, Frame & frame90, bool
 	}
 	// --- END OF LOOP -----------------------------------------------------------------------------------------
 }
+
 // Setter Scene Direct Vision
 void Scene::setScene_DirectVision(PixStoring ps) {
 
@@ -1540,6 +1555,7 @@ void Scene::setScene_DirectVision(PixStoring ps) {
 	setLaser(lasPosC, lasAxisN, lasDeg, lasS, lasC_relToP0, lasAlbedoVV, lasRVV, lasGVV, lasBVV, lasAVV);
 
 	// WALL (2)
+	/*
 	Point walPosC(0.375f,0.95f, -5.0f);
 	Point walS(2.0f, 1.5f, 0.05f);
 	Point walAxisN(0.0f, 1.0f, 0.0f);
@@ -1561,6 +1577,7 @@ void Scene::setScene_DirectVision(PixStoring ps) {
 	}
 	o[WALL].setBox(walPosC, walAxisN, walDeg, walS, walC_relToP0, walAlbedoV, walRV, walGV, walBV, walAV);
 	o[WALL].ot = WALL;
+	*/
 
 	// FLOOR (4)
 	Point floPosC(-1.625f, 0.0f, 0.7f);
@@ -1584,6 +1601,10 @@ void Scene::setScene_DirectVision(PixStoring ps) {
 	}
 	o[FLOOR].setBox(floPosC, floAxisN, floDeg, floS, floC_relToP0, floAlbedoV, floRV, floGV, floBV, floAV);
 	o[FLOOR].ot = FLOOR;
+	
+	// CAMERA_FOV (7)
+	float cafR = 0.0f, cafG = 0.0f, cafB = 1.0f, cafA = 1.0f, cafDist = 5.0f;
+	setCameraFoV(cafR, cafG, cafB, cafA, ps, cafDist);
 
 	// PIXEL_PATCHES (10)
 	setPixelPatches(2.0f, ps);
@@ -1597,6 +1618,7 @@ void Scene::setScene_DirectVision(PixStoring ps) {
 	setPixelPatches(frame00, frame90, ps);
 	*/
 }
+// Setter Scene Occlusion
 void Scene::setScene_Occlusion(PixStoring ps) {
 
 	// CAMERA (0)
@@ -1732,6 +1754,106 @@ void Scene::setScene_Occlusion(PixStoring ps) {
 	// VOLUME_PATCHES (9)
 	setVolumePatches();
 }
+// Setter Scene Calibration Matrix
+void Scene::setScene_CalibrationMatrix(float laser_to_cam_offset_x, float laser_to_cam_offset_y, float laser_to_cam_offset_z, float dist_wall_cam) {
+	
+	// CAMERA (0)
+	Point camPosC(0.0f, 0.75f, 0.0f);	// pos of the center of the camera
+	Point camAxisN(0.0f, 1.0f, 0.0f);	// normal axis of rotation from the center of the camera (axis Y in this case)
+	float camDeg = 180.0f;				// degrees of rotation of the camera around axis normal axis of rotaiton
+	Point camS(0.15f, 0.15f, 0.04f);	// size of the main box of the camera
+	Point camC_relToP0(camS.x / 2.0f, camS.y / 2.0f, 0.0f);	// pos of the centre, relative to the first point of the main box before transformations
+	//std::vector<std::vector<float>> camAlbedoVV(0), camRVV(0), camGVV(0), camBVV(0), camAVV(0);
+	int cam_s_per_box = 6;
+	int cam_boxes = 4;
+	std::vector<std::vector<float>> camAlbedoVV(cam_boxes, std::vector<float>(cam_s_per_box));
+	std::vector<std::vector<float>> camRVV(cam_boxes, std::vector<float>(cam_s_per_box));
+	std::vector<std::vector<float>> camGVV(cam_boxes, std::vector<float>(cam_s_per_box));
+	std::vector<std::vector<float>> camBVV(cam_boxes, std::vector<float>(cam_s_per_box));
+	std::vector<std::vector<float>> camAVV(cam_boxes, std::vector<float>(cam_s_per_box));
+	for (int b = 0; b < cam_boxes; b++) {
+		camRVV[b][FRONT] = 0.5f;  camRVV[b][RIGHT] = 0.8f;  camRVV[b][BACK] = 0.4f;  camRVV[b][LEFT] = 0.3f;  camRVV[b][BOTTOM] = 0.25f;  camRVV[b][TOP] = 0.65f;
+		camGVV[b][FRONT] = 0.5f;  camGVV[b][RIGHT] = 0.8f;  camGVV[b][BACK] = 0.4f;  camGVV[b][LEFT] = 0.3f;  camGVV[b][BOTTOM] = 0.25f;  camGVV[b][TOP] = 0.65f;
+		camBVV[b][FRONT] = 0.5f;  camBVV[b][RIGHT] = 0.8f;  camBVV[b][BACK] = 0.4f;  camBVV[b][LEFT] = 0.3f;  camBVV[b][BOTTOM] = 0.25f;  camBVV[b][TOP] = 0.65f;
+		for (int s = FRONT; s <= TOP; s++) {
+			camAlbedoVV[b][s] = 1.0f;
+			camAVV[b][s] = 1.0f;
+	}	}
+	setCamera(camPosC, camAxisN, camDeg, camS, camC_relToP0, camAlbedoVV, camRVV, camGVV, camBVV, camAVV);
+
+	// LASER (1)
+	Point lasPosC = camPosC + Point(laser_to_cam_offset_x, laser_to_cam_offset_y, laser_to_cam_offset_z);
+	Point lasAxisN = camAxisN;
+	float lasDeg = camDeg;
+	Point lasS(0.1f, 0.1f, 0.15f);
+	Point lasC_relToP0(lasS.x / 2.0f, lasS.y / 2.0f, 0.0f);
+	//std::vector<std::vector<float>> lasAlbedoVV(0), lasRVV(0), lasGVV(0), lasBVV(0), lasAVV(0);
+	int las_s_per_box = 6;
+	int las_boxes = 4;
+	std::vector<std::vector<float>> lasAlbedoVV(las_boxes, std::vector<float>(las_s_per_box));
+	std::vector<std::vector<float>> lasRVV(las_boxes, std::vector<float>(las_s_per_box));
+	std::vector<std::vector<float>> lasGVV(las_boxes, std::vector<float>(las_s_per_box));
+	std::vector<std::vector<float>> lasBVV(las_boxes, std::vector<float>(las_s_per_box));
+	std::vector<std::vector<float>> lasAVV(las_boxes, std::vector<float>(las_s_per_box));
+	for (int b = 0; b < las_boxes; b++) {
+		lasRVV[b][FRONT] = 0.5f;  lasRVV[b][RIGHT] = 0.8f;  lasRVV[b][BACK] = 0.4f;  lasRVV[b][LEFT] = 0.3f;  lasRVV[b][BOTTOM] = 0.25f;  lasRVV[b][TOP] = 0.65f;
+		lasGVV[b][FRONT] = 0.5f;  lasGVV[b][RIGHT] = 0.8f;  lasGVV[b][BACK] = 0.4f;  lasGVV[b][LEFT] = 0.3f;  lasGVV[b][BOTTOM] = 0.25f;  lasGVV[b][TOP] = 0.65f;
+		lasBVV[b][FRONT] = 0.5f;  lasBVV[b][RIGHT] = 0.8f;  lasBVV[b][BACK] = 0.4f;  lasBVV[b][LEFT] = 0.3f;  lasBVV[b][BOTTOM] = 0.25f;  lasBVV[b][TOP] = 0.65f;
+		for (int s = FRONT; s <= TOP; s++) {
+			lasAlbedoVV[b][s] = 1.0f;
+			lasAVV[b][s] = 1.0f;
+	}	}
+	setLaser(lasPosC, lasAxisN, lasDeg, lasS, lasC_relToP0, lasAlbedoVV, lasRVV, lasGVV, lasBVV, lasAVV);
+
+	// WALL (2)
+	Point walPosC(0.375f,0.95f, camPosC.z - dist_wall_cam);
+	Point walS(2.0f, 1.5f, 0.05f);
+	Point walAxisN(0.0f, 1.0f, 0.0f);
+	float walDeg = 0.0f;
+	Point walC_relToP0(walS.x / 2.0f, walS.y / 2.0f, 0.0f);
+	//std::vector<float> walAlbedoV(0), walRVV(0), walGV(0), walBV(0), walAV(0);
+	int wal_s_per_box = 6;
+	std::vector<float> walAlbedoV(wal_s_per_box);
+	std::vector<float> walRV(wal_s_per_box);
+	std::vector<float> walGV(wal_s_per_box);
+	std::vector<float> walBV(wal_s_per_box);
+	std::vector<float> walAV(wal_s_per_box);
+	walRV[FRONT] = 0.85f;  walRV[RIGHT] = 0.3f;  walRV[BACK] = 0.5f;  walRV[LEFT] = 0.8f;  walRV[BOTTOM] = 0.25f;  walRV[TOP] = 0.65f;
+	walGV[FRONT] = 0.85f;  walGV[RIGHT] = 0.3f;  walGV[BACK] = 0.5f;  walGV[LEFT] = 0.8f;  walGV[BOTTOM] = 0.25f;  walGV[TOP] = 0.65f;
+	walBV[FRONT] = 0.85f;  walBV[RIGHT] = 0.3f;  walBV[BACK] = 0.5f;  walBV[LEFT] = 0.8f;  walBV[BOTTOM] = 0.25f;  walBV[TOP] = 0.65f;
+	for (int s = FRONT; s <= TOP; s++) {
+		walAlbedoV[s] = 1.0f;
+		walAV[s] = 1.0f;
+	}
+	o[WALL].setBox(walPosC, walAxisN, walDeg, walS, walC_relToP0, walAlbedoV, walRV, walGV, walBV, walAV);
+	o[WALL].ot = WALL;
+
+	// FLOOR (4)
+	Point floPosC(-1.625f, 0.0f, 0.7f);
+	Point floS(4.0f, 6.0f, 0.2f);
+	Point floAxisN(1.0f, 0.0f, 0.0f);
+	float floDeg = -90.0f;
+	Point floC_relToP0(0.0f, 0.0f, 0.0f);
+	//std::vector<float> floAlbedoV(0), floRVV(0), floGV(0), floBV(0), floAV(0);
+	int flo_s_per_box = 6;
+	std::vector<float> floAlbedoV(flo_s_per_box);
+	std::vector<float> floRV(flo_s_per_box);
+	std::vector<float> floGV(flo_s_per_box);
+	std::vector<float> floBV(flo_s_per_box);
+	std::vector<float> floAV(flo_s_per_box);
+	floRV[FRONT] = 0.45f;  floRV[RIGHT] = 0.3f;  floRV[BACK] = 0.25f;  floRV[LEFT] = 0.8f;  floRV[BOTTOM] = 0.4f;  floRV[TOP] = 0.5f;
+	floGV[FRONT] = 0.45f;  floGV[RIGHT] = 0.3f;  floGV[BACK] = 0.25f;  floGV[LEFT] = 0.8f;  floGV[BOTTOM] = 0.4f;  floGV[TOP] = 0.5f;
+	floBV[FRONT] = 0.45f;  floBV[RIGHT] = 0.3f;  floBV[BACK] = 0.25f;  floBV[LEFT] = 0.8f;  floBV[BOTTOM] = 0.4f;  floBV[TOP] = 0.5f;
+	for (int s = FRONT; s <= TOP; s++) {
+		floAlbedoV[s] = 1.0f;
+		floAV[s] = 1.0f;
+	}
+	o[FLOOR].setBox(floPosC, floAxisN, floDeg, floS, floC_relToP0, floAlbedoV, floRV, floGV, floBV, floAV);
+	o[FLOOR].ot = FLOOR;
+	
+	// WALL_PATCHES (6)
+	setWallPatches(PIXELS_TOTAL);
+}
 
 // ----- NON-MEMBER FUNCITONS ------------------------
 void updatePixelPatches_Sinusoid_antiBugThread(Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_) {
@@ -1743,6 +1865,7 @@ void updatePixelPatches_Simulation_antiBugThread(Scene & scene, Frame & frame00,
 void updateVolumePatches_Occlusion_antiBugThread(Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_) {
 	scene.updateVolumePatches_Occlusion(frame00, frame90, loop, ps_);
 }
+
 
 // ----------------------------------------------------------------------------------------------------------------------------------------
 // ----- OTHER NON-MEMBER FUNCTIONS -------------------------------------------------------------------------------------------------------

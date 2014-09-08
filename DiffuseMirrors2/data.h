@@ -90,9 +90,10 @@ public:
 				std::vector<float> & freqV_, std::vector<float> & distV_, std::vector<float> & shutV_, std::vector<float> & phasV_, int numtakes_, int error_code_ = 0,
 				int sizeof_value_cmx_ = -1, float laser_to_cam_offset_x_ = -1.0f, float laser_to_cam_offset_y_ = -1.0f, float laser_to_cam_offset_z_ = -1.0f, float dist_wall_cam_ = -1.0f);
 
-	
 	// Constructor from file
 	Info::Info(char* dir_name_, char* file_name_);
+	// Destructor
+	Info::~Info();
 	
 
 	// ----- SETTERS --------------------------------- // Note that each Constructor just contains its corresponding Setter
@@ -146,6 +147,8 @@ public:
 	// Constructor from Info. It creates a CalibrationMatrix object from the .raw file noted in the info object
 	// take: number of the raw_numtake file this is referencing to. take = -1 if refers to the normal raw file
 	RawData::RawData(Info & info_, int take_ = -1);
+	// Destructor
+	RawData::~RawData();
 	
 	
 	
@@ -208,6 +211,8 @@ public:
 	CalibrationMatrix::CalibrationMatrix(Info & info_, float* data_, int data_size_, std::vector<float> & path_dist_0_, int error_code_ = 0);
 	// Constructor. It creates a CalibrationMatrix object from the .cmx file noted in the info object
  	CalibrationMatrix::CalibrationMatrix(Info & info_);
+	// Destructor
+	CalibrationMatrix::~CalibrationMatrix();
 	
 	
 	// ----- SETTERS --------------------------------- // Note that each Constructor just contains its corresponding Setter
@@ -322,7 +327,6 @@ public:
 	int Frame::data_idx (int r, int c);
 	// r,c Matrix-like, 0-idx.
 	float Frame::at (int r, int c);
-
 	// Plot frame with opencv
 	void Frame::plot(int delay_ms = 1000);
 };

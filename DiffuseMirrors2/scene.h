@@ -69,8 +69,9 @@ public:
 	// print
 	void Point::print();
 	void Point::print(char* txt_left, char* txt_right);
-	// mod
+	// mod, modPow2
 	float Point::mod();
+	float Point::modPow2();
 	// normal (get, set)
 	Point Point::normal();	
 	void Point::normalize();
@@ -362,7 +363,7 @@ public:
 	
 	// ----- FUNCITONS -------------------------------
 	
-	// clear, add Shape to Object3D
+	// clear (auto resizes to SCENE_SIZE), add Object3D to Scene
 	void Scene::clear();
 	void Scene::add(Object3D & o0);
 
@@ -377,7 +378,7 @@ public:
 	// Setter Wall Patches (6)
 	void Scene::setWallPatches(PixStoring ps_ = PIXELS_STORING_GLOBAL);
 	// Setter Camera FoV (7)
-	void Scene::setCameraFoV(float R_ = 0.0f, float G_ = 0.0f, float B_ = 1.0f, float A_ = 1.0f, PixStoring ps_ = PIXELS_STORING_GLOBAL);
+	void Scene::setCameraFoV(float R_ = 0.0f, float G_ = 0.0f, float B_ = 1.0f, float A_ = 1.0f, PixStoring ps_ = PIXELS_STORING_GLOBAL, float distDefault = 5.0f);
 	// Setter Laser Ray (8)
 	void Scene::setLaserRay(float R_ = 0.0f, float G_ = 0.0f, float B_ = 1.0f, float A_ = 1.0f, PixStoring ps_ = PIXELS_STORING_GLOBAL);
 	// Setter, Updater Volume Patches (9)
@@ -389,9 +390,13 @@ public:
 	void Scene::updatePixelPatches_Sinusoid(Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL);
 	void Scene::updatePixelPatches_Simulation(Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL);
 
-	// Setter Entire Scenes
+	// Setter Scene Direct Vision
 	void Scene::setScene_DirectVision(PixStoring ps = PIXELS_STORING_GLOBAL);	// the same for both Sinusoid and Simulation
+	// Setter Scene Occlusion
 	void Scene::setScene_Occlusion(PixStoring ps = PIXELS_STORING_GLOBAL);
+	// Setter Scene Calibration Matrix
+	void Scene::setScene_CalibrationMatrix(float laser_to_cam_offset_x, float laser_to_cam_offset_y, float laser_to_cam_offset_z, float dist_wall_cam);
+
 };
 // ----- NON-MEMBER FUNCITONS ------------------------
 void updatePixelPatches_Sinusoid_antiBugThread(Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL);

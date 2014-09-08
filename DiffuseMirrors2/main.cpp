@@ -46,8 +46,7 @@ void control_loop_pause() {
 
 
 
-
-// TO-DO (just TO-CHECK)
+// CHECKED OK
 int main_DirectVision_Sinusoid(bool loop = true) {
 
 	// capture data directly from PMD to Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE)
@@ -143,7 +142,7 @@ int main_Occlusion(bool loop = true) {
 	return 0;
 }
 
-// TO-DO (just TO-CHECK)
+// CHECKED OK
 int main_FoVmeas(bool loop = true) {
 	
 	// capture data directly from PMD to Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE)
@@ -167,7 +166,7 @@ int main_FoVmeas(bool loop = true) {
 	return 0;
 }
 
-// TO-DO (just TO-CHECK)
+// CHECKED OK
 int main_RawData(char* dir_name_, char* file_name_) {
 	
 	// set all the object3D of the corresponding scene (just camera, laser and wall)
@@ -193,7 +192,7 @@ int main_RawData(char* dir_name_, char* file_name_) {
 		delays.push_back(di);
 	std::vector<float> shutters_float(1, 1920.0f);	// (us)
 	char comport[128] = "COM6";
-	int numtakes = 20;
+	int numtakes = 10;
 	std::thread thread_PMD_params_to_file (PMD_params_to_file_anti_bug_thread, frequencies, delays, shutters_float, dir_name_, file_name_, comport, numtakes, cmx_info, cmx_params);
 
 	// pause in main to allow control when the loops will finish
@@ -205,18 +204,18 @@ int main_RawData(char* dir_name_, char* file_name_) {
 	return 0;
 }
 
-// TO-DO (just TO-CHECK): It builds a .cmx file from a .raw file with the parameters stored in the .inf file
+// CHECKED OK: It builds a .cmx file from a .raw file with the parameters stored in the .inf file
 int main_CalibrationMatrix (char* dir_name_, char* file_name_) {
 	
 	// built the global Info instance INFO
 	Info info = Info(dir_name_, file_name_);
-
+	
 	// create the .cmx file, dealing with the .inf and .raw files. It internally creates the corresponding scene
 	std::thread thread_create_cmx_from_raw (create_cmx_from_raw_anti_bug_thread, std::ref(info));
 
 	// pause in main to allow control when the loops will finish
 	//control_loop_pause();
-
+	
 	// joins
 	thread_create_cmx_from_raw.join();
 
@@ -227,8 +226,8 @@ int main_Test(bool loop = true) {
 
 	// Set all the object3D of the corresponding scene
 	PixStoring ps = PIXELS_STORING_GLOBAL;
-	//SCENEMAIN.setScene_DirectVision(ps);
-	SCENEMAIN.setScene_Occlusion(ps);
+	SCENEMAIN.setScene_DirectVision(ps);
+	//SCENEMAIN.setScene_Occlusion(ps);
 	
 	// Render all the object3D of the scene
 	int argcStub = 0;
@@ -244,27 +243,26 @@ int main_Test(bool loop = true) {
 
 
 // MAIN
-// Observation: PMD captures at 9.5 fps with the current set-up (2014-08-05):
-//     100 captures (in loop, with pmd always opened) take aprox 10.5 seconds,
-//     tested with both PMD_params_to_file(...) and PMD_params_to_Frame(...)
 int main(int argc, char** argv) {
 	
-	SceneType sceneType = TEST;	// UNKNOWN_SCT, DIRECT_VISION_SINUSOID, DIRECT_VISION_SIMULATION, OCCLUSION, FOV_MEASUREMENT, RAW_DATA, CALIBRATION_MATRIX, TEST
+	// Set parameteres
+	SceneType sceneType = DIRECT_VISION_SINUSOID;
 	SCENEMAIN.set(sceneType);
-	char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\test_03";
-	char file_name[1024] = "PMD";
-	//char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\DiffuseMirrors2\\CalibrationMatrix\\test_03";
+	//char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\test_03";
 	//char file_name[1024] = "PMD";
+	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\test_05";
+	char file_name[1024] = "PMD";
 	bool loop = true;
 	
+	// Main Switcher
 	switch (sceneType) {
-		case DIRECT_VISION_SINUSOID: main_DirectVision_Sinusoid(loop);			break;
-		case DIRECT_VISION_SIMULATION: main_DirectVision_Simulation(loop);		break;
-		case OCCLUSION: main_Occlusion(loop);									break;
-		case FOV_MEASUREMENT: main_FoVmeas(loop);								break;
-		case RAW_DATA: main_RawData(dir_name, file_name);						break;
-		case CALIBRATION_MATRIX: main_CalibrationMatrix(dir_name, file_name);	break;
-		case TEST: main_Test(loop);												break;
+		case DIRECT_VISION_SINUSOID:	main_DirectVision_Sinusoid (loop);				break;
+		case DIRECT_VISION_SIMULATION:	main_DirectVision_Simulation (loop);			break;
+		case OCCLUSION:					main_Occlusion (loop);							break;
+		case FOV_MEASUREMENT:			main_FoVmeas (loop);							break;
+		case RAW_DATA:					main_RawData (dir_name, file_name);				break;
+		case CALIBRATION_MATRIX:		main_CalibrationMatrix (dir_name, file_name);	break;
+		case TEST:						main_Test (loop);								break;
 	}
 
 	system("pause");

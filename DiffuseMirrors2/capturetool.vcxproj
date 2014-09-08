@@ -174,7 +174,7 @@ copy OpenCV\opencv_*.dll "$(OutDir)"</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>eigen321;C:\Program Files\MATLAB\R2012b\extern\include;freeglut/include;./include;OpenCV/include;OpenCV/include/opencv;C:\Users\transient\Documents\Visual Studio 2012\Projects\DiffuseMirrors2\Purple0\Purple</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files\MATLAB\R2012b\extern\include;freeglut/include;./include;OpenCV/include;OpenCV/include/opencv;C:\Users\transient\Documents\Visual Studio 2012\Projects\DiffuseMirrors2\Purple0\Purple</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_VARIADIC_MAX=10;NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeader>
