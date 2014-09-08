@@ -552,20 +552,12 @@ void CalibrationMatrix::set (Info & info_) { // by default: pixels_storing_ = PI
 	//free (data_size_);
 
 	// Calibration Matrix Parameters: path_dist_0
-	// TO-DO: Implement this with a local variable SHAPES_LOCAL_OS
-	std::vector<float> dist_laser_rc, dist_cam_rc;		// these distV are ordered as WALL_PATCHES and it is, by rows, from down to top, we want it from top to down
-	set_scene_calibration_matrix (info, PIXELS_TOTAL);	// set the corresponding scene (camera, laser, wall and wall_patches)
-	// dist_centers( (*(*OBJECT3D_SET[LASER])[0]).c , (*OBJECT3D_SET[WALL_PATCHES]), dist_laser_rc); // TO-DO
-	// dist_centers( (*(*OBJECT3D_SET[CAMERA])[0]).c, (*OBJECT3D_SET[WALL_PATCHES]), dist_cam_rc); // TO-DO
-	clear_scene();										// clear scene
-	// path_dist_0
-	path_dist_0.resize (info->rows * info->cols);
-	for (int r = 0; r < info->rows; r++) {
-			for (int c = 0; c < info->cols; c++) {
-				int pos_in_distV = (info->rows-1-r)*info->cols + c;	// TO-DO: Change this when scene ordering has changed
-				path_dist_0[path_dist_0_idx(r,c,PIXELS_TOTAL)] = dist_laser_rc[pos_in_distV] + dist_cam_rc[pos_in_distV];
-	}	}
-
+	path_dist_0.resize (numPix(PIXELS_TOTAL));
+	Scene scene;	scene.clear();
+	scene.setScene_CalibrationMatrix(info_.laser_to_cam_offset_x, info_.laser_to_cam_offset_y, info_.laser_to_cam_offset_z, info_.dist_wall_cam);
+	for (size_t i = 0; i < numPix(PIXELS_TOTAL); i++)	// TO-DO: CHECK
+		path_dist_0[i] = dist(scene.o[LASER].s[0].c, scene.o[WALL_PATCHES].s[i].c) + dist(scene.o[CAMERA].s[0].c, scene.o[WALL_PATCHES].s[i].c);
+	scene.clear();
 	error_code = 0;		// no errors
 }
 
@@ -657,7 +649,7 @@ float CalibrationMatrix::c_coef (int freq_idx, int r, int c, float path_dist, Pi
 // This is the Simulation term for the direct vision problem: S_{i\;\omega}^{r,c}(\tau^{r,c}) in the Master Thesis document
 // Returns the value of the Simulation from the Calibration Matrix data at any path distance interpolating with the closest path distances. Path distances have to be equidistant in vector
 // Uses c(...)
-float CalibrationMatrix::S_direct_vision (int freq_idx, int r, int c, Point & r_src, Point & r_x,  Point & r_cam, float relative_albedo, PixStoring ps) { // by default: relative_albedo = 1.0f, ps = PIXELS_STORING_GLOBAL
+float CalibrationMatrix::S_DirectVision (int freq_idx, int r, int c, Point & r_src, Point & r_x,  Point & r_cam, float relative_albedo, PixStoring ps) { // by default: relative_albedo = 1.0f, ps = PIXELS_STORING_GLOBAL
 
 	float dist_src_x = dist(r_src, r_x);	// TO-DO: This will take references, not pointers
 	float dist_cam_x = dist(r_cam, r_x);	// TO-DO: This will take references, not pointers

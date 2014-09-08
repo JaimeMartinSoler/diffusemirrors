@@ -5,6 +5,7 @@
 
 #include "global.h"
 #include "data.h"
+#include "data_sim.h"
 #include "scene.h"
 
 
@@ -657,6 +658,7 @@ void Object3D::set(Object3DType ot_) {
 void Object3D::set(PixStoring ps_) {
 	ps = ps_;
 }
+
 // Setter Box
 void Object3D::setBox(Point & boxPC, Point & boxRaxisN, float deg, Point & boxS, Point & boxC_relToP0) {
 	std::vector<float> albedoV_stub;
@@ -739,6 +741,7 @@ void Object3D::setBox(Point & boxPC, Point & boxRaxisN, float deg, Point & boxS,
 	traCto(boxPC);
 	rotDegFromC(boxRaxisN,deg);
 }
+
 // Setter Screen FoV measurement. Here each Point is an actual Point
 void Object3D::setScreenFoVmeasP(Point & camC, Point & camN, PixStoring ps_) {
 
@@ -781,6 +784,425 @@ void Object3D::setScreenFoVmeasN(Point & camC, Point & camN, PixStoring ps_) {
 		s[i].p[3] -= camC;	s[i].p[3].normalize();
 		s[i].c    -= camC;	s[i].c.normalize();
 	}
+}
+// Setter Screen FoV measurement. Here each Point is the Normal to the corresponding Point of setScreenFoVmeasP
+void Object3D::setScreenFoVmeasNs(Point & camC, Point & camN, PixStoring ps_) {
+	// get the setScreenFoVmeasP
+	setScreenFoVmeasP(camC, camN, ps_);
+	// get and normalize the vector, getting setScreenFoVmeasN
+	float distCamScreen = dist(camC, int_linePN_object3D(camC, camN, *this));
+	for (size_t i = 0; i < s.size(); i++) {
+		s[i].p[0] -= camC;	s[i].p[0] /= distCamScreen;
+		s[i].p[1] -= camC;	s[i].p[1] /= distCamScreen;
+		s[i].p[2] -= camC;	s[i].p[2] /= distCamScreen;
+		s[i].p[3] -= camC;	s[i].p[3] /= distCamScreen;
+		s[i].c    -= camC;	s[i].c /= distCamScreen;
+	}
+}
+
+// Setter Camera(0)
+void Object3D::setCamera(Point & posC, Point & axisN, float deg, Point & size, Point & c_relToP0) {
+	std::vector<std::vector<float>> albedoVV_stub;
+	std::vector<std::vector<float>> RVV_stub;
+	std::vector<std::vector<float>> GVV_stub;
+	std::vector<std::vector<float>> BVV_stub;
+	std::vector<std::vector<float>> AVV_stub;
+	setCamera(posC, axisN, deg, size, c_relToP0, albedoVV_stub, RVV_stub, GVV_stub, BVV_stub, AVV_stub);
+}
+void Object3D::setCamera(Point & posC, Point & axisN, float deg, Point & size, Point & c_relToP0,
+	std::vector<std::vector<float>> & albedoVV, std::vector<std::vector<float>> & RVV, std::vector<std::vector<float>> & GVV, std::vector<std::vector<float>> & BVV, std::vector<std::vector<float>> & AVV) {
+	
+	clear();
+	ot = CAMERA;
+	ps = UNKNOWN_PIS;
+	int s_per_box = 6;
+	int boxes = 4;
+	int s_size = boxes * s_per_box;
+	
+	int albedo_default = 1.0f;
+	int R_default = 1.0f;
+	int G_default = 1.0f;
+	int B_default = 1.0f;
+	int A_default = 1.0f;
+	albedoVV.resize(boxes);
+	RVV.resize(boxes);
+	GVV.resize(boxes);
+	BVV.resize(boxes);
+	AVV.resize(boxes);
+	Point stub0 (0.0f,0.0f,0.0f);
+
+	for (int bi = 0; bi < boxes; bi++) {
+		for (size_t ai = albedoVV[bi].size(); ai < s_size; ai++)
+			albedoVV[bi].push_back(albedo_default);
+		for (size_t Ri = RVV[bi].size(); Ri < s_size; Ri++)
+			RVV[bi].push_back(R_default);
+		for (size_t Gi = GVV[bi].size(); Gi < s_size; Gi++)
+			GVV[bi].push_back(G_default);
+		for (size_t Bi = BVV[bi].size(); Bi < s_size; Bi++)
+			BVV[bi].push_back(B_default);
+		for (size_t Ai = AVV[bi].size(); Ai < s_size; Ai++)
+			AVV[bi].push_back(A_default);
+	}
+	
+	// Main box of the camera
+	Object3D mainBox(c_relToP0, stub0, 0, size, c_relToP0, albedoVV[0], RVV[0], GVV[0], BVV[0], AVV[0]);
+	add(mainBox);
+
+	// Stick box of the camera
+	float base_height = 0.02f;
+	Point stickPC = mean(mainBox.s[BOTTOM].p);
+	Point stickS (0.025f, posC.y - base_height - c_relToP0.y, 0.025f);
+	Point stickC (stickS.x/2.0f, stickS.y, -stickS.z/2.0f);
+	Object3D stickBox(stickPC, stub0, 0.0f, stickS, stickC, albedoVV[1], RVV[1], GVV[1], BVV[1], AVV[1]);
+	add(stickBox);
+
+	// Base box of the camera
+	Point basePC = mean(stickBox.s[BOTTOM].p);
+	Point baseS (0.14f, base_height, 0.14f);
+	Point baseC(baseS.x / 2.0f, baseS.y, -baseS.z / 2.0f);
+	Object3D baseBox (basePC, stub0, 0.0f, baseS, baseC, albedoVV[2], RVV[2], GVV[2], BVV[2], AVV[2]);
+	add(baseBox);
+
+	// Lens box of the camera
+	Point lensPC = mean(mainBox.s[FRONT].p);
+	Point lensS (0.08f, 0.08f, 0.1f);
+	Point lensC(lensS.x / 2.0f, lensS.y / 2.0f, -lensS.z);
+	Object3D lensBox (lensPC, stub0, 0.0f, lensS, lensC, albedoVV[3], RVV[3], GVV[3], BVV[3], AVV[3]);
+	lensBox.s.erase(lensBox.s.begin() + FRONT);
+	add(lensBox);
+	
+	// Transformaitons
+	traCto(posC);
+	rotDegFromC(axisN, deg);
+}
+// Setter Laser (1)
+void Object3D::setLaser(Point & posC, Point & axisN, float deg, Point & size, Point & c_relToP0) {
+	std::vector<std::vector<float>> albedoVV_stub;
+	std::vector<std::vector<float>> RVV_stub;
+	std::vector<std::vector<float>> GVV_stub;
+	std::vector<std::vector<float>> BVV_stub;
+	std::vector<std::vector<float>> AVV_stub;
+	setLaser(posC, axisN, deg, size, c_relToP0, albedoVV_stub, RVV_stub, GVV_stub, BVV_stub, AVV_stub);
+}
+void Object3D::setLaser(Point & posC, Point & axisN, float deg, Point & size, Point & c_relToP0,
+	std::vector<std::vector<float>> & albedoVV, std::vector<std::vector<float>> & RVV, std::vector<std::vector<float>> & GVV, std::vector<std::vector<float>> & BVV, std::vector<std::vector<float>> & AVV) {
+
+	clear();
+	ot = LASER;
+	ps = UNKNOWN_PIS;
+	int s_per_box = 6;
+	int boxes = 3;
+	int s_size = boxes * s_per_box;
+
+	int albedo_default = 1.0f;
+	int R_default = 1.0f;
+	int G_default = 1.0f;
+	int B_default = 1.0f;
+	int A_default = 1.0f;
+	albedoVV.resize(boxes);
+	RVV.resize(boxes);
+	GVV.resize(boxes);
+	BVV.resize(boxes);
+	AVV.resize(boxes);
+	Point stub0(0.0f, 0.0f, 0.0f);
+
+	for (int bi = 0; bi < boxes; bi++) {
+		for (size_t ai = albedoVV[bi].size(); ai < s_size; ai++)
+			albedoVV[bi].push_back(albedo_default);
+		for (size_t Ri = RVV[bi].size(); Ri < s_size; Ri++)
+			RVV[bi].push_back(R_default);
+		for (size_t Gi = GVV[bi].size(); Gi < s_size; Gi++)
+			GVV[bi].push_back(G_default);
+		for (size_t Bi = BVV[bi].size(); Bi < s_size; Bi++)
+			BVV[bi].push_back(B_default);
+		for (size_t Ai = AVV[bi].size(); Ai < s_size; Ai++)
+			AVV[bi].push_back(A_default);
+	}
+
+	// Main box of the laser
+	Object3D mainBox(c_relToP0, stub0, 0, size, c_relToP0, albedoVV[0], RVV[0], GVV[0], BVV[0], AVV[0]);
+	add(mainBox);
+
+	// Stick box of the laser
+	float base_height = 0.02f;
+	Point stickPC = mean(mainBox.s[BOTTOM].p);
+	Point stickS(0.025f, posC.y - base_height - c_relToP0.y, 0.025f);
+	Point stickC(stickS.x / 2.0f, stickS.y, -stickS.z / 2.0f);
+	Object3D stickBox(stickPC, stub0, 0.0f, stickS, stickC, albedoVV[1], RVV[1], GVV[1], BVV[1], AVV[1]);
+	add(stickBox);
+
+	// Base box of the laser
+	Point basePC = mean(stickBox.s[BOTTOM].p);
+	Point baseS(0.14f, base_height, 0.14f);
+	Point baseC(baseS.x / 2.0f, baseS.y, -baseS.z / 2.0f);
+	Object3D baseBox(basePC, stub0, 0.0f, baseS, baseC, albedoVV[2], RVV[2], GVV[2], BVV[2], AVV[2]);
+	add(baseBox);
+
+	// Transformaitons
+	traCto(posC);
+	rotDegFromC(axisN, deg);
+}
+// Setter Wall Patches (6)
+void Object3D::setWallPatches(Scene & scene, PixStoring ps_) {
+
+	// Set the Object3D
+	s.resize(numPix(ps_));
+	ot = WALL_PATCHES;
+	ps = ps_;
+
+	// Setting constant elements
+	Object3D screenFoVmeasN;
+	screenFoVmeasN.setScreenFoVmeasN(scene.o[CAMERA].s[0].c, scene.o[CAMERA].normalQUAD(), ps_);
+
+	// Update pixel patches
+	for (int i = 0; i < s.size(); i++) {
+		s[i].p.resize(QUAD);
+		s[i].set(1.0f, 1.0f, 1.0f, 1.0f, 1.0f, QUAD);
+		s[i].p[0].set(int_linePN_object3D(scene.o[CAMERA].s[0].c, screenFoVmeasN.s[i].p[0], scene.o[WALL]));
+		s[i].p[1].set(int_linePN_object3D(scene.o[CAMERA].s[0].c, screenFoVmeasN.s[i].p[1], scene.o[WALL]));
+		s[i].p[2].set(int_linePN_object3D(scene.o[CAMERA].s[0].c, screenFoVmeasN.s[i].p[2], scene.o[WALL]));
+		s[i].p[3].set(int_linePN_object3D(scene.o[CAMERA].s[0].c, screenFoVmeasN.s[i].p[3], scene.o[WALL]));
+		s[i].c.set   (int_linePN_object3D(scene.o[CAMERA].s[0].c, screenFoVmeasN.s[i].c   , scene.o[WALL]));
+	}
+}
+// Setter Camera FoV (7)
+void Object3D::setCameraFoV(Scene & scene, float R_, float G_, float B_, float A_, PixStoring ps_, float distDefault) {
+
+	// Set the Object3D
+	s.resize(8);
+	ot = CAMERA_FOV;
+	ps = ps_;
+
+	// Setting constant elements
+	Object3D screenFoVmeasN;
+	screenFoVmeasN.setScreenFoVmeasN(scene.o[CAMERA].s[0].c, scene.o[CAMERA].normalQUAD(), ps_);
+
+	// Get intersections
+	Point p0, p1, p2, p3;
+	if (scene.o[WALL].s.size() > 0) {
+		p0.set(int_linePN_object3D(scene.o[CAMERA].s[0].c, screenFoVmeasN.s[rc2idx(rows(ps_) - 1, 0, ps_)].p[0], scene.o[WALL]));
+		p1.set(int_linePN_object3D(scene.o[CAMERA].s[0].c, screenFoVmeasN.s[rc2idx(rows(ps_) - 1, cols(ps_) - 1, ps_)].p[1], scene.o[WALL]));
+		p2.set(int_linePN_object3D(scene.o[CAMERA].s[0].c, screenFoVmeasN.s[rc2idx(0, cols(ps_) - 1, ps_)].p[2], scene.o[WALL]));
+		p3.set(int_linePN_object3D(scene.o[CAMERA].s[0].c, screenFoVmeasN.s[rc2idx(0, 0, ps_)].p[3], scene.o[WALL]));
+	} else {
+		p0.set(scene.o[CAMERA].s[0].c + screenFoVmeasN.s[rc2idx(rows(ps_) - 1, 0, ps_)].p[0] * distDefault);
+		p1.set(scene.o[CAMERA].s[0].c + screenFoVmeasN.s[rc2idx(rows(ps_) - 1, cols(ps_) - 1, ps_)].p[1] * distDefault);
+		p2.set(scene.o[CAMERA].s[0].c + screenFoVmeasN.s[rc2idx(0, cols(ps_) - 1, ps_)].p[2] * distDefault);
+		p3.set(scene.o[CAMERA].s[0].c + screenFoVmeasN.s[rc2idx(0, 0, ps_)].p[3] * distDefault);
+	}
+	// Set the lines
+	s[0].set(scene.o[CAMERA].s[0].c, p0, scene.o[CAMERA].s[0].c);		s[0].set(1.0f, R_, G_, B_, A_, LINE);
+	s[1].set(scene.o[CAMERA].s[0].c, p1, scene.o[CAMERA].s[0].c);		s[1].set(1.0f, R_, G_, B_, A_, LINE);
+	s[2].set(scene.o[CAMERA].s[0].c, p2, scene.o[CAMERA].s[0].c);		s[2].set(1.0f, R_, G_, B_, A_, LINE);
+	s[3].set(scene.o[CAMERA].s[0].c, p3, scene.o[CAMERA].s[0].c);		s[3].set(1.0f, R_, G_, B_, A_, LINE);
+	s[4].set(p0, p1, p0);									s[4].set(1.0f, R_, G_, B_, A_, LINE);
+	s[5].set(p1, p2, p1);									s[5].set(1.0f, R_, G_, B_, A_, LINE);
+	s[6].set(p2, p3, p2);									s[6].set(1.0f, R_, G_, B_, A_, LINE);
+	s[7].set(p3, p0, p3);									s[7].set(1.0f, R_, G_, B_, A_, LINE);
+}
+// Setter Laser Ray (8)
+void Object3D::setLaserRay(Scene & scene, float R_, float G_, float B_, float A_, PixStoring ps_) {
+
+	// Set the Object3D
+	s.resize(1);
+	ot = LASER_RAY;
+	ps = ps_;
+
+	// Get intersection
+	Point p1 = int_linePN_object3D(scene.o[LASER].s[0].c, scene.o[LASER].normalQUAD(), scene.o[WALL]);
+
+	// Set the line
+	s[0].set(scene.o[LASER].s[0].c, p1, s[0].c);	s[0].set(1.0f, R_, G_, B_, A_, LINE);
+}
+// Setter, Updater Volume Patches (9)	// TO-DO
+void Object3D::setVolumePatches() {
+
+	// Set the Object3D
+	s.resize(0);
+	ot = VOLUME_PATCHES;
+	ps = UNKNOWN_PIS;
+
+	// Set reference from which the Volume Patches are made (at the end the corresponded transformation will be applied)
+	Point refC(3.0f, 0.0f, 0.0f);
+	Point refN(0.0f, 0.0f, 1.0f);
+	Point originC(0.0f, 0.0f, 0.0f);
+	Point originN(0.0f, 0.0f, 1.0f);
+
+	// Set variables
+	float minX = 0.0f;	float maxX = 1.0f;	float stepX = (maxX - minX) / (float)VOLUME_GRID_SIZE_X;
+	float minY = 0.25f;	float maxY = 1.25f;	float stepY = (maxY - minY) / (float)VOLUME_GRID_SIZE_Y;
+	float minZ = 0.0f;	float maxZ = 1.0f;	float stepZ = (maxZ - minZ) / (float)VOLUME_GRID_SIZE_Z;
+	Shape sX;
+
+	// Loop filling the Object3D
+	float z = 0.0f;
+	for (float x = minX; x < maxX - stepX / 2.0f; x += stepX) {
+		for (float y = minY; y < maxY - stepY / 2.0f; y += stepY) {
+			sX.clear();
+			sX.p.resize(QUAD);
+			sX.set(1.0f, 1.0f, 1.0f, 1.0f, 1.0f, QUAD);
+			sX.p[0].set(x, y, z);
+			sX.p[1].set(x + stepX, y, z);
+			sX.p[2].set(x + stepX, y + stepY, z);
+			sX.p[3].set(x, y + stepY, z);
+			sX.c.set   (x + stepX / 2.0f, y + stepY / 2.0f, z);
+			s.push_back(sX);
+	}	}
+
+	// Apply transformations
+	rotyFromP(radN(originN, refN) + PI, originC);
+	tra(refC);
+}
+void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_) { // TO-DO
+
+}
+// Setter, Updater Pixel Patches (10)
+void Object3D::setPixelPatches(Scene & scene, float distDefault, PixStoring ps_) {
+
+	// Set the Object3D
+	s.resize(numPix(ps_));
+	ot = PIXEL_PATCHES;
+	ps = ps_;
+
+	// Setting constant elements
+	Object3D screenFoVmeasN;
+	screenFoVmeasN.setScreenFoVmeasN(scene.o[CAMERA].s[0].c, scene.o[CAMERA].normalQUAD(), ps_);
+
+	// Update pixel patches
+	for (int i = 0; i < s.size(); i++) {
+		s[i].p.resize(QUAD);
+		s[i].set(1.0f, 1.0f, 1.0f, 1.0f, 1.0f, QUAD);
+		s[i].p[0].set(scene.o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[0] * distDefault);
+		s[i].p[1].set(scene.o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[1] * distDefault);
+		s[i].p[2].set(scene.o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[2] * distDefault);
+		s[i].p[3].set(scene.o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[3] * distDefault);
+		s[i].c.set   (scene.o[CAMERA].s[0].c + screenFoVmeasN.s[i].c    * distDefault);
+	}
+}
+void Object3D::setPixelPatches(Scene & scene, Frame & frame00, Frame & frame90, PixStoring ps_) {
+
+	// Set the Object3D
+	s.resize(numPix(ps_));
+	ot = PIXEL_PATCHES;
+	ps = ps_;
+
+	// Setting constant elements
+	std::vector<float> depthMap(numPix(ps_));	// depthMap stores the relative to the camera distance per pixel
+	Object3D screenFoVmeasN;
+	screenFoVmeasN.setScreenFoVmeasN(scene.o[CAMERA].s[0].c, scene.o[CAMERA].normalQUAD(), ps_);
+
+	// Setting Depth Map from the FRAMES captured
+	setDepthMap(depthMap, frame00, frame90);
+
+	// Update pixel patches
+	for (int i = 0; i < s.size(); i++) {
+		s[i].p.resize(QUAD);
+		s[i].set(1.0f, 1.0f, 1.0f, 1.0f, 1.0f, QUAD);
+		s[i].p[0].set(scene.o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[0] * depthMap[i]);
+		s[i].p[1].set(scene.o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[1] * depthMap[i]);
+		s[i].p[2].set(scene.o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[2] * depthMap[i]);
+		s[i].p[3].set(scene.o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[3] * depthMap[i]);
+		s[i].c.set(scene.o[CAMERA].s[0].c    + screenFoVmeasN.s[i].c    * depthMap[i]);
+	}
+}
+void Object3D::updatePixelPatches_Sinusoid(Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_) {
+
+	// Setting constant elements
+	std::vector<float> depthMap(numPix(ps_));	// depthMap stores the relative to the camera distance per pixel
+	Object3D screenFoVmeasN;
+	screenFoVmeasN.setScreenFoVmeasN(scene.o[CAMERA].s[0].c, scene.o[CAMERA].normalQUAD(), ps_);
+
+	// Syncronization
+	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
+	locker_frame_object = std::unique_lock<std::mutex>(mutex_frame_object, std::defer_lock);
+
+	// --- LOOP ------------------------------------------------------------------------------------------------
+	bool first_iter = true;
+	while (loop || first_iter) {
+
+		//const clock_t begin_time = clock();
+
+		if (!PMD_LOOP_ENABLE && !first_iter)
+			break;
+		first_iter = false;
+
+		// Syncronization
+		locker_frame_object.lock();		// Lock mutex_frame_object, any thread which used mutex_frame_object can NOT continue until unlock()
+		while (!UPDATED_NEW_FRAME)	//std::cout << "Waiting in Object to finish the UPDATED_NEW_Frame. This is OK!\n";
+			cv_frame_object.wait(locker_frame_object);
+
+		// Setting Depth Map from the FRAMES captured
+		setDepthMap(depthMap, frame00, frame90);
+
+		// Update pixel patches
+		for (int i = 0; i < s.size(); i++) {
+			s[i].p[0].set(scene.o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[0] * depthMap[i]);
+			s[i].p[1].set(scene.o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[1] * depthMap[i]);
+			s[i].p[2].set(scene.o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[2] * depthMap[i]);
+			s[i].p[3].set(scene.o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[3] * depthMap[i]);
+			s[i].c.set   (scene.o[CAMERA].s[0].c + screenFoVmeasN.s[i].c    * depthMap[i]);
+		}
+
+		// Syncronization
+		//std::cout << ",    UPDATED_NEW_SCENE\n";
+		UPDATED_NEW_FRAME = false;
+		UPDATED_NEW_SCENE = true;
+		cv_frame_object.notify_all();	// Notify all cv_frame_object. All threads waiting for cv_frame_object will break the wait after waking up
+		locker_frame_object.unlock();	// Unlock mutex_frame_object, now threads which used mutex_frame_object can continue
+
+		//const clock_t end_time = clock();
+		//float ms_time = 1000.0f * float(end_time - begin_time) / (float)CLOCKS_PER_SEC;
+		//float fps_time = 1000.0f / ms_time;
+		//std::cout << "time = " << ms_time << " ms,    fps = " << fps_time <<  " fps\n";
+	}
+	// --- END OF LOOP -----------------------------------------------------------------------------------------
+}
+void Object3D::updatePixelPatches_Simulation(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_) { // TO-DO (this is just a copy of updatePixelPatches_Sinusoid)
+	
+	// Setting constant elements
+	Point camC = scene.o[CAMERA].s[0].c;
+	Point camN = scene.o[CAMERA].normalQUAD();
+	Object3D screenFoVmeasNs;
+	screenFoVmeasNs.setScreenFoVmeasNs(camC, camN, ps_);
+	Scene sceneCopy(scene);
+	CalibrationMatrix cmx(info);
+
+	// Syncronization
+	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
+	locker_frame_object = std::unique_lock<std::mutex>(mutex_frame_object, std::defer_lock);
+
+	// --- LOOP ------------------------------------------------------------------------------------------------
+	bool first_iter = true;
+	while (loop || first_iter) {
+
+		//const clock_t begin_time = clock();
+
+		if (!PMD_LOOP_ENABLE && !first_iter)
+			break;
+		first_iter = false;
+
+		// Syncronization
+		locker_frame_object.lock();		// Lock mutex_frame_object, any thread which used mutex_frame_object can NOT continue until unlock()
+		while (!UPDATED_NEW_FRAME)	//std::cout << "Waiting in Object to finish the UPDATED_NEW_Frame. This is OK!\n";
+			cv_frame_object.wait(locker_frame_object);
+
+		// Update pixel patches, setting the Best Fit
+		updatePixelPatches_Simulation_BestFit(cmx, sceneCopy, frame00, camC, camN, screenFoVmeasNs, ps_);
+		scene.o[PIXEL_PATCHES] = sceneCopy.o[PIXEL_PATCHES];
+
+		// Syncronization
+		//std::cout << ",    UPDATED_NEW_SCENE\n";
+		UPDATED_NEW_FRAME = false;
+		UPDATED_NEW_SCENE = true;
+		cv_frame_object.notify_all();	// Notify all cv_frame_object. All threads waiting for cv_frame_object will break the wait after waking up
+		locker_frame_object.unlock();	// Unlock mutex_frame_object, now threads which used mutex_frame_object can continue
+
+		//const clock_t end_time = clock();
+		//float ms_time = 1000.0f * float(end_time - begin_time) / (float)CLOCKS_PER_SEC;
+		//float fps_time = 1000.0f / ms_time;
+		//std::cout << "time = " << ms_time << " ms,    fps = " << fps_time <<  " fps\n";
+	}
+	// --- END OF LOOP -----------------------------------------------------------------------------------------
 }
 
 
@@ -1057,6 +1479,10 @@ Point int_linePP_object3D(Point & lP0, Point & lP1, Object3D & o0) {
 Scene::Scene(SceneType sceneType_) {
 	set(sceneType_);
 }
+// Constructor Copy
+Scene::Scene(Scene & scene) {
+	set(scene);
+}
 
 
 // ----- SETTERS --------------------------------- // Note that Constructors just call their corresponding Setter
@@ -1065,6 +1491,11 @@ Scene::Scene(SceneType sceneType_) {
 void Scene::set(SceneType sceneType_) {
 	o.resize(SCENE_SIZE);
 	sceneType = sceneType_;
+}
+// Setter Copy
+void Scene::set(Scene & scene) {
+	o = scene.o;
+	sceneType = scene.sceneType;
 }
 	
 
@@ -1092,417 +1523,6 @@ void Scene::add(Object3D & o0) {
 	}
 }
 
-
-// Setter Camera(0)
-void Scene::setCamera(Point & posC, Point & axisN, float deg, Point & size, Point & c_relToP0) {
-	std::vector<std::vector<float>> albedoVV_stub;
-	std::vector<std::vector<float>> RVV_stub;
-	std::vector<std::vector<float>> GVV_stub;
-	std::vector<std::vector<float>> BVV_stub;
-	std::vector<std::vector<float>> AVV_stub;
-	setCamera(posC, axisN, deg, size, c_relToP0, albedoVV_stub, RVV_stub, GVV_stub, BVV_stub, AVV_stub);
-}
-void Scene::setCamera(Point & posC, Point & axisN, float deg, Point & size, Point & c_relToP0,
-	std::vector<std::vector<float>> & albedoVV, std::vector<std::vector<float>> & RVV, std::vector<std::vector<float>> & GVV, std::vector<std::vector<float>> & BVV, std::vector<std::vector<float>> & AVV) {
-	
-	o[CAMERA].clear();
-	o[CAMERA].ot = CAMERA;
-	o[CAMERA].ps = UNKNOWN_PIS;
-	int s_per_box = 6;
-	int boxes = 4;
-	int s_size = boxes * s_per_box;
-	
-	int albedo_default = 1.0f;
-	int R_default = 1.0f;
-	int G_default = 1.0f;
-	int B_default = 1.0f;
-	int A_default = 1.0f;
-	albedoVV.resize(boxes);
-	RVV.resize(boxes);
-	GVV.resize(boxes);
-	BVV.resize(boxes);
-	AVV.resize(boxes);
-	Point stub0 (0.0f,0.0f,0.0f);
-
-	for (int bi = 0; bi < boxes; bi++) {
-		for (size_t ai = albedoVV[bi].size(); ai < s_size; ai++)
-			albedoVV[bi].push_back(albedo_default);
-		for (size_t Ri = RVV[bi].size(); Ri < s_size; Ri++)
-			RVV[bi].push_back(R_default);
-		for (size_t Gi = GVV[bi].size(); Gi < s_size; Gi++)
-			GVV[bi].push_back(G_default);
-		for (size_t Bi = BVV[bi].size(); Bi < s_size; Bi++)
-			BVV[bi].push_back(B_default);
-		for (size_t Ai = AVV[bi].size(); Ai < s_size; Ai++)
-			AVV[bi].push_back(A_default);
-	}
-	
-	// Main box of the camera
-	Object3D mainBox(c_relToP0, stub0, 0, size, c_relToP0, albedoVV[0], RVV[0], GVV[0], BVV[0], AVV[0]);
-	o[CAMERA].add(mainBox);
-
-	// Stick box of the camera
-	float base_height = 0.02f;
-	Point stickPC = mean(mainBox.s[BOTTOM].p);
-	Point stickS (0.025f, posC.y - base_height - c_relToP0.y, 0.025f);
-	Point stickC (stickS.x/2.0f, stickS.y, -stickS.z/2.0f);
-	Object3D stickBox(stickPC, stub0, 0.0f, stickS, stickC, albedoVV[1], RVV[1], GVV[1], BVV[1], AVV[1]);
-	o[CAMERA].add(stickBox);
-
-	// Base box of the camera
-	Point basePC = mean(stickBox.s[BOTTOM].p);
-	Point baseS (0.14f, base_height, 0.14f);
-	Point baseC(baseS.x / 2.0f, baseS.y, -baseS.z / 2.0f);
-	Object3D baseBox (basePC, stub0, 0.0f, baseS, baseC, albedoVV[2], RVV[2], GVV[2], BVV[2], AVV[2]);
-	o[CAMERA].add(baseBox);
-
-	// Lens box of the camera
-	Point lensPC = mean(mainBox.s[FRONT].p);
-	Point lensS (0.08f, 0.08f, 0.1f);
-	Point lensC(lensS.x / 2.0f, lensS.y / 2.0f, -lensS.z);
-	Object3D lensBox (lensPC, stub0, 0.0f, lensS, lensC, albedoVV[3], RVV[3], GVV[3], BVV[3], AVV[3]);
-	lensBox.s.erase(lensBox.s.begin() + FRONT);
-	o[CAMERA].add(lensBox);
-	
-	// Transformaitons
-	o[CAMERA].traCto(posC);
-	o[CAMERA].rotDegFromC(axisN, deg);
-}
-// Setter Laser (1)
-void Scene::setLaser(Point & posC, Point & axisN, float deg, Point & size, Point & c_relToP0) {
-	std::vector<std::vector<float>> albedoVV_stub;
-	std::vector<std::vector<float>> RVV_stub;
-	std::vector<std::vector<float>> GVV_stub;
-	std::vector<std::vector<float>> BVV_stub;
-	std::vector<std::vector<float>> AVV_stub;
-	setLaser(posC, axisN, deg, size, c_relToP0, albedoVV_stub, RVV_stub, GVV_stub, BVV_stub, AVV_stub);
-}
-void Scene::setLaser(Point & posC, Point & axisN, float deg, Point & size, Point & c_relToP0,
-	std::vector<std::vector<float>> & albedoVV, std::vector<std::vector<float>> & RVV, std::vector<std::vector<float>> & GVV, std::vector<std::vector<float>> & BVV, std::vector<std::vector<float>> & AVV) {
-
-	o[LASER].clear();
-	o[LASER].ot = LASER;
-	o[LASER].ps = UNKNOWN_PIS;
-	int s_per_box = 6;
-	int boxes = 3;
-	int s_size = boxes * s_per_box;
-
-	int albedo_default = 1.0f;
-	int R_default = 1.0f;
-	int G_default = 1.0f;
-	int B_default = 1.0f;
-	int A_default = 1.0f;
-	albedoVV.resize(boxes);
-	RVV.resize(boxes);
-	GVV.resize(boxes);
-	BVV.resize(boxes);
-	AVV.resize(boxes);
-	Point stub0(0.0f, 0.0f, 0.0f);
-
-	for (int bi = 0; bi < boxes; bi++) {
-		for (size_t ai = albedoVV[bi].size(); ai < s_size; ai++)
-			albedoVV[bi].push_back(albedo_default);
-		for (size_t Ri = RVV[bi].size(); Ri < s_size; Ri++)
-			RVV[bi].push_back(R_default);
-		for (size_t Gi = GVV[bi].size(); Gi < s_size; Gi++)
-			GVV[bi].push_back(G_default);
-		for (size_t Bi = BVV[bi].size(); Bi < s_size; Bi++)
-			BVV[bi].push_back(B_default);
-		for (size_t Ai = AVV[bi].size(); Ai < s_size; Ai++)
-			AVV[bi].push_back(A_default);
-	}
-
-	// Main box of the laser
-	Object3D mainBox(c_relToP0, stub0, 0, size, c_relToP0, albedoVV[0], RVV[0], GVV[0], BVV[0], AVV[0]);
-	o[LASER].add(mainBox);
-
-	// Stick box of the laser
-	float base_height = 0.02f;
-	Point stickPC = mean(mainBox.s[BOTTOM].p);
-	Point stickS(0.025f, posC.y - base_height - c_relToP0.y, 0.025f);
-	Point stickC(stickS.x / 2.0f, stickS.y, -stickS.z / 2.0f);
-	Object3D stickBox(stickPC, stub0, 0.0f, stickS, stickC, albedoVV[1], RVV[1], GVV[1], BVV[1], AVV[1]);
-	o[LASER].add(stickBox);
-
-	// Base box of the laser
-	Point basePC = mean(stickBox.s[BOTTOM].p);
-	Point baseS(0.14f, base_height, 0.14f);
-	Point baseC(baseS.x / 2.0f, baseS.y, -baseS.z / 2.0f);
-	Object3D baseBox(basePC, stub0, 0.0f, baseS, baseC, albedoVV[2], RVV[2], GVV[2], BVV[2], AVV[2]);
-	o[LASER].add(baseBox);
-
-	// Transformaitons
-	o[LASER].traCto(posC);
-	o[LASER].rotDegFromC(axisN, deg);
-}
-// Setter Wall Patches (6)
-void Scene::setWallPatches(PixStoring ps_) {
-
-	// Set the Object3D
-	o[WALL_PATCHES].s.resize(numPix(ps_));
-	o[WALL_PATCHES].ot = WALL_PATCHES;
-	o[WALL_PATCHES].ps = ps_;
-
-	// Setting constant elements
-	Object3D screenFoVmeasN;
-	screenFoVmeasN.setScreenFoVmeasN(o[CAMERA].s[0].c, o[CAMERA].normalQUAD(), ps_);
-
-	// Update pixel patches
-	for (int i = 0; i < o[WALL_PATCHES].s.size(); i++) {
-		o[WALL_PATCHES].s[i].p.resize(QUAD);
-		o[WALL_PATCHES].s[i].set(1.0f, 1.0f, 1.0f, 1.0f, 1.0f, QUAD);
-		o[WALL_PATCHES].s[i].p[0].set(int_linePN_object3D(o[CAMERA].s[0].c, screenFoVmeasN.s[i].p[0], o[WALL]));
-		o[WALL_PATCHES].s[i].p[1].set(int_linePN_object3D(o[CAMERA].s[0].c, screenFoVmeasN.s[i].p[1], o[WALL]));
-		o[WALL_PATCHES].s[i].p[2].set(int_linePN_object3D(o[CAMERA].s[0].c, screenFoVmeasN.s[i].p[2], o[WALL]));
-		o[WALL_PATCHES].s[i].p[3].set(int_linePN_object3D(o[CAMERA].s[0].c, screenFoVmeasN.s[i].p[3], o[WALL]));
-		o[WALL_PATCHES].s[i].c.set   (int_linePN_object3D(o[CAMERA].s[0].c, screenFoVmeasN.s[i].c   , o[WALL]));
-	}
-}
-// Setter Camera FoV (7)
-void Scene::setCameraFoV(float R_, float G_, float B_, float A_, PixStoring ps_, float distDefault) {
-
-	// Set the Object3D
-	o[CAMERA_FOV].s.resize(8);
-	o[CAMERA_FOV].ot = CAMERA_FOV;
-	o[CAMERA_FOV].ps = ps_;
-
-	// Setting constant elements
-	Object3D screenFoVmeasN;
-	screenFoVmeasN.setScreenFoVmeasN(o[CAMERA].s[0].c, o[CAMERA].normalQUAD(), ps_);
-
-	// Get intersections
-	Point p0, p1, p2, p3;
-	if (o[WALL].s.size() > 0) {
-		p0.set(int_linePN_object3D(o[CAMERA].s[0].c, screenFoVmeasN.s[rc2idx(rows(ps_) - 1, 0, ps_)].p[0], o[WALL]));
-		p1.set(int_linePN_object3D(o[CAMERA].s[0].c, screenFoVmeasN.s[rc2idx(rows(ps_) - 1, cols(ps_) - 1, ps_)].p[1], o[WALL]));
-		p2.set(int_linePN_object3D(o[CAMERA].s[0].c, screenFoVmeasN.s[rc2idx(0, cols(ps_) - 1, ps_)].p[2], o[WALL]));
-		p3.set(int_linePN_object3D(o[CAMERA].s[0].c, screenFoVmeasN.s[rc2idx(0, 0, ps_)].p[3], o[WALL]));
-	} else {
-		p0.set(o[CAMERA].s[0].c + screenFoVmeasN.s[rc2idx(rows(ps_) - 1, 0, ps_)].p[0] * distDefault);
-		p1.set(o[CAMERA].s[0].c + screenFoVmeasN.s[rc2idx(rows(ps_) - 1, cols(ps_) - 1, ps_)].p[1] * distDefault);
-		p2.set(o[CAMERA].s[0].c + screenFoVmeasN.s[rc2idx(0, cols(ps_) - 1, ps_)].p[2] * distDefault);
-		p3.set(o[CAMERA].s[0].c + screenFoVmeasN.s[rc2idx(0, 0, ps_)].p[3] * distDefault);
-	}
-	// Set the lines
-	o[CAMERA_FOV].s[0].set(o[CAMERA].s[0].c, p0, o[CAMERA].s[0].c);		o[CAMERA_FOV].s[0].set(1.0f, R_, G_, B_, A_, LINE);
-	o[CAMERA_FOV].s[1].set(o[CAMERA].s[0].c, p1, o[CAMERA].s[0].c);		o[CAMERA_FOV].s[1].set(1.0f, R_, G_, B_, A_, LINE);
-	o[CAMERA_FOV].s[2].set(o[CAMERA].s[0].c, p2, o[CAMERA].s[0].c);		o[CAMERA_FOV].s[2].set(1.0f, R_, G_, B_, A_, LINE);
-	o[CAMERA_FOV].s[3].set(o[CAMERA].s[0].c, p3, o[CAMERA].s[0].c);		o[CAMERA_FOV].s[3].set(1.0f, R_, G_, B_, A_, LINE);
-	o[CAMERA_FOV].s[4].set(p0, p1, p0);									o[CAMERA_FOV].s[4].set(1.0f, R_, G_, B_, A_, LINE);
-	o[CAMERA_FOV].s[5].set(p1, p2, p1);									o[CAMERA_FOV].s[5].set(1.0f, R_, G_, B_, A_, LINE);
-	o[CAMERA_FOV].s[6].set(p2, p3, p2);									o[CAMERA_FOV].s[6].set(1.0f, R_, G_, B_, A_, LINE);
-	o[CAMERA_FOV].s[7].set(p3, p0, p3);									o[CAMERA_FOV].s[7].set(1.0f, R_, G_, B_, A_, LINE);
-}
-// Setter Laser Ray (8)
-void Scene::setLaserRay(float R_, float G_, float B_, float A_, PixStoring ps_) {
-
-	// Set the Object3D
-	o[LASER_RAY].s.resize(1);
-	o[LASER_RAY].ot = LASER_RAY;
-	o[LASER_RAY].ps = ps_;
-
-	// Get intersection
-	Point p1 = int_linePN_object3D(o[LASER].s[0].c, o[LASER].normalQUAD(), o[WALL]);
-
-	// Set the line
-	o[LASER_RAY].s[0].set(o[LASER].s[0].c, p1, o[LASER_RAY].s[0].c);	o[LASER_RAY].s[0].set(1.0f, R_, G_, B_, A_, LINE);
-}
-// Setter, Updater Volume Patches (9)	// TO-DO
-void Scene::setVolumePatches() {
-
-	// Set the Object3D
-	o[VOLUME_PATCHES].s.resize(0);
-	o[VOLUME_PATCHES].ot = VOLUME_PATCHES;
-	o[VOLUME_PATCHES].ps = UNKNOWN_PIS;
-
-	// Set reference from which the Volume Patches are made (at the end the corresponded transformation will be applied)
-	Point refC(3.0f, 0.0f, 0.0f);
-	Point refN(0.0f, 0.0f, 1.0f);
-	Point originC(0.0f, 0.0f, 0.0f);
-	Point originN(0.0f, 0.0f, 1.0f);
-
-	// Set variables
-	float minX = 0.0f;	float maxX = 1.0f;	float stepX = (maxX - minX) / (float)VOLUME_GRID_SIZE_X;
-	float minY = 0.25f;	float maxY = 1.25f;	float stepY = (maxY - minY) / (float)VOLUME_GRID_SIZE_Y;
-	float minZ = 0.0f;	float maxZ = 1.0f;	float stepZ = (maxZ - minZ) / (float)VOLUME_GRID_SIZE_Z;
-	Shape sX;
-
-	// Loop filling the Object3D
-	float z = 0.0f;
-	for (float x = minX; x < maxX - stepX / 2.0f; x += stepX) {
-		for (float y = minY; y < maxY - stepY / 2.0f; y += stepY) {
-			sX.clear();
-			sX.p.resize(QUAD);
-			sX.set(1.0f, 1.0f, 1.0f, 1.0f, 1.0f, QUAD);
-			sX.p[0].set(x, y, z);
-			sX.p[1].set(x + stepX, y, z);
-			sX.p[2].set(x + stepX, y + stepY, z);
-			sX.p[3].set(x, y + stepY, z);
-			sX.c.set   (x + stepX / 2.0f, y + stepY / 2.0f, z);
-			o[VOLUME_PATCHES].s.push_back(sX);
-	}	}
-
-	// Apply transformations
-	o[VOLUME_PATCHES].rotyFromP(radN(originN, refN) + PI, originC);
-	o[VOLUME_PATCHES].tra(refC);
-}
-void Scene::updateVolumePatches_Occlusion(Frame & frame00, Frame & frame90, bool loop, PixStoring ps_) {
-
-}
-// Setter, Updater Pixel Patches (10)
-void Scene::setPixelPatches(float distDefault, PixStoring ps_) {
-
-	// Set the Object3D
-	o[PIXEL_PATCHES].s.resize(numPix(ps_));
-	o[PIXEL_PATCHES].ot = PIXEL_PATCHES;
-	o[PIXEL_PATCHES].ps = ps_;
-
-	// Setting constant elements
-	Object3D screenFoVmeasN;
-	screenFoVmeasN.setScreenFoVmeasN(o[CAMERA].s[0].c, o[CAMERA].normalQUAD(), ps_);
-
-	// Update pixel patches
-	for (int i = 0; i < o[PIXEL_PATCHES].s.size(); i++) {
-		o[PIXEL_PATCHES].s[i].p.resize(QUAD);
-		o[PIXEL_PATCHES].s[i].set(1.0f, 1.0f, 1.0f, 1.0f, 1.0f, QUAD);
-		o[PIXEL_PATCHES].s[i].p[0].set(o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[0] * distDefault);
-		o[PIXEL_PATCHES].s[i].p[1].set(o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[1] * distDefault);
-		o[PIXEL_PATCHES].s[i].p[2].set(o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[2] * distDefault);
-		o[PIXEL_PATCHES].s[i].p[3].set(o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[3] * distDefault);
-		o[PIXEL_PATCHES].s[i].c.set   (o[CAMERA].s[0].c + screenFoVmeasN.s[i].c    * distDefault);
-	}
-}
-void Scene::setPixelPatches(Frame & frame00, Frame & frame90, PixStoring ps_) {
-
-	// Set the Object3D
-	o[PIXEL_PATCHES].s.resize(numPix(ps_));
-	o[PIXEL_PATCHES].ot = PIXEL_PATCHES;
-	o[PIXEL_PATCHES].ps = ps_;
-
-	// Setting constant elements
-	std::vector<float> depthMap(numPix(ps_));	// depthMap stores the relative to the camera distance per pixel
-	Object3D screenFoVmeasN;
-	screenFoVmeasN.setScreenFoVmeasN(o[CAMERA].s[0].c, o[CAMERA].normalQUAD(), ps_);
-
-	// Setting Depth Map from the FRAMES captured
-	setDepthMap(depthMap, frame00, frame90);
-
-	// Update pixel patches
-	for (int i = 0; i < o[PIXEL_PATCHES].s.size(); i++) {
-		o[PIXEL_PATCHES].s[i].p.resize(QUAD);
-		o[PIXEL_PATCHES].s[i].set(1.0f, 1.0f, 1.0f, 1.0f, 1.0f, QUAD);
-		o[PIXEL_PATCHES].s[i].p[0].set(o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[0] * depthMap[i]);
-		o[PIXEL_PATCHES].s[i].p[1].set(o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[1] * depthMap[i]);
-		o[PIXEL_PATCHES].s[i].p[2].set(o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[2] * depthMap[i]);
-		o[PIXEL_PATCHES].s[i].p[3].set(o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[3] * depthMap[i]);
-		o[PIXEL_PATCHES].s[i].c.set(o[CAMERA].s[0].c    + screenFoVmeasN.s[i].c    * depthMap[i]);
-	}
-}
-void Scene::updatePixelPatches_Sinusoid(Frame & frame00, Frame & frame90, bool loop, PixStoring ps_) {
-
-	// Setting constant elements
-	std::vector<float> depthMap(numPix(ps_));	// depthMap stores the relative to the camera distance per pixel
-	Object3D screenFoVmeasN;
-	screenFoVmeasN.setScreenFoVmeasN(o[CAMERA].s[0].c, o[CAMERA].normalQUAD(), ps_);
-
-	// Syncronization
-	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
-	locker_frame_object = std::unique_lock<std::mutex>(mutex_frame_object, std::defer_lock);
-
-	// --- LOOP ------------------------------------------------------------------------------------------------
-	bool first_iter = true;
-	while (loop || first_iter) {
-
-		//const clock_t begin_time = clock();
-
-		if (!PMD_LOOP_ENABLE && !first_iter)
-			break;
-		first_iter = false;
-
-		// Syncronization
-		locker_frame_object.lock();		// Lock mutex_frame_object, any thread which used mutex_frame_object can NOT continue until unlock()
-		while (!UPDATED_NEW_FRAME)	//std::cout << "Waiting in Object to finish the UPDATED_NEW_Frame. This is OK!\n";
-			cv_frame_object.wait(locker_frame_object);
-
-		// Setting Depth Map from the FRAMES captured
-		setDepthMap(depthMap, frame00, frame90);
-
-		// Update pixel patches
-		for (int i = 0; i < o[PIXEL_PATCHES].s.size(); i++) {
-			o[PIXEL_PATCHES].s[i].p[0].set(o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[0] * depthMap[i]);
-			o[PIXEL_PATCHES].s[i].p[1].set(o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[1] * depthMap[i]);
-			o[PIXEL_PATCHES].s[i].p[2].set(o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[2] * depthMap[i]);
-			o[PIXEL_PATCHES].s[i].p[3].set(o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[3] * depthMap[i]);
-			o[PIXEL_PATCHES].s[i].c.set   (o[CAMERA].s[0].c + screenFoVmeasN.s[i].c    * depthMap[i]);
-		}
-
-		// Syncronization
-		//std::cout << ",    UPDATED_NEW_SCENE\n";
-		UPDATED_NEW_FRAME = false;
-		UPDATED_NEW_SCENE = true;
-		cv_frame_object.notify_all();	// Notify all cv_frame_object. All threads waiting for cv_frame_object will break the wait after waking up
-		locker_frame_object.unlock();	// Unlock mutex_frame_object, now threads which used mutex_frame_object can continue
-
-		//const clock_t end_time = clock();
-		//float ms_time = 1000.0f * float(end_time - begin_time) / (float)CLOCKS_PER_SEC;
-		//float fps_time = 1000.0f / ms_time;
-		//std::cout << "time = " << ms_time << " ms,    fps = " << fps_time <<  " fps\n";
-	}
-	// --- END OF LOOP -----------------------------------------------------------------------------------------
-}
-void Scene::updatePixelPatches_Simulation(Frame & frame00, Frame & frame90, bool loop, PixStoring ps_) { // TO-DO (this is just a copy of updatePixelPatches_Sinusoid)
-
-	// Setting constant elements
-	std::vector<float> depthMap(numPix(ps_));	// depthMap stores the relative to the camera distance per pixel
-	Object3D screenFoVmeasN;
-	screenFoVmeasN.setScreenFoVmeasN(o[CAMERA].s[0].c, o[CAMERA].normalQUAD(), ps_);
-
-	// Syncronization
-	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
-	locker_frame_object = std::unique_lock<std::mutex>(mutex_frame_object, std::defer_lock);
-
-	// --- LOOP ------------------------------------------------------------------------------------------------
-	bool first_iter = true;
-	while (loop || first_iter) {
-
-		//const clock_t begin_time = clock();
-
-		if (!PMD_LOOP_ENABLE && !first_iter)
-			break;
-		first_iter = false;
-
-		// Syncronization
-		locker_frame_object.lock();		// Lock mutex_frame_object, any thread which used mutex_frame_object can NOT continue until unlock()
-		while (!UPDATED_NEW_FRAME)	//std::cout << "Waiting in Object to finish the UPDATED_NEW_Frame. This is OK!\n";
-			cv_frame_object.wait(locker_frame_object);
-
-		// Setting Depth Map from the FRAMES captured
-		setDepthMap(depthMap, frame00, frame90);
-
-		// Update pixel patches
-		for (int i = 0; i < o[PIXEL_PATCHES].s.size(); i++) {
-			o[PIXEL_PATCHES].s[i].p[0].set(o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[0] * depthMap[i]);
-			o[PIXEL_PATCHES].s[i].p[1].set(o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[1] * depthMap[i]);
-			o[PIXEL_PATCHES].s[i].p[2].set(o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[2] * depthMap[i]);
-			o[PIXEL_PATCHES].s[i].p[3].set(o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[3] * depthMap[i]);
-			o[PIXEL_PATCHES].s[i].c.set(o[CAMERA].s[0].c + screenFoVmeasN.s[i].c    * depthMap[i]);
-		}
-
-		// Syncronization
-		//std::cout << ",    UPDATED_NEW_SCENE\n";
-		UPDATED_NEW_FRAME = false;
-		UPDATED_NEW_SCENE = true;
-		cv_frame_object.notify_all();	// Notify all cv_frame_object. All threads waiting for cv_frame_object will break the wait after waking up
-		locker_frame_object.unlock();	// Unlock mutex_frame_object, now threads which used mutex_frame_object can continue
-
-		//const clock_t end_time = clock();
-		//float ms_time = 1000.0f * float(end_time - begin_time) / (float)CLOCKS_PER_SEC;
-		//float fps_time = 1000.0f / ms_time;
-		//std::cout << "time = " << ms_time << " ms,    fps = " << fps_time <<  " fps\n";
-	}
-	// --- END OF LOOP -----------------------------------------------------------------------------------------
-}
-
 // Setter Scene Direct Vision
 void Scene::setScene_DirectVision(PixStoring ps) {
 
@@ -1528,7 +1548,7 @@ void Scene::setScene_DirectVision(PixStoring ps) {
 			camAlbedoVV[b][s] = 1.0f;
 			camAVV[b][s] = 1.0f;
 	}	}
-	setCamera(camPosC, camAxisN, camDeg, camS, camC_relToP0, camAlbedoVV, camRVV, camGVV, camBVV, camAVV);
+	o[CAMERA].setCamera(camPosC, camAxisN, camDeg, camS, camC_relToP0, camAlbedoVV, camRVV, camGVV, camBVV, camAVV);
 
 	// LASER (1)
 	Point lasPosC(-0.15f, 0.75f, 0.0f);
@@ -1552,7 +1572,7 @@ void Scene::setScene_DirectVision(PixStoring ps) {
 			lasAlbedoVV[b][s] = 1.0f;
 			lasAVV[b][s] = 1.0f;
 	}	}
-	setLaser(lasPosC, lasAxisN, lasDeg, lasS, lasC_relToP0, lasAlbedoVV, lasRVV, lasGVV, lasBVV, lasAVV);
+	o[LASER].setLaser(lasPosC, lasAxisN, lasDeg, lasS, lasC_relToP0, lasAlbedoVV, lasRVV, lasGVV, lasBVV, lasAVV);
 
 	// WALL (2)
 	/*
@@ -1604,10 +1624,10 @@ void Scene::setScene_DirectVision(PixStoring ps) {
 	
 	// CAMERA_FOV (7)
 	float cafR = 0.0f, cafG = 0.0f, cafB = 1.0f, cafA = 1.0f, cafDist = 5.0f;
-	setCameraFoV(cafR, cafG, cafB, cafA, ps, cafDist);
+	o[CAMERA_FOV].setCameraFoV(*this, cafR, cafG, cafB, cafA, ps, cafDist);
 
 	// PIXEL_PATCHES (10)
-	setPixelPatches(2.0f, ps);
+	o[PIXEL_PATCHES].setPixelPatches(*this, 2.0f, ps);
 	/*
 	char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\test_03";
 	char file_name[1024] = "PMD";
@@ -1615,7 +1635,7 @@ void Scene::setScene_DirectVision(PixStoring ps) {
 	RawData rawData(info);
 	Frame frame00(rawData, 0, 0, 0, 0, ps);
 	Frame frame90(rawData, 0, 0, 0, 1, ps);
-	setPixelPatches(frame00, frame90, ps);
+	o[PIXEL_PATCHES].setPixelPatches(*this, frame00, frame90, ps);
 	*/
 }
 // Setter Scene Occlusion
@@ -1644,7 +1664,7 @@ void Scene::setScene_Occlusion(PixStoring ps) {
 			camAVV[b][s] = 1.0f;
 		}
 	}
-	setCamera(camPosC, camAxisN, camDeg, camS, camC_relToP0, camAlbedoVV, camRVV, camGVV, camBVV, camAVV);
+	o[CAMERA].setCamera(camPosC, camAxisN, camDeg, camS, camC_relToP0, camAlbedoVV, camRVV, camGVV, camBVV, camAVV);
 
 	// LASER (1)
 	Point lasPosC(0.5f, 0.75f, 0.0f);
@@ -1669,7 +1689,7 @@ void Scene::setScene_Occlusion(PixStoring ps) {
 			lasAVV[b][s] = 1.0f;
 		}
 	}
-	setLaser(lasPosC, lasAxisN, lasDeg, lasS, lasC_relToP0, lasAlbedoVV, lasRVV, lasGVV, lasBVV, lasAVV);
+	o[LASER].setLaser(lasPosC, lasAxisN, lasDeg, lasS, lasC_relToP0, lasAlbedoVV, lasRVV, lasGVV, lasBVV, lasAVV);
 
 	// WALL (2)
 	Point walPosC(-1.0f, 0.0f, -1.5f);
@@ -1741,18 +1761,18 @@ void Scene::setScene_Occlusion(PixStoring ps) {
 	o[FLOOR].ot = FLOOR;
 
 	// WALL_PATCHES (6)
-	setWallPatches(ps);
+	o[WALL_PATCHES].setWallPatches(*this, ps);
 
 	// CAMERA_FOV (7)
 	float cafR = 0.0f, cafG = 0.0f, cafB = 1.0f, cafA = 1.0f;
-	setCameraFoV(cafR, cafG, cafB, cafA, ps);
+	o[CAMERA_FOV].setCameraFoV(*this, cafR, cafG, cafB, cafA, ps);
 
 	// LASER_RAY (8)
 	float larR = 1.0f, larG = 0.2f, larB = 0.2f, larA = 1.0f;
-	setLaserRay(larR, larG, larB, larA, ps);
+	o[LASER_RAY].setLaserRay(*this, larR, larG, larB, larA, ps);
 
 	// VOLUME_PATCHES (9)
-	setVolumePatches();
+	o[VOLUME_PATCHES].setVolumePatches();
 }
 // Setter Scene Calibration Matrix
 void Scene::setScene_CalibrationMatrix(float laser_to_cam_offset_x, float laser_to_cam_offset_y, float laser_to_cam_offset_z, float dist_wall_cam) {
@@ -1779,7 +1799,7 @@ void Scene::setScene_CalibrationMatrix(float laser_to_cam_offset_x, float laser_
 			camAlbedoVV[b][s] = 1.0f;
 			camAVV[b][s] = 1.0f;
 	}	}
-	setCamera(camPosC, camAxisN, camDeg, camS, camC_relToP0, camAlbedoVV, camRVV, camGVV, camBVV, camAVV);
+	o[CAMERA].setCamera(camPosC, camAxisN, camDeg, camS, camC_relToP0, camAlbedoVV, camRVV, camGVV, camBVV, camAVV);
 
 	// LASER (1)
 	Point lasPosC = camPosC + Point(laser_to_cam_offset_x, laser_to_cam_offset_y, laser_to_cam_offset_z);
@@ -1803,7 +1823,7 @@ void Scene::setScene_CalibrationMatrix(float laser_to_cam_offset_x, float laser_
 			lasAlbedoVV[b][s] = 1.0f;
 			lasAVV[b][s] = 1.0f;
 	}	}
-	setLaser(lasPosC, lasAxisN, lasDeg, lasS, lasC_relToP0, lasAlbedoVV, lasRVV, lasGVV, lasBVV, lasAVV);
+	o[LASER].setLaser(lasPosC, lasAxisN, lasDeg, lasS, lasC_relToP0, lasAlbedoVV, lasRVV, lasGVV, lasBVV, lasAVV);
 
 	// WALL (2)
 	Point walPosC(0.375f,0.95f, camPosC.z - dist_wall_cam);
@@ -1852,18 +1872,18 @@ void Scene::setScene_CalibrationMatrix(float laser_to_cam_offset_x, float laser_
 	o[FLOOR].ot = FLOOR;
 	
 	// WALL_PATCHES (6)
-	setWallPatches(PIXELS_TOTAL);
+	o[WALL_PATCHES].setWallPatches(*this, PIXELS_TOTAL);
 }
 
 // ----- NON-MEMBER FUNCITONS ------------------------
 void updatePixelPatches_Sinusoid_antiBugThread(Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_) {
-	scene.updatePixelPatches_Sinusoid(frame00, frame90, loop, ps_);
+	scene.o[PIXEL_PATCHES].updatePixelPatches_Sinusoid(scene, frame00, frame90, loop, ps_);
 }
-void updatePixelPatches_Simulation_antiBugThread(Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_) {
-	scene.updatePixelPatches_Simulation(frame00, frame90, loop, ps_);
+void updatePixelPatches_Simulation_antiBugThread(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_) {
+	scene.o[PIXEL_PATCHES].updatePixelPatches_Simulation(info, scene, frame00, frame90, loop, ps_);
 }
-void updateVolumePatches_Occlusion_antiBugThread(Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_) {
-	scene.updateVolumePatches_Occlusion(frame00, frame90, loop, ps_);
+void updateVolumePatches_Occlusion_antiBugThread(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_) {
+	scene.o[VOLUME_PATCHES].updateVolumePatches_Occlusion(info, scene, frame00, frame90, loop, ps_);
 }
 
 

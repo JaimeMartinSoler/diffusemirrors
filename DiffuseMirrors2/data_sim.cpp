@@ -93,6 +93,21 @@ void get_data_sim_direct_vision_wall() {
 
 
 
+// (2014-09-08)
+void set_DirectVision_Simulation_Frame (CalibrationMatrix & cmx, Scene & sceneCopy, Frame & frameSim, PixStoring ps_) {
+	
+	// Simulated Image Vector
+	float relativeAlbedo = 1.0f;
+	std::vector<float> DirectVision_Simulation(numPix(ps_));
+	for (int r = 0; r < rows(ps_); r++) {
+		for (int c = 0; c < cols(ps_); c++) {
+			DirectVision_Simulation[rc2idx(r,c,ps_)] = cmx.S_DirectVision (cmx.info->freqV.size()-1, r, c,
+				sceneCopy.o[LASER].s[0].c, sceneCopy.o[PIXEL_PATCHES].s[rc2idx(r,c,ps_)].c,  sceneCopy.o[CAMERA].s[0].c, relativeAlbedo, ps_);
+	}	}
+	frameSim.set(DirectVision_Simulation, rows(ps_), cols(ps_), cmx.info->freqV[cmx.info->freqV.size()-1], 0.0f, cmx.info->shutV[cmx.info->shutV.size()-1], 0.0f, ps_);
+}
+
+
 
 // gets the Radiance from each volume patch (radiance from each volume patch). L(x) in the paper. 
 // It deals with patches backing (not facing) the wall (they are considered ALWAYS facing the wall)
@@ -473,26 +488,72 @@ void get_data_sim_direct_vision(Frame & frame_in, Frame & frame_out) {
 
 
 
+// (2014-09-08)
 // This will include a minimization algorithm, but for now it will run some simulations manually and get the best fit
 // is totally inefficient with this implementation, just to try the system
-void set_best_fit_scene_direct_vision_any () {
-	
-	float dist_cam_wall_res = 0.1f;
-	float dist_cam_wall_min = 1.0f;
-	float dist_cam_wall_max = 3.0f + dist_cam_wall_res/2.0f;
+void updatePixelPatches_Simulation_BestFit(CalibrationMatrix & cmx, Scene & sceneCopy, Frame & frame00, Point & camC, Point & camN, Object3D & screenFoVmeasNs, PixStoring ps_) {
 
-	for (float dist_cam_wall = dist_cam_wall_min; dist_cam_wall < dist_cam_wall_max; dist_cam_wall += dist_cam_wall_res) {
+	// pixPatchesBestFit
+	Object3D pixPatchesBestFit;
+	float distMin = FLT_MAX;
+	float distNow;
+	Frame frameSim;
 
-		// set the new scene
-		set_scene_vision_simulation (dist_cam_wall);
-
-		// compute the distance function simulation 
-	}
-
+	// we will discretize the simulation just by the distances to the camera (constant for all pixel patches as screenFoVmeasNs[i]*dist)
+	float dRes = 0.1f;
+	float dMin = 1.0f;
+	float dMax = 4.0f + dRes / 2.0f;
+	for (float d = dMin; d < dMax; d += dRes) {
+		// Update pixel patches
+		for (int i = 0; i < sceneCopy.o[PIXEL_PATCHES].s.size(); i++) {
+			sceneCopy.o[PIXEL_PATCHES].s[i].p[0].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[0] * d);
+			sceneCopy.o[PIXEL_PATCHES].s[i].p[1].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[1] * d);
+			sceneCopy.o[PIXEL_PATCHES].s[i].p[2].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[2] * d);
+			sceneCopy.o[PIXEL_PATCHES].s[i].p[3].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[3] * d);
+			sceneCopy.o[PIXEL_PATCHES].s[i].c.set   (sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].c    * d);
+		}
+		// Get Simulation Frame (S)
+		set_DirectVision_Simulation_Frame (cmx, sceneCopy, frameSim, ps_);
+		// Get Distance(H,S)
+		distNow = dist(frame00, frameSim);
+		// Check if Distance(H,S) is better and update the pixPatchesBestFit
+		if (distNow < distMin) {
+			distMin = distNow;
+			pixPatchesBestFit = sceneCopy.o[PIXEL_PATCHES];
+	}	}
+	sceneCopy.o[PIXEL_PATCHES] = pixPatchesBestFit;
 }
 
 
+// (2014-09-08)
+float dist(Frame & H, Frame & S) {
 
+	// get constants
+	int sizeHS = H.data.size();
+	int rows = H.rows;
+	int cols = H.cols;
+
+	// get the H/S vector
+	std::vector<float> HS(sizeHS);
+	for (int i = 0; i < sizeHS; i++)
+		HS[i] = H.data[i] / S.data[i];
+
+	// get the (H/S)mean
+	float HSmean = 0.0f;
+	for (int i = 0; i < sizeHS; i++)
+		HSmean += HS[i];
+	HSmean /= (rows * cols);
+	
+	// get the (H/S)var
+	float HSvar = 0.0f;
+	float HSdif = 0.0f;
+	for (int i = 0; i < sizeHS; i++) {
+		HSdif = HS[i] - HSmean;
+		HSvar += (HSdif * HSdif);
+	}
+	//HSvar /= (rows * cols);	// this is optional as long as the result is scale-independent
+	return HSvar;
+}
 
 
 

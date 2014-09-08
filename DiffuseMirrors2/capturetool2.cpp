@@ -926,12 +926,10 @@ void create_raw_from_raw_takes (Info & info) {
 	for (int take = 0; take < info.numtakes; take++) {
 		raw_data.set(info, take);	// we load .raw files them one by one for memory efficiency reasons
 		if (elements != raw_data.data_size) {
-			std::cout << "\nError in: create_raw_from_raw_takes(Info* info), elements = " << elements <<" != raw_data.data_size = " << raw_data.data_size;
 			return;
 		}
 		for (int pos = 0; pos < elements; pos++) {
 			if (pos == elements/2)
-				std::cout << "\nFor take " << take << " raw_data.data[" << pos << "] = " << raw_data.data[pos];
 			raw_float_store[pos] += (float)raw_data.data[pos];
 	}	}
 
@@ -940,14 +938,12 @@ void create_raw_from_raw_takes (Info & info) {
 	for (int pos = 0; pos < elements; pos++) {
 		raw_float_store[pos] /= numtakes_float;
 	}
-	std::cout << "\nAvg value float = raw_float_store.data[" << elements/2 << "] = " << raw_float_store[elements/2];
 
 	// store the data in the raw_store of unsigned short int
 	unsigned short int* raw_store_ushort = new unsigned short int[elements];
 	for (int pos = 0; pos < elements; pos++) {
 		raw_store_ushort[pos] = (unsigned short int)(floor(raw_float_store[pos]+0.5f));	// floor(x+0.5) = round(x)
 	}
-	std::cout << "\nAvg value ushort int = raw_store_ushort[" << elements/2 << "] = " << raw_store_ushort[elements/2];
 
 	// fwrite parameters
 	size_t raw_bytes_per_value = sizeof(unsigned short int);
@@ -982,11 +978,11 @@ void create_cmx_from_raw(Info & info_) {
 	int shut_idx = raw_data.info->shutV.size() - 1;	//always, the calibration matrix is 1-shutter oriented
 	// distSrcPix_rc_pow2V vector
 	std::vector<float> distSrcPix_rc_pow2V (numPix(PIXELS_TOTAL));
-	SCENEMAIN.clear();	
-	SCENEMAIN.setScene_CalibrationMatrix(info_.laser_to_cam_offset_x, info_.laser_to_cam_offset_y, info_.laser_to_cam_offset_z, info_.dist_wall_cam);
+	Scene scene;	scene.clear();	
+	scene.setScene_CalibrationMatrix(info_.laser_to_cam_offset_x, info_.laser_to_cam_offset_y, info_.laser_to_cam_offset_z, info_.dist_wall_cam);
 	for (size_t i = 0; i < distSrcPix_rc_pow2V.size(); i++)	// TO-DO: CHECK
-		distSrcPix_rc_pow2V[i] = (SCENEMAIN.o[LASER].s[0].c - SCENEMAIN.o[WALL_PATCHES].s[i].c).modPow2();
-	SCENEMAIN.clear();
+		distSrcPix_rc_pow2V[i] = (scene.o[LASER].s[0].c - scene.o[WALL_PATCHES].s[i].c).modPow2();
+	scene.clear();
 	// fwrite parameters
 	float* cmx_data_value_ptr = &cmx_data_value;
 	size_t cmx_bytes_per_value = sizeof(float);

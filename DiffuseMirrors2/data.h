@@ -250,7 +250,7 @@ public:
 	// This is the Simulation term for the direct vision problem: S_{i\;\omega}^{r,c}(\tau^{r,c}) in the Master Thesis document
 	// Returns the value of the Simulation from the Calibration Matrix data at any path distance interpolating with the closest path distances. Path distances have to be equidistant in vector
 	// Uses c(...)
-	float CalibrationMatrix::S_direct_vision (int freq_idx, int r, int c, Point & r_src, Point & r_x,  Point & r_cam, float relative_albedo = 1.0f, PixStoring ps = PIXELS_STORING_GLOBAL);
+	float CalibrationMatrix::S_DirectVision (int freq_idx, int r, int c, Point & r_src, Point & r_x,  Point & r_cam, float relative_albedo = 1.0f, PixStoring ps = PIXELS_STORING_GLOBAL);
 };
 
 

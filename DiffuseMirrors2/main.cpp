@@ -79,7 +79,10 @@ int main_DirectVision_Sinusoid(bool loop = true) {
 }
 
 // TO-DO (just TO-CHECK)
-int main_DirectVision_Simulation(bool loop = true) {
+int main_DirectVision_Simulation(char* dir_name_, char* file_name_, bool loop = true) {
+
+	// set the Info
+	Info info(dir_name_, file_name_);
 
 	// capture data directly from PMD to Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE)
 	float frequency = 100.0f;
@@ -91,7 +94,7 @@ int main_DirectVision_Simulation(bool loop = true) {
 
 	// Set all the corresponding scene and start updating
 	SCENEMAIN.setScene_DirectVision(ps);
-	std::thread thread_updatePixelPatches_Simulation(updatePixelPatches_Simulation_antiBugThread, std::ref(SCENEMAIN), std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), loop, ps);
+	std::thread thread_updatePixelPatches_Simulation(updatePixelPatches_Simulation_antiBugThread, std::ref(info), std::ref(SCENEMAIN), std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), loop, ps);
 
 	// Render all the object3D of the scene
 	int argcStub = 0;
@@ -111,7 +114,10 @@ int main_DirectVision_Simulation(bool loop = true) {
 }
 
 // TO-DO (TO-DO related functions inside and TO-CHECK)
-int main_Occlusion(bool loop = true) {
+int main_Occlusion(char* dir_name_, char* file_name_, bool loop = true) {
+	
+	// set the Info
+	Info info(dir_name_, file_name_);
 
 	// capture data directly from PMD to Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE)
 	float frequency = 100.0f;
@@ -123,7 +129,7 @@ int main_Occlusion(bool loop = true) {
 
 	// Set all the corresponding scene and start updating
 	SCENEMAIN.setScene_Occlusion(ps);
-	std::thread thread_updateVolumePatches_Occlusion(updateVolumePatches_Occlusion_antiBugThread, std::ref(SCENEMAIN), std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), loop, ps);
+	std::thread thread_updateVolumePatches_Occlusion(updateVolumePatches_Occlusion_antiBugThread, std::ref(info), std::ref(SCENEMAIN), std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), loop, ps);
 
 	// Render all the object3D of the scene
 	int argcStub = 0;
@@ -179,13 +185,13 @@ int main_RawData(char* dir_name_, char* file_name_) {
 
 	// create the .raw file, capturing data from the PMD
 	std::vector<float> frequencies;	// (MHz)
-	float freq_res = 20;
-	float freq_min = 100.0f;
+	float freq_res = 50.0f;
+	float freq_min = 50.0f;
 	float freq_max = 100.0f + freq_res/2.0f;	// (+ freq_res/2.0f) is due to avoid rounding problems
 	for (float fi = freq_min; fi <= freq_max; fi += freq_res)
 		frequencies.push_back(fi);
 	std::vector<float> delays;		// (m)
-	float delay_res = 1.0f;
+	float delay_res = 0.1f;
 	float delay_min = -2.0f;
 	float delay_max = 10.0f + delay_res/2.0f;	// (+ delay_res/2.0f) is due to avoid rounding problems
 	for (float di = delay_min; di <= delay_max; di += delay_res)
@@ -246,23 +252,23 @@ int main_Test(bool loop = true) {
 int main(int argc, char** argv) {
 	
 	// Set parameteres
-	SceneType sceneType = DIRECT_VISION_SINUSOID;
+	SceneType sceneType = DIRECT_VISION_SIMULATION;
 	SCENEMAIN.set(sceneType);
 	//char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\test_03";
 	//char file_name[1024] = "PMD";
-	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\test_05";
+	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\cmx_00";
 	char file_name[1024] = "PMD";
 	bool loop = true;
 	
 	// Main Switcher
 	switch (sceneType) {
-		case DIRECT_VISION_SINUSOID:	main_DirectVision_Sinusoid (loop);				break;
-		case DIRECT_VISION_SIMULATION:	main_DirectVision_Simulation (loop);			break;
-		case OCCLUSION:					main_Occlusion (loop);							break;
-		case FOV_MEASUREMENT:			main_FoVmeas (loop);							break;
-		case RAW_DATA:					main_RawData (dir_name, file_name);				break;
-		case CALIBRATION_MATRIX:		main_CalibrationMatrix (dir_name, file_name);	break;
-		case TEST:						main_Test (loop);								break;
+		case DIRECT_VISION_SINUSOID:	main_DirectVision_Sinusoid (loop);							break;
+		case DIRECT_VISION_SIMULATION:	main_DirectVision_Simulation (dir_name, file_name, loop);	break;
+		case OCCLUSION:					main_Occlusion (dir_name, file_name, loop);					break;
+		case FOV_MEASUREMENT:			main_FoVmeas (loop);										break;
+		case RAW_DATA:					main_RawData (dir_name, file_name);							break;
+		case CALIBRATION_MATRIX:		main_CalibrationMatrix (dir_name, file_name);				break;
+		case TEST:						main_Test (loop);											break;
 	}
 
 	system("pause");
