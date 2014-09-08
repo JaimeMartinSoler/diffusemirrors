@@ -21,8 +21,8 @@ void transform_UI();
 
 
 
-void render_Scene(Scene & scene);
-void render_Object3D(Object3D & o);
+void render_Scene(Scene & scene, bool renderEdges = false);
+void render_Object3D(Object3D & o, bool renderEdges = false);
 void render_Shape(Shape & s, bool renderEdges = false);
 void render_Rectangle(Point & p0, Point & p1, Point & p2, Point & p3, float R, float G, float B, float A, bool renderEdges = false);
 void render_Triangle(Point & p0, Point & p1, Point & p2, float R, float G, float B, float A, bool renderEdges = false);

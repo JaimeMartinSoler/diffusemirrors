@@ -34,9 +34,9 @@ Info::Info(Info & info) {// External Parameters (file names):
 }
 // Constructor: All parameters
 Info::Info(	char* dir_name_, char* file_name_, int sizeof_value_raw_, int rows_, int cols_,
-			std::vector<float> & freqs_, std::vector<float> & dists_, std::vector<float> & shuts_, std::vector<float> & phass_, int numtakes_, int error_code_,
+			std::vector<float> & freqV_, std::vector<float> & distV_, std::vector<float> & shutV_, std::vector<float> & phasV_, int numtakes_, int error_code_,
 			int sizeof_value_cmx_, float laser_to_cam_offset_x_, float laser_to_cam_offset_y_, float laser_to_cam_offset_z_, float dist_wall_cam_) {
-	set (dir_name_, file_name_, sizeof_value_raw_, rows_, cols_, freqs_, dists_, shuts_, phass_, numtakes_, error_code_,
+	set (dir_name_, file_name_, sizeof_value_raw_, rows_, cols_, freqV_, distV_, shutV_, phasV_, numtakes_, error_code_,
 		 sizeof_value_cmx_, laser_to_cam_offset_x_, laser_to_cam_offset_y_, laser_to_cam_offset_z_, dist_wall_cam_);
 }
 
@@ -64,10 +64,10 @@ void Info::set () {
 	sizeof_value_raw = 0;
 	rows = 0;
 	cols = 0;
-	freqs = std::vector<float>(0);;
-	dists = std::vector<float>(0);;
-	shuts = std::vector<float>(0);;
-	phass = std::vector<float>(0);;
+	freqV = std::vector<float>(0);;
+	distV = std::vector<float>(0);;
+	shutV = std::vector<float>(0);;
+	phasV = std::vector<float>(0);;
 	numtakes = 0;
 	// Calibration Matrix parameters:
 	sizeof_value_cmx = 0;
@@ -94,10 +94,10 @@ void Info::set(Info & info) {// External Parameters (file names):
 	sizeof_value_raw = info.sizeof_value_raw;	// bytes
 	rows = info.rows;
 	cols = info.cols;
-	freqs = info.freqs;
-	dists = info.dists;
-	shuts = info.shuts;
-	phass = info.phass;
+	freqV = info.freqV;
+	distV = info.distV;
+	shutV = info.shutV;
+	phasV = info.phasV;
 	numtakes = info.numtakes;
 	// Calibration Matrix parameters:
 	int sizeof_value_cmx = info.sizeof_value_cmx;	// bytes
@@ -109,7 +109,7 @@ void Info::set(Info & info) {// External Parameters (file names):
 }
 // Setter All parameters
 void Info::set (char* dir_name_, char* file_name_, int sizeof_value_raw_, int rows_, int cols_,
-			std::vector<float> & freqs_, std::vector<float> & dists_, std::vector<float> & shuts_, std::vector<float> & phass_, int numtakes_, int error_code_,
+			std::vector<float> & freqV_, std::vector<float> & distV_, std::vector<float> & shutV_, std::vector<float> & phasV_, int numtakes_, int error_code_,
 			int sizeof_value_cmx_, float laser_to_cam_offset_x_, float laser_to_cam_offset_y_, float laser_to_cam_offset_z_, float dist_wall_cam_) {
 
 	// External Parameters (file names):
@@ -149,10 +149,10 @@ void Info::set (char* dir_name_, char* file_name_, int sizeof_value_raw_, int ro
 	sizeof_value_raw = sizeof_value_raw_;
 	rows = rows_;
 	cols = cols_;
-	freqs = freqs_;
-	dists = dists_;
-	shuts = shuts_;
-	phass = phass_;
+	freqV = freqV_;
+	distV = distV_;
+	shutV = shutV_;
+	phasV = phasV_;
 	numtakes = numtakes_;
 	// Calibration Matrix parameters:
 	sizeof_value_cmx = sizeof_value_cmx_;
@@ -221,16 +221,16 @@ void Info::set (char* dir_name_, char* file_name_) {
 		}
 		// frequencies
 		else if (line_number == 5)
-			char_array_to_float_vector_from_delimiter (inf_file_line, freqs, delimiter);
+			char_array_to_float_vector_from_delimiter (inf_file_line, freqV, delimiter);
 		// distances
 		else if (line_number == 6)
-			char_array_to_float_vector_from_delimiter (inf_file_line, dists, delimiter);
+			char_array_to_float_vector_from_delimiter (inf_file_line, distV, delimiter);
 		// shutters_
 		else if (line_number == 7)
-			char_array_to_float_vector_from_delimiter (inf_file_line, shuts, delimiter);
+			char_array_to_float_vector_from_delimiter (inf_file_line, shutV, delimiter);
 		// phases
 		else if (line_number == 8)
-			char_array_to_float_vector_from_delimiter (inf_file_line, phass, delimiter);
+			char_array_to_float_vector_from_delimiter (inf_file_line, phasV, delimiter);
 		// numtakes
 		else if (line_number == 9) {
 			std::vector<float> numtakes_vector;
@@ -361,7 +361,7 @@ void RawData::set (Info & info_, int take_) { // by default: take = -1
 		raw_fn = info->raw_take_full_file_name[take];
 
 	// expected file size (in number of elements)
-	int file_data_size_expected = info->freqs.size() * info->dists.size() * info->shuts.size() * info->phass.size() * info->rows * info->cols;
+	int file_data_size_expected = info->freqV.size() * info->distV.size() * info->shutV.size() * info->phasV.size() * info->rows * info->cols;
 
 	// DATA FILE. Open with read permissions
 	FILE* raw_file = fopen(raw_fn, "rb");	// open in binary/raw mode
@@ -408,20 +408,20 @@ void RawData::set (Info & info_, int take_) { // by default: take = -1
 // ----- FUNCTIONS -------------------------------
 
 // Returns the index in data[] corresponding to the parameter indices
-// input r,c are considered like Matrix from 0 indexation. It also takes care on Pixels_storing
-int RawData::data_idx(int freq_idx, int dist_idx, int shut_idx, int phas_idx, int r, int c, Pixels_storing ps) { // by default: ps = PIXELS_STORING_GLOBAL
+// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
+int RawData::data_idx(int freq_idx, int dist_idx, int shut_idx, int phas_idx, int r, int c, PixStoring ps) { // by default: ps = PIXELS_STORING_GLOBAL
 	
 	if (ps == PIXELS_VALID) {
-		return info->freqs.size() * info->phass.size() * info->shuts.size() * info->rows * info->cols * dist_idx +
-	                                info->phass.size() * info->shuts.size() * info->rows * info->cols * freq_idx +
-	                                                     info->shuts.size() * info->rows * info->cols * phas_idx +
+		return info->freqV.size() * info->phasV.size() * info->shutV.size() * info->rows * info->cols * dist_idx +
+	                                info->phasV.size() * info->shutV.size() * info->rows * info->cols * freq_idx +
+	                                                     info->shutV.size() * info->rows * info->cols * phas_idx +
 	                                                                          info->rows * info->cols * shut_idx +
 	                                                                                       info->cols * (CAMERA_PIX_Y - CAMERA_PIX_Y_BAD_TOP - 1 - r) +
 																						                (c + CAMERA_PIX_X_BAD_LEFT);
 	} else if (ps == PIXELS_TOTAL) {
-		return info->freqs.size() * info->phass.size() * info->shuts.size() * info->rows * info->cols * dist_idx +
-	                                info->phass.size() * info->shuts.size() * info->rows * info->cols * freq_idx +
-	                                                     info->shuts.size() * info->rows * info->cols * phas_idx +
+		return info->freqV.size() * info->phasV.size() * info->shutV.size() * info->rows * info->cols * dist_idx +
+	                                info->phasV.size() * info->shutV.size() * info->rows * info->cols * freq_idx +
+	                                                     info->shutV.size() * info->rows * info->cols * phas_idx +
 	                                                                          info->rows * info->cols * shut_idx +
 	                                                                                       info->cols * (info->rows - 1 - r) +
 																						                c;
@@ -429,8 +429,8 @@ int RawData::data_idx(int freq_idx, int dist_idx, int shut_idx, int phas_idx, in
 }
 
 // Returns the value corresponding to the parameter indices = data[idx_in_data]
-// input r,c are considered like Matrix from 0 indexation. It also takes care on Pixels_storing
-unsigned short int RawData::at(int freq_idx, int dist_idx, int shut_idx, int phas_idx, int r, int c, Pixels_storing ps) { // by default: ps = PIXELS_STORING_GLOBAL
+// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
+unsigned short int RawData::at(int freq_idx, int dist_idx, int shut_idx, int phas_idx, int r, int c, PixStoring ps) { // by default: ps = PIXELS_STORING_GLOBAL
 	return data[data_idx(freq_idx, dist_idx, shut_idx, phas_idx, r, c, ps)];
 }
 
@@ -508,7 +508,7 @@ void CalibrationMatrix::set (Info & info_) { // by default: pixels_storing_ = PI
 
 	// Calibration Matrix Parameters: data, data_size
 	// expected file size (in number of elements)
-	int file_data_size_expected = info->freqs.size() * info->dists.size() * info->rows * info->cols;
+	int file_data_size_expected = info->freqV.size() * info->distV.size() * info->rows * info->cols;
 	// DATA FILE. Open with read permissions
 	FILE* cmx_file = fopen((*info).cmx_full_file_name, "rb");	// open in binary/raw mode
 	if (cmx_file == NULL) {
@@ -545,7 +545,7 @@ void CalibrationMatrix::set (Info & info_) { // by default: pixels_storing_ = PI
 
 	// Calibration Matrix Parameters: path_dist_0
 	// TO-DO: Implement this with a local variable SHAPES_LOCAL_OS
-	std::vector<float> dist_laser_rc, dist_cam_rc;		// these dists are ordered as WALL_PATCHES and it is, by rows, from down to top, we want it from top to down
+	std::vector<float> dist_laser_rc, dist_cam_rc;		// these distV are ordered as WALL_PATCHES and it is, by rows, from down to top, we want it from top to down
 	set_scene_calibration_matrix (info, PIXELS_TOTAL);	// set the corresponding scene (camera, laser, wall and wall_patches)
 	// dist_centers( (*(*OBJECT3D_SET[LASER])[0]).c , (*OBJECT3D_SET[WALL_PATCHES]), dist_laser_rc); // TO-DO
 	// dist_centers( (*(*OBJECT3D_SET[CAMERA])[0]).c, (*OBJECT3D_SET[WALL_PATCHES]), dist_cam_rc); // TO-DO
@@ -554,8 +554,8 @@ void CalibrationMatrix::set (Info & info_) { // by default: pixels_storing_ = PI
 	path_dist_0.resize (info->rows * info->cols);
 	for (int r = 0; r < info->rows; r++) {
 			for (int c = 0; c < info->cols; c++) {
-				int pos_in_dists = (info->rows-1-r)*info->cols + c;	// TO-DO: Change this when scene ordering has changed
-				path_dist_0[path_dist_0_idx(r,c,PIXELS_TOTAL)] = dist_laser_rc[pos_in_dists] + dist_cam_rc[pos_in_dists];
+				int pos_in_distV = (info->rows-1-r)*info->cols + c;	// TO-DO: Change this when scene ordering has changed
+				path_dist_0[path_dist_0_idx(r,c,PIXELS_TOTAL)] = dist_laser_rc[pos_in_distV] + dist_cam_rc[pos_in_distV];
 	}	}
 
 	error_code = 0;		// no errors
@@ -565,30 +565,30 @@ void CalibrationMatrix::set (Info & info_) { // by default: pixels_storing_ = PI
 // ----- FUNCTIONS -------------------------------
 
 // Returns the index in data[], corresponding to the parameter indices. 
-// input r,c are considered like Matrix from 0 indexation. It also takes care on Pixels_storing
-int CalibrationMatrix::data_idx (int freq_idx, int dist_idx, int r, int c, Pixels_storing ps) { // default: ps = PIXELS_STORING_GLOBAL
+// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
+int CalibrationMatrix::data_idx (int freq_idx, int dist_idx, int r, int c, PixStoring ps) { // default: ps = PIXELS_STORING_GLOBAL
 
 	if (ps == PIXELS_VALID) {
-		return info->dists.size() * info->rows * info->cols * freq_idx +
+		return info->distV.size() * info->rows * info->cols * freq_idx +
 	                                info->rows * info->cols * dist_idx +
 	                                             info->cols * (r + CAMERA_PIX_Y_BAD_TOP) +
 													          (c + CAMERA_PIX_X_BAD_LEFT);
 	} else if (ps == PIXELS_TOTAL) {
-		return info->dists.size() * info->rows * info->cols * freq_idx +
+		return info->distV.size() * info->rows * info->cols * freq_idx +
 	                                info->rows * info->cols * dist_idx +
 	                                             info->cols * r        + c;
 	}
 }
 
 // Returns the value corresponding to the parameter indices = data[idx_in_data].
-// input r,c are considered like Matrix from 0 indexation. It also takes care on Pixels_storing
-float CalibrationMatrix::at (int freq_idx, int dist_idx, int r, int c, Pixels_storing ps) { // default: ps = PIXELS_STORING_GLOBAL
+// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
+float CalibrationMatrix::at (int freq_idx, int dist_idx, int r, int c, PixStoring ps) { // default: ps = PIXELS_STORING_GLOBAL
 	return data[data_idx(freq_idx, dist_idx, r, c, ps)];
 }
 
 // Returns the index in path_dist_0, corresponding to the parameter indices.
-// input r,c are considered like Matrix from 0 indexation. It also takes care on Pixels_storing
-int CalibrationMatrix::path_dist_0_idx (int r, int c, Pixels_storing ps) { // default: ps = PIXELS_STORING_GLOBAL
+// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
+int CalibrationMatrix::path_dist_0_idx (int r, int c, PixStoring ps) { // default: ps = PIXELS_STORING_GLOBAL
 	
 	if (ps == PIXELS_VALID) {
 		return info->cols * (r + CAMERA_PIX_Y_BAD_TOP) +
@@ -599,32 +599,32 @@ int CalibrationMatrix::path_dist_0_idx (int r, int c, Pixels_storing ps) { // de
 }
 
 // Returns the value from the path_dist_0 corresponding to the parameter indices = path_dist_0[path_dist_0_idx]
-// input r,c are considered like Matrix from 0 indexation. It also takes care on Pixels_storing
-float CalibrationMatrix::path_dist_0_at (int r, int c, Pixels_storing ps) { // default: ps = PIXELS_STORING_GLOBAL
+// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
+float CalibrationMatrix::path_dist_0_at (int r, int c, PixStoring ps) { // default: ps = PIXELS_STORING_GLOBAL
 	return path_dist_0[path_dist_0_idx(r,c,ps)];
 }
 	
 
 // This is the Calibtration Matrix coefficient: c_{\omega}^{r,c}(\tau^{r,c}) in the Master Thesis document
 // Returns the value from the Calibration Matrix data at any path distance interpolating with the closest path distances. Path distances have to be equidistant in vector
-float CalibrationMatrix::c_coef (int freq_idx, int r, int c, float path_dist, Pixels_storing ps) { // default: ps = PIXELS_STORING_GLOBAL
+float CalibrationMatrix::c_coef (int freq_idx, int r, int c, float path_dist, PixStoring ps) { // default: ps = PIXELS_STORING_GLOBAL
 
 	float dist_offset = path_dist - path_dist_0_at(r,c);
-	float dist_res = (info->dists[1] - info->dists[0]);
+	float dist_res = (info->distV[1] - info->distV[0]);
 
 	// dist_idx
-	int dist_idx_floor = (dist_offset - info->dists[0]) / dist_res;
+	int dist_idx_floor = (dist_offset - info->distV[0]) / dist_res;
 	if (dist_idx_floor < 0) {
 		std::cout << "\n\npath_dist = " << path_dist << " out of .cmx min bound, path_dist = min\n";
 		return at(freq_idx, 0, r, c, ps);
-	} else if (dist_idx_floor >= info->dists.size() - 1) {
+	} else if (dist_idx_floor >= info->distV.size() - 1) {
 		std::cout << "\n\npath_dist = " << path_dist << " out of .cmx max bound, path_dist = max\n";
-		return at(freq_idx, info->dists.size()-1, r, c, ps);
+		return at(freq_idx, info->distV.size()-1, r, c, ps);
 	}
 	int dist_idx_ceil = dist_idx_floor + 1;
 
 	// dist_scales
-	float dist_scale_ceil = fmodf(dist_offset-info->dists[0], dist_res) / dist_res;	// -info->distances[0] to avoid bad negative behaviour of fmodf(...)
+	float dist_scale_ceil = fmodf(dist_offset-info->distV[0], dist_res) / dist_res;	// -info->distances[0] to avoid bad negative behaviour of fmodf(...)
 	float dist_scale_floor = 1.0f - dist_scale_ceil;
 	/*
 	std::cout << "\n\ndist_offset      = " << dist_offset;
@@ -635,12 +635,12 @@ float CalibrationMatrix::c_coef (int freq_idx, int r, int c, float path_dist, Pi
 	std::cout << "\ndist_scale_ceil  = " << dist_scale_ceil;
 
 	std::cout << "\n\npath_dist_0.at("<< h << "," << w << ") = " << path_dist_0_at(r,c);
-	std::cout << "\npath_dist_floor  = " << path_dist_0_at(r,c) + info->dists[dist_idx_floor];
-	std::cout << "\npath_dist_ceil   = " << path_dist_0_at(r,c) + info->dists[dist_idx_ceil];
-	std::cout << "\ndist[di="<< dist_idx_floor << "] = " << info->dists[dist_idx_floor];
-	std::cout << "\ndist[di="<< dist_idx_ceil << "] = " << info->dists[dist_idx_ceil];
-	std::cout << "\nat(fi_max, di=" << dist_idx_floor << ", cen) = " << at(info->freqs.size()-1, dist_idx_floor, w, h);
-	std::cout << "\nat(fi_max, di=" << dist_idx_ceil << ", cen) = " << at(info->freqs.size()-1, dist_idx_ceil, w, h);
+	std::cout << "\npath_dist_floor  = " << path_dist_0_at(r,c) + info->distV[dist_idx_floor];
+	std::cout << "\npath_dist_ceil   = " << path_dist_0_at(r,c) + info->distV[dist_idx_ceil];
+	std::cout << "\ndist[di="<< dist_idx_floor << "] = " << info->distV[dist_idx_floor];
+	std::cout << "\ndist[di="<< dist_idx_ceil << "] = " << info->distV[dist_idx_ceil];
+	std::cout << "\nat(fi_max, di=" << dist_idx_floor << ", cen) = " << at(info->freqV.size()-1, dist_idx_floor, w, h);
+	std::cout << "\nat(fi_max, di=" << dist_idx_ceil << ", cen) = " << at(info->freqV.size()-1, dist_idx_ceil, w, h);
 	*/
 	return (dist_scale_floor * at(freq_idx, dist_idx_floor, r, c, ps)) + (dist_scale_ceil * at(freq_idx, dist_idx_ceil, r, c, ps));
 
@@ -649,7 +649,7 @@ float CalibrationMatrix::c_coef (int freq_idx, int r, int c, float path_dist, Pi
 // This is the Simulation term for the direct vision problem: S_{i\;\omega}^{r,c}(\tau^{r,c}) in the Master Thesis document
 // Returns the value of the Simulation from the Calibration Matrix data at any path distance interpolating with the closest path distances. Path distances have to be equidistant in vector
 // Uses c(...)
-float CalibrationMatrix::S_direct_vision (int freq_idx, int r, int c, Point & r_src, Point & r_x,  Point & r_cam, float relative_albedo, Pixels_storing ps) { // by default: relative_albedo = 1.0f, ps = PIXELS_STORING_GLOBAL
+float CalibrationMatrix::S_direct_vision (int freq_idx, int r, int c, Point & r_src, Point & r_x,  Point & r_cam, float relative_albedo, PixStoring ps) { // by default: relative_albedo = 1.0f, ps = PIXELS_STORING_GLOBAL
 
 	float dist_src_x = dist(r_src, r_x);	// TO-DO: This will take references, not pointers
 	float dist_cam_x = dist(r_cam, r_x);	// TO-DO: This will take references, not pointers
@@ -678,20 +678,20 @@ Frame::Frame (Frame & frame) {
 }
 // Constructor All parameters
 Frame::Frame (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_,
-			  std::vector<float> & data_, Pixels_storing ps_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_) {
+			  std::vector<float> & data_, PixStoring ps_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_) {
 	set (RawData_src_, freq_idx_, dist_idx_, shut_idx_, phas_idx_, data_, ps_, rows_, cols_, freq_, dist_, shut_, phas_);
 }
 // Constructor from RawData. RawData oriented
-Frame::Frame (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_, Pixels_storing ps_) { // by default: ps_ = PIXELS_STORING_GLOBAL
+Frame::Frame (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_, PixStoring ps_) { // by default: ps_ = PIXELS_STORING_GLOBAL
 	set (RawData_src_, freq_idx_, dist_idx_, shut_idx_, phas_idx_, ps_);
 }
-// Constructor from vector. Simulation oriented. For any Pixels_storing it consideres the vector matrix_vector properly arranged
+// Constructor from vector. Simulation oriented. For any PixStoring it consideres the vector matrix_vector properly arranged
 // If rows_ and cols_ are > 0, they will be the new rows and cols (interesting while simulating arbitrary rows and cols. Otherwise rows and cols are made from ps_
-Frame::Frame(std::vector<float> & data_, int rows_, int cols_, float freq_, float dist_ , float shut_, float phas_, Pixels_storing ps_) { // by default: r,c,f,d,s,p = 0, ps_ = PIXELS_STORING_GLOBAL
+Frame::Frame(std::vector<float> & data_, int rows_, int cols_, float freq_, float dist_ , float shut_, float phas_, PixStoring ps_) { // by default: r,c,f,d,s,p = 0, ps_ = PIXELS_STORING_GLOBAL
 	set (data_, rows_, cols_, freq_, dist_ , shut_, phas_, ps_);
 }
-// Constructor from ushort int*. Real Time capture oriented. rows_ and cols_ must be refered to the sizes of the total frame, regerdingless to the Pixels_storing
-Frame::Frame(unsigned short int* data_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_, int phas_idx_, Pixels_storing ps_) { // by default: ps_ = PIXELS_STORING_GLOBAL
+// Constructor from ushort int*. Real Time capture oriented. rows_ and cols_ must be refered to the sizes of the total frame, regerdingless to the PixStoring
+Frame::Frame(unsigned short int* data_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_) { // by default: ps_ = PIXELS_STORING_GLOBAL
 	set (data_, rows_, cols_, freq_, dist_, shut_, phas_, phas_idx_, ps_);
 }
 
@@ -710,7 +710,7 @@ void Frame::set () {
 
 	// Frame Parameters
 	data = std::vector<float>(0);
-	ps = UNKNOWN_PIXELS_STORING;
+	ps = UNKNOWN_PIS;
 	rows = 0;
 	cols = 0;
 	freq = 0.0f;
@@ -741,7 +741,7 @@ void Frame::set (Frame & frame) {
 }
 // Setter All parameters
 void Frame::set (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_,
-			  std::vector<float> & data_, Pixels_storing ps_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_) {
+			  std::vector<float> & data_, PixStoring ps_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_) {
 
 	// External Parameters (RawData, Info)
 	RawData_src = &RawData_src_;
@@ -761,7 +761,7 @@ void Frame::set (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_
 	phas = phas_;
 }
 // Setter from RawData. RawData oriented
-void Frame::set (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_, Pixels_storing ps_) { // by default: ps_ = PIXELS_STORING_GLOBAL
+void Frame::set (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_, PixStoring ps_) { // by default: ps_ = PIXELS_STORING_GLOBAL
 	
 	// External Parameters (RawData, idices)
 	RawData_src = &RawData_src_;
@@ -780,10 +780,10 @@ void Frame::set (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_
 		rows = RawData_src->info->rows;
 		cols = RawData_src->info->cols;
 	}
-	freq = RawData_src->info->freqs[freq_idx];
-	dist = RawData_src->info->dists[dist_idx];
-	shut = RawData_src->info->shuts[shut_idx];
-	phas = RawData_src->info->phass[phas_idx];
+	freq = RawData_src->info->freqV[freq_idx];
+	dist = RawData_src->info->distV[dist_idx];
+	shut = RawData_src->info->shutV[shut_idx];
+	phas = RawData_src->info->phasV[phas_idx];
 	data.resize(rows*cols);
 	for (int r = 0; r < rows; r++) {
 		for (int c = 0; c < cols; c++) {
@@ -791,9 +791,9 @@ void Frame::set (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_
 			data[data_idx(r,c)] = (float)(RawData_src->at(freq_idx, dist_idx, shut_idx, phas_idx, r, c, ps) - 32768);
 	}	}
 }
-// Setter from vector. Simulation oriented. For any Pixels_storing it consideres the vector matrix_vector properly arranged
+// Setter from vector. Simulation oriented. For any PixStoring it consideres the vector matrix_vector properly arranged
 // If rows_ and cols_ are > 0, they will be the new rows and cols (interesting while simulating arbitrary rows and cols. Otherwise rows and cols are made from ps_
-void Frame::set (std::vector<float> & data_, int rows_, int cols_, float freq_, float dist_ , float shut_, float phas_, Pixels_storing ps_) { // by default: r,c,f,d,s,p = 0, ps_ = PIXELS_STORING_GLOBAL
+void Frame::set (std::vector<float> & data_, int rows_, int cols_, float freq_, float dist_ , float shut_, float phas_, PixStoring ps_) { // by default: r,c,f,d,s,p = 0, ps_ = PIXELS_STORING_GLOBAL
 	
 	// External Parameters (RawData, indices)
 	RawData_src = NULL;
@@ -821,8 +821,8 @@ void Frame::set (std::vector<float> & data_, int rows_, int cols_, float freq_, 
 	shut = shut_;
 	phas = phas_;
 }
-// Setter from ushort int*. Real Time capture oriented. rows_ and cols_ must be refered to the sizes of the total frame, regerdingless to the Pixels_storing
-void Frame::set (unsigned short int* data_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_, int phas_idx_, Pixels_storing ps_) { // by default: ps_ = PIXELS_STORING_GLOBAL
+// Setter from ushort int*. Real Time capture oriented. rows_ and cols_ must be refered to the sizes of the total frame, regerdingless to the PixStoring
+void Frame::set (unsigned short int* data_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_) { // by default: ps_ = PIXELS_STORING_GLOBAL
 	
 	// External Parameters (RawData, indices)
 	RawData_src = NULL;
@@ -1033,15 +1033,73 @@ void char_array_to_float_vector_from_delimiter (char* char_array, std::vector<fl
     }  
 }
 
-// returns the corresponding index position of a vector from r,c considering Matrix-like r,c ordering 0-indexed.
-// Takes into account the Pixels_storing
-int rc2idx (int r, int c, Pixels_storing ps) { // default: ps = PIXELS_STORING_GLOBAL
-	
+// these functions returns the corresponding idx/stuff of a vector from r,c considering Matrix-like ordering 0-indexed.
+int rc2idx(int r, int c, PixStoring ps) { // default: ps = PIXELS_STORING_GLOBAL
 	if (ps == PIXELS_VALID)
 		return CAMERA_PIX_X_VALID * r + c;
 	else if (ps == PIXELS_TOTAL)
 		return CAMERA_PIX_X * r + c;
 	return -1;
 }
+int rc2idxCor(int r, int c, PixStoring ps) { // default: ps = PIXELS_STORING_GLOBAL
+	if (ps == PIXELS_VALID)
+		return (CAMERA_PIX_X_VALID + 1) * r + c;
+	else if (ps == PIXELS_TOTAL)
+		return (CAMERA_PIX_X + 1) * r + c;
+	return -1;
+}
+int numPix(PixStoring ps) {
+	if (ps == PIXELS_VALID)
+		return CAMERA_PIX_X_VALID * CAMERA_PIX_Y_VALID;
+	else if (ps == PIXELS_TOTAL)
+		return CAMERA_PIX_X * CAMERA_PIX_Y;
+	return -1;
+}
+int numPixCor(PixStoring ps) {
+	if (ps == PIXELS_VALID)
+		return (CAMERA_PIX_X_VALID + 1) * (CAMERA_PIX_Y_VALID + 1);
+	else if (ps == PIXELS_TOTAL)
+		return (CAMERA_PIX_X + 1) * (CAMERA_PIX_Y + 1);
+	return -1;
+}
+int rc2idxPT(int r, int c) {
+	return CAMERA_PIX_X * r + c;
+}
+int rc2idxPV(int r, int c) {
+	return CAMERA_PIX_X_VALID * r + c;
+}
+int numPixPT(int r, int c) {
+	return CAMERA_PIX_X * CAMERA_PIX_Y;
+}
+int numPixPV(int r, int c) {
+	return CAMERA_PIX_X_VALID * CAMERA_PIX_Y_VALID;
+}
 
-
+int rows(PixStoring ps) {
+	if (ps == PIXELS_VALID)
+		return CAMERA_PIX_Y_VALID;
+	else if (ps == PIXELS_TOTAL)
+		return CAMERA_PIX_Y;
+	return -1;
+}
+int cols(PixStoring ps) {
+	if (ps == PIXELS_VALID)
+		return CAMERA_PIX_X_VALID;
+	else if (ps == PIXELS_TOTAL)
+		return CAMERA_PIX_X;
+	return -1;
+}
+int rowsCor(PixStoring ps) {
+	if (ps == PIXELS_VALID)
+		return CAMERA_PIX_Y_VALID + 1;
+	else if (ps == PIXELS_TOTAL)
+		return CAMERA_PIX_Y + 1;
+	return -1;
+}
+int colsCor(PixStoring ps) {
+	if (ps == PIXELS_VALID)
+		return CAMERA_PIX_X_VALID + 1;
+	else if (ps == PIXELS_TOTAL)
+		return CAMERA_PIX_X + 1;
+	return -1;
+}

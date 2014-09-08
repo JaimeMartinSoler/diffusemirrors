@@ -74,7 +74,7 @@ int check_input_data(float freq_, float dist_, float shut_, char* comport, bool 
 // Author: Jaime Martin
 // check_input_data_vectors(...)
 // return    0, 1:     !continue / continue
-int check_input_data_vectors (std::vector<float> & freqs, std::vector<float> & dists, std::vector<float> & shuts_float, char* dir_name, char* file_name, char* comport, int & numtakes, bool show_text, bool ask_to_continue_);
+int check_input_data_vectors (std::vector<float> & freqV, std::vector<float> & distV, std::vector<float> & shutV_float, char* dir_name, char* file_name, char* comport, int & numtakes, bool show_text, bool ask_to_continue_);
 
 // Author: Jaime Martin
 // check_parameters(...)
@@ -88,7 +88,7 @@ int check_parameters (float & freq_, float & shut_, char* comport, bool show_tex
 // return 0: all parameters OK
 // return 1: any parameter out of bounds, modified
 // return 2: unproper dimensions or size
-int check_parameters_vector (std::vector<float> & freqs, std::vector<float> & dists, std::vector<float> & shuts_float, char* comport, int & numtakes, bool show_text = true, bool ask_to_continue_ = true);
+int check_parameters_vector (std::vector<float> & freqV, std::vector<float> & distV, std::vector<float> & shutV_float, char* comport, int & numtakes, bool show_text = true, bool ask_to_continue_ = true);
 
 // Author: Jaime Martin
 // ask_to_continue()
@@ -154,9 +154,9 @@ int PMD_params_to_file_anti_bug_thread (std::vector<float> & frequencies, std::v
 
 // Author: Jaime Martin (modification of previous function)
 // PMD_params_to_Frame
-int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequency_, float distance_, float shutter_, char* comport, bool loop);
+int PMD_params_to_Frame(Frame & Frame_00_cap, Frame & Frame_90_cap, float frequency_, float distance_, float shutter_, char* comport, bool loop, PixStoring ps_ = PIXELS_STORING_GLOBAL);
 // there's a weird bug when calling directly to PMD_params_to_Frame from thread constructor. With this re-calling functtion the bug is avoided
-int PMD_params_to_Frame_anti_bug_thread (Frame & Frame_00_cap, Frame & Frame_90_cap, float frequency_, float distance_, float shutter_, char* comport, bool loop);
+int PMD_params_to_Frame_anti_bug_thread(Frame & Frame_00_cap, Frame & Frame_90_cap, float frequency_, float distance_, float shutter_, char* comport, bool loop, PixStoring ps_ = PIXELS_STORING_GLOBAL);
 
 // Author: Jaime Martin
 // PMD_charArray_to_file (...) (DEPRECATED)

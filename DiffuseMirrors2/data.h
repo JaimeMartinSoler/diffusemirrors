@@ -64,10 +64,10 @@ public:
 	int sizeof_value_raw;	// bytes
 	int rows;
 	int cols;
-	std::vector<float> freqs;
-	std::vector<float> dists;
-	std::vector<float> shuts;
-	std::vector<float> phass;
+	std::vector<float> freqV;
+	std::vector<float> distV;
+	std::vector<float> shutV;
+	std::vector<float> phasV;
 	int numtakes;
 	// Calibration Matrix parameters:
 	int sizeof_value_cmx;	// bytes
@@ -87,7 +87,7 @@ public:
 	Info::Info(Info & info);
 	// Constructor All parameters
 	Info::Info(	char* dir_name_, char* file_name_, int sizeof_value_raw_, int rows_, int cols_,
-				std::vector<float> & freqs_, std::vector<float> & dists_, std::vector<float> & shuts_, std::vector<float> & phass_, int numtakes_, int error_code_ = 0,
+				std::vector<float> & freqV_, std::vector<float> & distV_, std::vector<float> & shutV_, std::vector<float> & phasV_, int numtakes_, int error_code_ = 0,
 				int sizeof_value_cmx_ = -1, float laser_to_cam_offset_x_ = -1.0f, float laser_to_cam_offset_y_ = -1.0f, float laser_to_cam_offset_z_ = -1.0f, float dist_wall_cam_ = -1.0f);
 
 	
@@ -104,7 +104,7 @@ public:
 	void Info::set (Info & info);
 	// Setter All parameters
 	void Info::set (	char* dir_name_, char* file_name_, int sizeof_value_raw_, int rows_, int cols_,
-				std::vector<float> & freqs_, std::vector<float> & dists_, std::vector<float> & shuts_, std::vector<float> & phass_, int numtakes_, int error_code_ = 0,
+				std::vector<float> & freqV_, std::vector<float> & distV_, std::vector<float> & shutV_, std::vector<float> & phasV_, int numtakes_, int error_code_ = 0,
 				int sizeof_value_cmx_ = -1, float laser_to_cam_offset_x_ = -1.0f, float laser_to_cam_offset_y_ = -1.0f, float laser_to_cam_offset_z_ = -1.0f, float dist_wall_cam_ = -1.0f);
 	// Setter from file
 	void Info::set (char* dir_name_, char* file_name_);
@@ -129,7 +129,7 @@ public:
 	// RawData Parameters
 	// data ordereing: for(dist){ for(freq){ for(phase){ for(shutter){ for(r){ for(c){ // here... }}}}}} // r,c NOT Matrix-like, 0-idx
 	// inside each frame, data stores all cols, then next row and so on, from down to top, unlike Frame and any Matrix
-	unsigned short int* data; // independent of Pixels_storing, the accessing depends on it
+	unsigned short int* data; // independent of PixStoring, the accessing depends on it
 	int data_size;
 	int error_code;	// 0=no_error, !=0:error
 	
@@ -166,11 +166,11 @@ public:
 	// ----- FUNCTIONS -------------------------------
 
 	// Returns the index in data[], corresponding to the parameter indices
-	// input r,c are considered like Matrix from 0 indexation. It also takes care on Pixels_storing
-	int RawData::data_idx(int freq_idx, int dist_idx, int shut_idx, int phas_idx, int r, int c, Pixels_storing ps = PIXELS_STORING_GLOBAL);
+	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
+	int RawData::data_idx(int freq_idx, int dist_idx, int shut_idx, int phas_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
 	// Returns the value corresponding to the parameter indices = data[idx_in_data]
-	// input r,c are considered like Matrix from 0 indexation. It also takes care on Pixels_storing
-	unsigned short int RawData::at(int freq_idx, int dist_idx, int shut_idx, int phas_idx, int r, int c, Pixels_storing ps = PIXELS_STORING_GLOBAL);
+	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
+	unsigned short int RawData::at(int freq_idx, int dist_idx, int shut_idx, int phas_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
 };
 
 
@@ -191,9 +191,9 @@ public:
 	// Calibration Matrix Parameters
 	// data ordereing: for(freq){ for(dist){ for(r){ for(c){ // here... }}}} // r,c Matrix-like, 0-idx
 	// inside each frame, data stores all cols, then next row and so on, from top to down, like Frame and any Matrix
-	float* data;					// independent of Pixels_storing, the accessing depends on it
+	float* data;					// independent of PixStoring, the accessing depends on it
 	int data_size;		
-	std::vector<float> path_dist_0;	// independent of Pixels_storing, the accessing depends on it. Ordering: for(r){ for(c){ // here... }}}} // r,c Matrix-like, 0-idx
+	std::vector<float> path_dist_0;	// independent of PixStoring, the accessing depends on it. Ordering: for(r){ for(c){ // here... }}}} // r,c Matrix-like, 0-idx
 	int error_code;	// 0=no_error, !=0:error
 	
 
@@ -227,25 +227,25 @@ public:
 	// ----- FUNCTIONS -------------------------------
 
 	// Returns the index in data[], corresponding to the parameter indices.
-	// input r,c are considered like Matrix from 0 indexation. It also takes care on Pixels_storing
-	int CalibrationMatrix::data_idx (int freq_idx, int dist_idx, int r, int c, Pixels_storing ps = PIXELS_STORING_GLOBAL);
+	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
+	int CalibrationMatrix::data_idx (int freq_idx, int dist_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
 	// Returns the value from the Calibration Matrix data corresponding to the parameter indices = data[idx_in_data]
-	// input r,c are considered like Matrix from 0 indexation. It also takes care on Pixels_storing
-	float CalibrationMatrix::at (int freq_idx, int dist_idx, int r, int c, Pixels_storing ps = PIXELS_STORING_GLOBAL);
+	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
+	float CalibrationMatrix::at (int freq_idx, int dist_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
 	// Returns the index in path_dist_0, corresponding to the parameter indices.
-	// input r,c are considered like Matrix from 0 indexation. It also takes care on Pixels_storing
-	int CalibrationMatrix::path_dist_0_idx (int r, int c, Pixels_storing ps = PIXELS_STORING_GLOBAL);
+	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
+	int CalibrationMatrix::path_dist_0_idx (int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
 	// Returns the value from the path_dist_0 corresponding to the parameter indices = path_dist_0[path_dist_0_idx]
-	// input r,c are considered like Matrix from 0 indexation. It also takes care on Pixels_storing
-	float CalibrationMatrix::path_dist_0_at (int r, int c, Pixels_storing ps = PIXELS_STORING_GLOBAL);
+	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
+	float CalibrationMatrix::path_dist_0_at (int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
 	
 	// This is the Calibtration Matrix coefficient: c_{\omega}^{r,c}(\tau^{r,c}) in the Master Thesis document
 	// Returns the value from the Calibration Matrix data at any path distance interpolating with the closest path distances. Path distances have to be equidistant in vector
-	float CalibrationMatrix::c_coef (int freq_idx, int r, int c, float path_dist, Pixels_storing ps = PIXELS_STORING_GLOBAL);
+	float CalibrationMatrix::c_coef (int freq_idx, int r, int c, float path_dist, PixStoring ps = PIXELS_STORING_GLOBAL);
 	// This is the Simulation term for the direct vision problem: S_{i\;\omega}^{r,c}(\tau^{r,c}) in the Master Thesis document
 	// Returns the value of the Simulation from the Calibration Matrix data at any path distance interpolating with the closest path distances. Path distances have to be equidistant in vector
 	// Uses c(...)
-	float CalibrationMatrix::S_direct_vision (int freq_idx, int r, int c, Point & r_src, Point & r_x,  Point & r_cam, float relative_albedo = 1.0f, Pixels_storing ps = PIXELS_STORING_GLOBAL);
+	float CalibrationMatrix::S_direct_vision (int freq_idx, int r, int c, Point & r_src, Point & r_x,  Point & r_cam, float relative_albedo = 1.0f, PixStoring ps = PIXELS_STORING_GLOBAL);
 };
 
 
@@ -268,10 +268,10 @@ public:
 	int phas_idx;
 
 	// Frame Parameters
-	std::vector<float> data;	// Pixels_storing dependent. With all the values of the frame. // r,c Matrix-like, 0-idx. 
-	Pixels_storing ps;	// the kind of pixels it can store (PIXELS_TOTAL, PIXELS_VALID, UNKNOWN_PIXELS_STORING). See global.h
-	int rows;			// Pixels_storing dependent
-	int cols;			// Pixels_storing dependent
+	std::vector<float> data;	// PixStoring dependent. With all the values of the frame. // r,c Matrix-like, 0-idx. 
+	PixStoring ps;	// the kind of pixels it can store (PIXELS_TOTAL, PIXELS_VALID, UNKNOWN_PIS). See global.h
+	int rows;			// PixStoring dependent
+	int cols;			// PixStoring dependent
 	float freq;	// (MHz)
 	float dist;	// (m)
 	float shut;	// (us)
@@ -287,14 +287,14 @@ public:
 	Frame::Frame (Frame & frame);
 	// Constructor All parameters
 	Frame::Frame (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_,
-				  std::vector<float> & data_, Pixels_storing ps_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_);
+				  std::vector<float> & data_, PixStoring ps_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_);
 	// Constructor from RawData. RawData oriented
-	Frame::Frame (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_, Pixels_storing ps_ = PIXELS_STORING_GLOBAL);
-	// Constructor from vector. Simulation oriented. For any Pixels_storing it considers the vector matrix_vector properly arranged
+	Frame::Frame (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_, PixStoring ps_ = PIXELS_STORING_GLOBAL);
+	// Constructor from vector. Simulation oriented. For any PixStoring it considers the vector matrix_vector properly arranged
 	// If rows_ and cols_ are > 0, they will be the new rows and cols (interesting while simulating arbitrary rows and cols. Otherwise rows and cols are made from ps_
-	Frame::Frame (std::vector<float> & data_, int rows_ = 0, int cols_ = 0, float freq_ = 0.0f, float dist_ = 0.0f, float shut_ = 0.0f, float phas_ = 0.0f, Pixels_storing ps_ = PIXELS_STORING_GLOBAL);
-	// Constructor from ushort int*. Real Time capture oriented. rows_ and cols_ must be refered to the sizes of the total frame, regerdingless to the Pixels_storing
-	Frame::Frame (unsigned short int* data_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_, int phas_idx_, Pixels_storing ps_ = PIXELS_STORING_GLOBAL);
+	Frame::Frame (std::vector<float> & data_, int rows_ = 0, int cols_ = 0, float freq_ = 0.0f, float dist_ = 0.0f, float shut_ = 0.0f, float phas_ = 0.0f, PixStoring ps_ = PIXELS_STORING_GLOBAL);
+	// Constructor from ushort int*. Real Time capture oriented. rows_ and cols_ must be refered to the sizes of the total frame, regerdingless to the PixStoring
+	Frame::Frame (unsigned short int* data_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_ = PIXELS_STORING_GLOBAL);
 	
 	
 	// ----- SETTERS --------------------------------- // Note that each Constructor just contains its corresponding Setter
@@ -306,14 +306,14 @@ public:
 	void Frame::set (Frame & frame);
 	// Setter All parameters
 	void Frame::set (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_,
-				  std::vector<float> & data_, Pixels_storing ps_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_);
+				  std::vector<float> & data_, PixStoring ps_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_);
 	// Setter from RawData. RawData oriented
-	void Frame::set (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_, Pixels_storing ps_ = PIXELS_STORING_GLOBAL);
-	// Setter from vector. Simulation oriented. For any Pixels_storing it considers the vector matrix_vector properly arranged
+	void Frame::set (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_, PixStoring ps_ = PIXELS_STORING_GLOBAL);
+	// Setter from vector. Simulation oriented. For any PixStoring it considers the vector matrix_vector properly arranged
 	// If rows_ and cols_ are > 0, they will be the new rows and cols (interesting while simulating arbitrary rows and cols. Otherwise rows and cols are made from ps_
-	void Frame::set (std::vector<float> & data_, int rows_ = 0, int cols_ = 0, float freq_ = 0.0f, float dist_ = 0.0f, float shut_ = 0.0f, float phas_ = 0.0f, Pixels_storing ps_ = PIXELS_STORING_GLOBAL);
-	// Setter from ushort int*. Real Time capture oriented. rows_ and cols_ must be refered to the sizes of the total frame, regerdingless to the Pixels_storing
-	void Frame::set (unsigned short int* data_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_, int phas_idx_, Pixels_storing ps_ = PIXELS_STORING_GLOBAL);
+	void Frame::set (std::vector<float> & data_, int rows_ = 0, int cols_ = 0, float freq_ = 0.0f, float dist_ = 0.0f, float shut_ = 0.0f, float phas_ = 0.0f, PixStoring ps_ = PIXELS_STORING_GLOBAL);
+	// Setter from ushort int*. Real Time capture oriented. rows_ and cols_ must be refered to the sizes of the total frame, regerdingless to the PixStoring
+	void Frame::set (unsigned short int* data_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_ = PIXELS_STORING_GLOBAL);
 	
 
 	// ----- FUNCTIONS -------------------------------
@@ -341,9 +341,20 @@ void plot_frame_fov_measurement(Frame & frame_00, Frame & frame_90, bool loop = 
 // sets a vector of floats form a char array from a given delimiter
 void char_array_to_float_vector_from_delimiter (char* char_array, std::vector<float> & float_vector, char delimiter);
 
-// returns the corresponding position of a vector from r,c considering Matrix-like ordering 0-indexed.
-// Takes into account the Pixels_storing
-int rc2idx (int r, int c, Pixels_storing ps = PIXELS_STORING_GLOBAL);
+// these functions returns the corresponding idx/stuff of a vector from r,c considering Matrix-like ordering 0-indexed.
+int rc2idx (int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
+int rc2idxCor(int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);	// see scene.cpp, setPixelPatchesNCor(...)
+int rc2idxPT(int r, int c);
+int rc2idxPV(int r, int c);
+int numPix(PixStoring ps = PIXELS_STORING_GLOBAL);
+int numPixCor(PixStoring ps = PIXELS_STORING_GLOBAL);	// see scene.cpp, setPixelPatchesNCor(...)
+int numPixPT(int r, int c);
+int numPixPV(int r, int c);
+
+int rows(PixStoring ps = PIXELS_STORING_GLOBAL);
+int cols(PixStoring ps = PIXELS_STORING_GLOBAL);
+int rowsCor(PixStoring ps = PIXELS_STORING_GLOBAL);
+int colsCor(PixStoring ps = PIXELS_STORING_GLOBAL);
 
 
 #endif

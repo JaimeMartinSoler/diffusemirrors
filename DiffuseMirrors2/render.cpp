@@ -91,16 +91,22 @@ void transform_UI() {
 
 
 // It renders all the object3D's of a Scene
-void render_Scene(Scene & scene) {
-	for (std::size_t i = 0; i < scene.o.size(); i++)
-		render_Object3D (scene.o[i]);
+void render_Scene(Scene & scene, bool renderEdges) {
+	for (std::size_t i = 0; i < scene.o.size(); i++) {
+		if (i == WALL_PATCHES)
+			continue;
+		else if (i == PIXEL_PATCHES)
+			render_Object3D(scene.o[i], false);
+		else
+			render_Object3D(scene.o[i], renderEdges);
+	}
 }
 
 // It renders all the Shapes of an object3D
-void render_Object3D(Object3D & o) {
-	for (std::size_t i = 0; i < o.s.size(); i++)
-		render_Shape(o.s[i], true);
-	// it renders the center of the Object3D
+void render_Object3D(Object3D & o, bool renderEdges) {
+	for (std::size_t i = 0; i < o.s.size(); i++) {
+			render_Shape(o.s[i], renderEdges);
+	}
 	if (o.s.size() > 0)
 		render_Point(o.s[0].c, 1.0f, 0.0f, 0.0f, 1.0f);
 }
@@ -204,7 +210,7 @@ void display() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear color and depth buffers
 	glMatrixMode(GL_MODELVIEW);     // To operate on model-view matrix
 	
-	render_Scene(SCENEMAIN);
+	render_Scene(SCENEMAIN, true);
 	drawFPS();
 
 	glutSwapBuffers();  // Swap the front and back frame buffers (double buffering)

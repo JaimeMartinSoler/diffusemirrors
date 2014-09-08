@@ -8,9 +8,6 @@
 #include "data_sim.h"
 #include "data.h"
 #include "capturetool2.h"
-// http://eigen.tuxfamily.org/dox/group__QuickRefPage.html
-#include <Eigen/Dense>
-using namespace Eigen;
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -34,9 +31,9 @@ void test_gradient_descent() {
 // test_create_raw_from_raw_takes()
 void test_create_raw_from_raw_takes() {
 	
-	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\test_04";
+	char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\test_03";
 	char file_name[1024] = "PMD";
-	//char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\test_03";
+	//char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\DiffuseMirrors2\\CalibrationMatrix\\test_03";
 	//char file_name[1024] = "PMD";
 	Info info(dir_name, file_name);
 
@@ -60,7 +57,7 @@ void test_create_raw_from_raw_takes() {
 // test_calibration_matrix()
 void test_calibration_matrix() {
 
-	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\test_01";
+	char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\test_01";
 	char file_name[1024] = "PMD_Calibration_Matrix";
 	Info info = Info(dir_name, file_name);
 
@@ -73,9 +70,9 @@ void test_calibration_matrix() {
 	std::cout << "\npath_dist_0(cor) = " << cm.path_dist_0_at(info.rows-1,info.cols-1);
 	
 	int di_floor = 8;
-	float path_dist = info.dists[di_floor] + 0.6f * (info.dists[di_floor+1] - info.dists[di_floor]);
+	float path_dist = info.distV[di_floor] + 0.6f * (info.distV[di_floor+1] - info.distV[di_floor]);
 	std::cout << "\npath_dist = " << path_dist;
-	std::cout << "\nc(fi_max, " << path_dist << ", cen) = " << cm.c_coef(info.freqs.size()-1, info.rows/2, info.cols/2, path_dist);
+	std::cout << "\nc(fi_max, " << path_dist << ", cen) = " << cm.c_coef(info.freqV.size()-1, info.rows/2, info.cols/2, path_dist);
 
 }
 
