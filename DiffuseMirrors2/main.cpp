@@ -46,7 +46,7 @@ void control_loop_pause() {
 
 
 
-// CHECKED OK
+
 int main_DirectVision_Sinusoid(bool loop = true) {
 
 	// capture data directly from PMD to Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE)
@@ -78,7 +78,7 @@ int main_DirectVision_Sinusoid(bool loop = true) {
 	return 0;
 }
 
-// TO-DO (just TO-CHECK)
+
 int main_DirectVision_Simulation(char* dir_name_, char* file_name_, bool loop = true) {
 
 	// set the Info
@@ -148,9 +148,8 @@ int main_Occlusion(char* dir_name_, char* file_name_, bool loop = true) {
 	return 0;
 }
 
-// CHECKED OK
 int main_FoVmeas(bool loop = true) {
-	
+
 	// capture data directly from PMD to Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE)
 	float frequency = 100.0f;
 	float distance = 0.0f;
@@ -160,7 +159,7 @@ int main_FoVmeas(bool loop = true) {
 	std::thread thread_PMD_params_to_Frame(PMD_params_to_Frame_anti_bug_thread, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), frequency, distance, shutter, comport, loop, ps);
 	
 	// plot the Frame (combining frame00 and frame90)
-	std::thread thread_plot_frame_fov_measurement (plot_frame_fov_measurement, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), loop);
+	std::thread thread_plot_frame_fov_measurement (plot_frame_fov_measurement, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), loop, false, (char*)NULL);
 
 	// pause in main to allow control when the loops will finish
 	control_loop_pause();
@@ -172,7 +171,6 @@ int main_FoVmeas(bool loop = true) {
 	return 0;
 }
 
-// CHECKED OK
 int main_RawData(char* dir_name_, char* file_name_) {
 	
 	// set all the object3D of the corresponding scene (just camera, laser and wall)
@@ -184,21 +182,33 @@ int main_RawData(char* dir_name_, char* file_name_) {
 	float cmx_params[4] = {laser_to_cam_offset_x, laser_to_cam_offset_y, laser_to_cam_offset_z, dist_wall_cam};
 
 	// create the .raw file, capturing data from the PMD
+
+	// FREQUENCIES
 	std::vector<float> frequencies;	// (MHz)
 	float freq_res = 50.0f;
 	float freq_min = 50.0f;
 	float freq_max = 100.0f + freq_res/2.0f;	// (+ freq_res/2.0f) is due to avoid rounding problems
 	for (float fi = freq_min; fi <= freq_max; fi += freq_res)
 		frequencies.push_back(fi);
+	// DISTANCES
 	std::vector<float> delays;		// (m)
 	float delay_res = 0.1f;
-	float delay_min = -2.0f;
+	float delay_min = -3.0f;
 	float delay_max = 10.0f + delay_res/2.0f;	// (+ delay_res/2.0f) is due to avoid rounding problems
 	for (float di = delay_min; di <= delay_max; di += delay_res)
 		delays.push_back(di);
-	std::vector<float> shutters_float(1, 1920.0f);	// (us)
-	char comport[128] = "COM6";
+	// SUTTERS
+	//std::vector<float> shutters_float(1, 1920.0f);	// (us)
+	std::vector<float> shutters_float;		// (m)
+	float shutters_float_mul = 2.0f;	if (shutters_float_mul <= 1.0f)	{ shutters_float_mul = 2.0f; }
+	float shutters_float_min = SHUTTER_MAX / 1.0f;	// 15(/128), 30(/64), 60(/32), 120(/16), 240(/8), 480(/4), 960(/2), 1920(/1)
+	float shutters_float_max = SHUTTER_MAX + 1.0f;	// (+ 1.0f) is due to avoid rounding problems
+	for (float si = shutters_float_min; si <= shutters_float_max; si *= shutters_float_mul)
+		shutters_float.push_back(si);
+	// NUMTAKES
 	int numtakes = 10;
+	// OTHER
+	char comport[128] = "COM6";
 	std::thread thread_PMD_params_to_file (PMD_params_to_file_anti_bug_thread, frequencies, delays, shutters_float, dir_name_, file_name_, comport, numtakes, cmx_info, cmx_params);
 
 	// pause in main to allow control when the loops will finish
@@ -252,11 +262,11 @@ int main_Test(bool loop = true) {
 int main(int argc, char** argv) {
 	
 	// Set parameteres
-	SceneType sceneType = DIRECT_VISION_SIMULATION;
+	SceneType sceneType = TEST_TEST;
 	SCENEMAIN.set(sceneType);
 	//char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\test_03";
 	//char file_name[1024] = "PMD";
-	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\cmx_00";
+	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\cmx_01";	// F:\\Jaime\\CalibrationMatrix\\cmx_00
 	char file_name[1024] = "PMD";
 	bool loop = true;
 	
@@ -269,6 +279,7 @@ int main(int argc, char** argv) {
 		case RAW_DATA:					main_RawData (dir_name, file_name);							break;
 		case CALIBRATION_MATRIX:		main_CalibrationMatrix (dir_name, file_name);				break;
 		case TEST:						main_Test (loop);											break;
+		case TEST_TEST:					test ();													break;
 	}
 
 	system("pause");

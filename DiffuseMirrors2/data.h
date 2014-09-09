@@ -174,6 +174,12 @@ public:
 	// Returns the value corresponding to the parameter indices = data[idx_in_data]
 	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
 	unsigned short int RawData::at(int freq_idx, int dist_idx, int shut_idx, int phas_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
+	// Returns (short int)(data[data_idx(...)] - 32768), fixing the 32768 default offset and converting it to (signed) short int
+	short int RawData::atSI(int freq_idx, int dist_idx, int shut_idx, int phas_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
+	// Returns (int)(data[data_idx(...)] - 32768), fixing the 32768 default offset and converting it to (signed) int
+	int RawData::atI(int freq_idx, int dist_idx, int shut_idx, int phas_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
+	// Returns (float)(data[data_idx(...)] - 32768), fixing the 32768 default offset and converting it to float
+	float RawData::atF(int freq_idx, int dist_idx, int shut_idx, int phas_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
 };
 
 
@@ -192,11 +198,11 @@ public:
 	Info* info;		// Pointer to the info object
 
 	// Calibration Matrix Parameters
-	// data ordereing: for(freq){ for(dist){ for(r){ for(c){ // here... }}}} // r,c Matrix-like, 0-idx
-	// inside each frame, data stores all cols, then next row and so on, from top to down, like Frame and any Matrix
-	float* data;					// independent of PixStoring, the accessing depends on it
-	int data_size;		
-	std::vector<float> path_dist_0;	// independent of PixStoring, the accessing depends on it. Ordering: for(r){ for(c){ // here... }}}} // r,c Matrix-like, 0-idx
+	// C ordereing: for(freq){ for(dist){ for(r){ for(c){ // here... }}}} // r,c Matrix-like, 0-idx
+	// inside each frame, C stores all cols, then next row and so on, from top to down, like Frame and any Matrix
+	float* C;					// independent of PixStoring, the accessing depends on it
+	int C_size;		
+	std::vector<float> pathDist0;	// independent of PixStoring, the accessing depends on it. Ordering: for(r){ for(c){ // here... }}}} // r,c Matrix-like, 0-idx
 	int error_code;	// 0=no_error, !=0:error
 	
 
@@ -205,10 +211,10 @@ public:
 	// Constructor Default
 	CalibrationMatrix::CalibrationMatrix();
 	// Constructor Copy
-	// pointers are copied "as are", the data pointed is not duplicated. For this use .clone(...) (if implemented)
+	// pointers are copied "as are", the C pointed is not duplicated. For this use .clone(...) (if implemented)
 	CalibrationMatrix::CalibrationMatrix(CalibrationMatrix & cmx);
 	// Constructor All parameters
-	CalibrationMatrix::CalibrationMatrix(Info & info_, float* data_, int data_size_, std::vector<float> & path_dist_0_, int error_code_ = 0);
+	CalibrationMatrix::CalibrationMatrix(Info & info_, float* C_, int C_size_, std::vector<float> & pathDist0_, int error_code_ = 0);
 	// Constructor. It creates a CalibrationMatrix object from the .cmx file noted in the info object
  	CalibrationMatrix::CalibrationMatrix(Info & info_);
 	// Destructor
@@ -220,10 +226,10 @@ public:
 	// Constructor Default
 	void CalibrationMatrix::set ();
 	// Constructor Copy
-	// pointers are copied "as are", the data pointed is not duplicated. For this use .clone(...) (if implemented)
+	// pointers are copied "as are", the C pointed is not duplicated. For this use .clone(...) (if implemented)
 	void CalibrationMatrix::set (CalibrationMatrix & cmx);
 	// Constructor All parameters
-	void CalibrationMatrix::set (Info & info_, float* data_, int data_size_, std::vector<float> & path_dist_0_, int error_code_ = 0);
+	void CalibrationMatrix::set (Info & info_, float* C_, int C_size_, std::vector<float> & pathDist0_, int error_code_ = 0);
 	// Constructor. It creates a CalibrationMatrix object from the .cmx file noted in the info object
  	void CalibrationMatrix::set (Info & info_);
 	
@@ -231,25 +237,26 @@ public:
 
 	// ----- FUNCTIONS -------------------------------
 
-	// Returns the index in data[], corresponding to the parameter indices.
+	// Returns the index in C[], corresponding to the parameter indices.
 	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
-	int CalibrationMatrix::data_idx (int freq_idx, int dist_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
-	// Returns the value from the Calibration Matrix data corresponding to the parameter indices = data[idx_in_data]
+	int CalibrationMatrix::C_idx (int freq_idx, int dist_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
+	// Returns C[C.C_idx(...)], the value from the Calibration Matrix C corresponding to the parameters
 	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
-	float CalibrationMatrix::at (int freq_idx, int dist_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
-	// Returns the index in path_dist_0, corresponding to the parameter indices.
+	float CalibrationMatrix::C_at (int freq_idx, int dist_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
+	// Returns the C[...] interpolating with the closest path distances. Path distances have to be equidistant in vector
 	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
-	int CalibrationMatrix::path_dist_0_idx (int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
-	// Returns the value from the path_dist_0 corresponding to the parameter indices = path_dist_0[path_dist_0_idx]
-	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
-	float CalibrationMatrix::path_dist_0_at (int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
+	float CalibrationMatrix::C_atX (int freq_idx, float pathDist, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
 	
-	// This is the Calibtration Matrix coefficient: c_{\omega}^{r,c}(\tau^{r,c}) in the Master Thesis document
-	// Returns the value from the Calibration Matrix data at any path distance interpolating with the closest path distances. Path distances have to be equidistant in vector
-	float CalibrationMatrix::c_coef (int freq_idx, int r, int c, float path_dist, PixStoring ps = PIXELS_STORING_GLOBAL);
+	// Returns the index in pathDist0, corresponding to the parameter indices.
+	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
+	int CalibrationMatrix::pathDist0_idx (int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
+	// Returns the value from the pathDist0 corresponding to the parameter indices = pathDist0[pathDist0_idx]
+	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
+	float CalibrationMatrix::pathDist0_at (int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
+	
 	// This is the Simulation term for the direct vision problem: S_{i\;\omega}^{r,c}(\tau^{r,c}) in the Master Thesis document
-	// Returns the value of the Simulation from the Calibration Matrix data at any path distance interpolating with the closest path distances. Path distances have to be equidistant in vector
-	// Uses c(...)
+	// Returns the value of the Simulation from the Calibration Matrix C at any path distance interpolating with the closest path distances. Path distances have to be equidistant in vector
+	// Uses C_atX(...) for interpolating path distances
 	float CalibrationMatrix::S_DirectVision (int freq_idx, int r, int c, Point & r_src, Point & r_x,  Point & r_cam, float relative_albedo = 1.0f, PixStoring ps = PIXELS_STORING_GLOBAL);
 };
 
@@ -327,13 +334,23 @@ public:
 	int Frame::data_idx (int r, int c);
 	// r,c Matrix-like, 0-idx.
 	float Frame::at (int r, int c);
+
+	// returns the min value of the data
+	float Frame::min();
+	// returns the max value of the data
+	float Frame::max();
+	// returns the mean of the data
+	float Frame::mean();
+	// returns the var of the data
+	float Frame::var();
+
 	// Plot frame with opencv
-	void Frame::plot(int delay_ms = 1000);
+	void Frame::plot(int delay_ms = 1000, bool destroyWindow_ = false, char* windowName = NULL);
 };
 // plot frame amplitude with sinusoidal assumption
-void plot_frame(Frame & frame_00, Frame & frame_90, int delay_ms = 1000);
+void plot_frame(Frame & frame_00, Frame & frame_90, int delay_ms = 1000, bool destroyWindow_ = false, char* windowName = NULL);
 // For FoV measurement scene. Plot frame with opencv with syncronization
-void plot_frame_fov_measurement(Frame & frame_00, Frame & frame_90, bool loop = false);
+void plot_frame_fov_measurement(Frame & frame_00, Frame & frame_90, bool loop = false, bool destroyWindow_ = false, char* windowName = NULL);
 
 
 

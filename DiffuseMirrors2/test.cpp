@@ -17,15 +17,170 @@
 // test function for testing
 void test() {
 
-	test_create_raw_from_raw_takes();
+	test_CMX();
 
 	std::cout << "\n\nTest done...\n\n";
 }
 
 
+// test_numbers()
+void test_numbers() {
+
+	unsigned short int n0 = 65535;
+	std::cout << "\n\nn0                      = " << n0;
+	std::cout << "\n(n0 - 32768)            = " << (n0 - 32768);
+	std::cout << "\n(short int)(n0 - 32768) = " << (short int)(n0 - 32768);
+	std::cout << "\n(int)(n0 - 32768)       = " << (int)(n0 - 32768);
+	std::cout << "\n(float)(n0 - 32768)     = " << (float)(n0 - 32768);
+	
+	unsigned short int n1 = 32769;
+	std::cout << "\n\nn1                      = " << n1;
+	std::cout << "\n(n1 - 32768)            = " << (n1 - 32768);
+	std::cout << "\n(short int)(n1 - 32768) = " << (short int)(n1 - 32768);
+	std::cout << "\n(int)(n1 - 32768)       = " << (int)(n1 - 32768);
+	std::cout << "\n(float)(n1 - 32768)     = " << (float)(n1 - 32768);
+	
+	unsigned short int n2 = 32768;
+	std::cout << "\n\nn2                      = " << n2;
+	std::cout << "\n(n2 - 32768)            = " << (n2 - 32768);
+	std::cout << "\n(short int)(n2 - 32768) = " << (short int)(n2 - 32768);
+	std::cout << "\n(int)(n2 - 32768)       = " << (int)(n2 - 32768);
+	std::cout << "\n(float)(n2 - 32768)     = " << (float)(n2 - 32768);
+	
+	unsigned short int n3 = 32767;
+	std::cout << "\n\nn3                      = " << n3;
+	std::cout << "\n(n3 - 32768)            = " << (n3 - 32768);
+	std::cout << "\n(short int)(n3 - 32768) = " << (short int)(n3 - 32768);
+	std::cout << "\n(int)(n3 - 32768)       = " << (int)(n3 - 32768);
+	std::cout << "\n(float)(n3 - 32768)     = " << (float)(n3 - 32768);
+	
+	unsigned short int n4 = 1;
+	std::cout << "\n\nn4                      = " << n4;
+	std::cout << "\n(n4 - 32768)            = " << (n4 - 32768);
+	std::cout << "\n(short int)(n4 - 32768) = " << (short int)(n4 - 32768);
+	std::cout << "\n(int)(n4 - 32768)       = " << (int)(n4 - 32768);
+	std::cout << "\n(float)(n4 - 32768)     = " << (float)(n4 - 32768);
+	
+	unsigned short int n5 = 0;
+	std::cout << "\n\nn5                      = " << n5;
+	std::cout << "\n(n5 - 32768)            = " << (n5 - 32768);
+	std::cout << "\n(short int)(n5 - 32768) = " << (short int)(n5 - 32768);
+	std::cout << "\n(int)(n5 - 32768)       = " << (int)(n5 - 32768);
+	std::cout << "\n(float)(n5 - 32768)     = " << (float)(n5 - 32768);
+	
+	unsigned short int n6 = -1;
+	std::cout << "\n\nn6                      = " << n6;
+	std::cout << "\n(n6 - 32768)            = " << (n6 - 32768);
+	std::cout << "\n(short int)(n6 - 32768) = " << (short int)(n6 - 32768);
+	std::cout << "\n(int)(n6 - 32768)       = " << (int)(n6 - 32768);
+	std::cout << "\n(float)(n6 - 32768)     = " << (float)(n6 - 32768);
+}
+
 // test_gradient_descent()
 void test_gradient_descent() {
 	// TO-DO
+}
+
+// test_RawData()
+void test_RawData() {
+
+	// Info, RawData
+
+	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\test_06";
+	char file_name[1024] = "PMD";
+	//char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\DiffuseMirrors2\\CalibrationMatrix\\test_03";
+	//char file_name[1024] = "PMD";
+	Info info(dir_name, file_name);
+
+	RawData raw_data		(info);
+	RawData raw_data_take_0 (info, 0);
+	RawData raw_data_take_1 (info, 1);
+	RawData raw_data_take_2 (info, 2);
+	RawData raw_data_take_3 (info, 3);
+	RawData raw_data_take_4 (info, 4);
+	
+
+	// Frames
+
+	// void Frame::Frame (RawData_src_, freq_idx_, dist_idx_, shut_idx_, phas_idx_, ps_ = PIXELS_STORING_GLOBAL);
+	Frame frame			(raw_data       , info.freqV.size()-1, 0, info.shutV.size()-1, 0);
+	Frame frame_take_0	(raw_data_take_0, info.freqV.size()-1, 0, info.shutV.size()-1, 0);
+	Frame frame_take_1	(raw_data_take_1, info.freqV.size()-1, 0, info.shutV.size()-1, 0);
+	
+	Frame frame_PT	(raw_data, info.freqV.size()-1, 0, info.shutV.size()-1, 0, PIXELS_TOTAL);
+	Frame frame_shut_120		(raw_data       , info.freqV.size()-1, 0, 0, 0);
+	Frame frame_take_0_shut_120 (raw_data_take_0, info.freqV.size()-1, 0, 0, 0);	// shut: 120 240 480 960 1920
+	Frame frame_take_0_shut_240 (raw_data_take_0, info.freqV.size()-1, 0, 1, 0);
+	Frame frame_take_0_shut_480 (raw_data_take_0, info.freqV.size()-1, 0, 2, 0);
+	Frame frame_take_0_shut_960 (raw_data_take_0, info.freqV.size()-1, 0, 3, 0);
+	
+
+	// Plotting Frames
+
+	int plotTime_ms = 1;
+	bool destroyWindow_ = false;
+
+	frame.plot			(plotTime_ms, destroyWindow_, "Frame");
+	frame_take_0.plot	(plotTime_ms, destroyWindow_, "Frame Take 0");
+	frame_take_1.plot	(plotTime_ms, destroyWindow_, "Frame Take 1");
+	
+	frame_PT.plot				(plotTime_ms, destroyWindow_, "Frame, PS = PT");
+	frame_shut_120.plot			(plotTime_ms, destroyWindow_, "Frame, shut=120");
+	frame_take_0_shut_120.plot	(plotTime_ms, destroyWindow_, "Frame Take 0, shut=120");
+	frame_take_0_shut_240.plot	(plotTime_ms, destroyWindow_, "Frame Take 0, shut=240");
+	frame_take_0_shut_480.plot	(plotTime_ms, destroyWindow_, "Frame Take 0, shut=480");
+	frame_take_0_shut_960.plot	(plotTime_ms, destroyWindow_, "Frame Take 0, shut=960");
+}
+
+// test_CMX()
+void test_CMX() {
+	
+	// Info, CalibrationMatrix
+	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\cmx_01";
+	char file_name[1024] = "PMD";
+	//char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\DiffuseMirrors2\\CalibrationMatrix\\test_03";
+	//char file_name[1024] = "PMD";
+	Info info(dir_name, file_name);
+	RawData rawData(info);
+	CalibrationMatrix cmx(info);
+
+	// void Frame::Frame (RawData_src_, freq_idx_, dist_idx_, shut_idx_, phas_idx_, ps_ = PIXELS_STORING_GLOBAL);
+	int freq_idx = info.freqV.size()-1;
+	int dist_idx = 20;
+	PixStoring ps = PIXELS_VALID;
+	Frame frame (rawData, freq_idx, dist_idx, info.shutV.size()-1, 0, ps);
+	Frame frame_cmx (rawData, freq_idx, dist_idx, info.shutV.size()-1, 0, ps);
+	Frame frame_div (frame);
+	// Fill the Frame.data with the Calibration Matrix data;
+	for(int r = 0; r < frame_cmx.rows; r++) {
+		for(int c = 0; c < frame_cmx.cols; c++) {
+			frame_cmx.data[frame_cmx.data_idx(r,c)] = cmx.C_at(freq_idx, dist_idx, r, c, ps);
+			frame_div.data[frame_div.data_idx(r,c)] = frame_cmx.data[frame_cmx.data_idx(r,c)] / frame.data[frame.data_idx(r,c)];
+	}	}
+
+	// Creating Simulation
+	float dist_wall_cam = 3.5f;
+	Frame frame_sim;
+	// set Scene
+	Scene scene;
+	scene.set(CALIBRATION_MATRIX);
+	scene.setScene_CalibrationMatrix(info.laser_to_cam_offset_x, info.laser_to_cam_offset_y, info.laser_to_cam_offset_z, dist_wall_cam);
+	scene.o[PIXEL_PATCHES] = Object3D(scene.o[WALL_PATCHES]);	// TO-DO, TO-DO, TO-DO, TO-DO, TO-DO, BAD, DOES NOT TAKE INTO ACCOUNT THE PIXELSTORING
+	// render (if so)
+	int argcStub = 0;
+	char** argvStub = NULL;
+	//render(argcStub, argvStub);
+	//Sleep(10);
+	// ser Simulation
+	set_DirectVision_Simulation_Frame(cmx, scene, frame_sim, ps);
+
+	// Plotting Frames
+	int plotTime_ms = 1;
+	bool destroyWindow_ = false;
+	frame.plot(plotTime_ms, destroyWindow_, "Frame");
+	frame_cmx.plot(plotTime_ms, destroyWindow_, "Frame cmx");
+	frame_div.plot(plotTime_ms, destroyWindow_, "Frame div");
+	frame_sim.plot(plotTime_ms, destroyWindow_, "Frame sim");
 }
 
 // test_create_raw_from_raw_takes()
@@ -63,16 +218,16 @@ void test_calibration_matrix() {
 
 	CalibrationMatrix cm(info);
 	
-	std::cout << "\ndata_size        = " << cm.data_size;
+	std::cout << "\ndata_size        = " << cm.C_size;
 	std::cout << "\nerror_code       = " << cm.error_code;
-	std::cout << "\npath_dist_0_at(0,0) = " << cm.path_dist_0_at(0,0);
-	std::cout << "\npath_dist_0(cen) = " << cm.path_dist_0_at(info.rows/2,info.cols/2);
-	std::cout << "\npath_dist_0(cor) = " << cm.path_dist_0_at(info.rows-1,info.cols-1);
+	std::cout << "\npathDist0_at(0,0) = " << cm.pathDist0_at(0,0);
+	std::cout << "\npathDist0(cen) = " << cm.pathDist0_at(info.rows/2,info.cols/2);
+	std::cout << "\npathDist0(cor) = " << cm.pathDist0_at(info.rows-1,info.cols-1);
 	
 	int di_floor = 8;
 	float path_dist = info.distV[di_floor] + 0.6f * (info.distV[di_floor+1] - info.distV[di_floor]);
 	std::cout << "\npath_dist = " << path_dist;
-	std::cout << "\nc(fi_max, " << path_dist << ", cen) = " << cm.c_coef(info.freqV.size()-1, info.rows/2, info.cols/2, path_dist);
+	std::cout << "\nc(fi_max, " << path_dist << ", cen) = " << cm.C_atX(info.freqV.size()-1, info.rows/2, info.cols/2, path_dist);
 
 }
 

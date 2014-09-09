@@ -8,7 +8,7 @@
 
 // enums
 enum ShapeType { UNKNOWN_SHA, PT, LINE, TRIANGLE, QUAD };
-enum SceneType { UNKNOWN_SCT, DIRECT_VISION_SINUSOID, DIRECT_VISION_SIMULATION, OCCLUSION, FOV_MEASUREMENT, RAW_DATA, CALIBRATION_MATRIX, TEST };
+enum SceneType { UNKNOWN_SCT, DIRECT_VISION_SINUSOID, DIRECT_VISION_SIMULATION, OCCLUSION, FOV_MEASUREMENT, RAW_DATA, CALIBRATION_MATRIX, TEST, TEST_TEST };
 enum PixStoring { UNKNOWN_PIS, PIXELS_TOTAL, PIXELS_VALID };	// The PMD camera stores 165x120 pixels but some of them in the edges can not be considered as valid pixel meas
 enum Object3DType { CAMERA, LASER, WALL, OCCLUDER, FLOOR, VOLUME, WALL_PATCHES, CAMERA_FOV, LASER_RAY, VOLUME_PATCHES, PIXEL_PATCHES, UNKOWN_OBT};
 #define SCENE_SIZE 11
@@ -46,7 +46,7 @@ class Scene;
 #define NUMTAKE_FILENAME_APPEND "_nt"	// Info file 
 #define INF_FILENAME_SUFFIX ".inf"	// Info file 
 #define RAW_FILENAME_SUFFIX ".raw"	// Raw Data file
-#define CMX_FILENAME_SUFFIX ".cmx"	// Calibration Matrix file
+#define CMX_FILENAME_SUFFIX ".cmx"	// Calibration Matrix file	// Stores the C matrix
 #define CMD_FILENAME_SUFFIX ".cmd"	// Calibration Matrix Direct Vision file
 
 

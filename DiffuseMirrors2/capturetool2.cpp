@@ -924,26 +924,22 @@ void create_raw_from_raw_takes (Info & info) {
 
 	// store all the data
 	for (int take = 0; take < info.numtakes; take++) {
-		raw_data.set(info, take);	// we load .raw files them one by one for memory efficiency reasons
-		if (elements != raw_data.data_size) {
+		raw_data.set(info, take);	// we load .raw files one by one for memory efficiency reasons
+		if (elements != raw_data.data_size)	// check proper size
 			return;
-		}
-		for (int pos = 0; pos < elements; pos++) {
-			if (pos == elements/2)
-			raw_float_store[pos] += (float)raw_data.data[pos];
-	}	}
+		for (int i = 0; i < elements; i++)
+			raw_float_store[i] += (float)raw_data.data[i];
+	}
 
 	// average all the data
 	float numtakes_float = (float)info.numtakes;
-	for (int pos = 0; pos < elements; pos++) {
-		raw_float_store[pos] /= numtakes_float;
-	}
+	for (int i = 0; i < elements; i++)
+		raw_float_store[i] /= numtakes_float;
 
 	// store the data in the raw_store of unsigned short int
 	unsigned short int* raw_store_ushort = new unsigned short int[elements];
-	for (int pos = 0; pos < elements; pos++) {
-		raw_store_ushort[pos] = (unsigned short int)(floor(raw_float_store[pos]+0.5f));	// floor(x+0.5) = round(x)
-	}
+	for (int i = 0; i < elements; i++)
+		raw_store_ushort[i] = (unsigned short int)(floor(raw_float_store[i]+0.5f));	// floor(x+0.5) = round(x)
 
 	// fwrite parameters
 	size_t raw_bytes_per_value = sizeof(unsigned short int);
@@ -999,9 +995,7 @@ void create_cmx_from_raw(Info & info_) {
 				for (size_t c = 0; c < raw_data.info->cols; c++) {
 
 					// Calculate the corresponding value of the Calibration Matrix 
-					// data is not stored properly. -32768 fixes it thanks to short int over-run
-					// by default image is up-down-fliped so heigth_RawData = (heigth_Frame-1-h)
-					raw_data_value = (float)(raw_data.at(fi, di, shut_idx, phase_idx, r, c, PIXELS_TOTAL) - 32768);
+					raw_data_value = raw_data.atF(fi, di, shut_idx, phase_idx, r, c, PIXELS_TOTAL);
 					
 					//cmx_data_value = c * Em * albedo = H * distSrcPix_rc_pow2,    distSrcPix_rc_pow2 = |r_src - r_x0(r,c)|^2,
 					cmx_data_value = raw_data_value * distSrcPix_rc_pow2V[r*raw_data.info->cols + c];
@@ -1056,8 +1050,8 @@ int PMD_params_to_file (std::vector<float> & freqV, std::vector<float> & distV, 
 	system(command);
 	
 	// Check frames. In order to visualize the setup previously
-	//if (check_frame(freqV[0], delays[0], shutV_float[shutV_float.size()-1], comport, true, false) == 0)
-	//	return -2;	// if did not want to continue
+	if (check_frame(freqV[0], distV[0], shutV_float[shutV_float.size()-1], comport, true, false) == 0)
+		return -2;	// if did not want to continue
 
 	// Check file size
 	float file_size_B_take = freqV.size() * distV.size() * shutV.size() * 2 * PMD_WIDTH * PMD_HEIGTH * sizeof(unsigned short);	// Bytes

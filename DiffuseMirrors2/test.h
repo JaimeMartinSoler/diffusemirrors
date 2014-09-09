@@ -6,12 +6,19 @@
 void test();
 
 
+// test_numbers()
+void test_numbers();
+
 // test_gradient_descent()
 void test_gradient_descent();
 
 // test_create_raw_from_raw_takes()
 void test_create_raw_from_raw_takes();
 
+// test_RawData()
+void test_RawData();
+// test_CMX()
+void test_CMX();
 // test_calibration_matrix()
 void test_calibration_matrix();
 

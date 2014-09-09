@@ -99,11 +99,13 @@ void set_DirectVision_Simulation_Frame (CalibrationMatrix & cmx, Scene & sceneCo
 	// Simulated Image Vector
 	float relativeAlbedo = 1.0f;
 	std::vector<float> DirectVision_Simulation(numPix(ps_));
+	std::cout << "\nHERE 003 - 001";
 	for (int r = 0; r < rows(ps_); r++) {
 		for (int c = 0; c < cols(ps_); c++) {
 			DirectVision_Simulation[rc2idx(r,c,ps_)] = cmx.S_DirectVision (cmx.info->freqV.size()-1, r, c,
 				sceneCopy.o[LASER].s[0].c, sceneCopy.o[PIXEL_PATCHES].s[rc2idx(r,c,ps_)].c,  sceneCopy.o[CAMERA].s[0].c, relativeAlbedo, ps_);
 	}	}
+	std::cout << "\nHERE 003 - 002";
 	frameSim.set(DirectVision_Simulation, rows(ps_), cols(ps_), cmx.info->freqV[cmx.info->freqV.size()-1], 0.0f, cmx.info->shutV[cmx.info->shutV.size()-1], 0.0f, ps_);
 }
 
@@ -515,7 +517,7 @@ void updatePixelPatches_Simulation_BestFit(CalibrationMatrix & cmx, Scene & scen
 		// Get Simulation Frame (S)
 		set_DirectVision_Simulation_Frame (cmx, sceneCopy, frameSim, ps_);
 		// Get Distance(H,S)
-		distNow = dist(frame00, frameSim);
+		distNow = distMeasSim(frame00, frameSim);
 		// Check if Distance(H,S) is better and update the pixPatchesBestFit
 		if (distNow < distMin) {
 			distMin = distNow;
@@ -526,8 +528,19 @@ void updatePixelPatches_Simulation_BestFit(CalibrationMatrix & cmx, Scene & scen
 
 
 // (2014-09-08)
-float dist(Frame & H, Frame & S) {
+float distMeasSim(Frame & H, Frame & S) {
 
+	Frame HS;	// this will store (H/S) (data will be the only parameters correclty created)
+	int sizeHS = H.data.size();
+	HS.data.resize(sizeHS);
+	for (size_t i = 0; i < sizeHS; i++)
+		HS.data[i] = H.data[i] / S.data[i];
+
+	// dist(H,S) = var(H/S)
+	return HS.var();
+
+	//  IMPLEMENTATION WITHOUT FRAME FUNCTIONS
+	/*
 	// get constants
 	int sizeHS = H.data.size();
 	int rows = H.rows;
@@ -553,6 +566,7 @@ float dist(Frame & H, Frame & S) {
 	}
 	//HSvar /= (rows * cols);	// this is optional as long as the result is scale-independent
 	return HSvar;
+	*/
 }
 
 

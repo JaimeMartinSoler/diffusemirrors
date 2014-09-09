@@ -72,7 +72,7 @@ void plot_image_pixels_values(std::vector<float> & pixels_value_, int heigth_, i
 void updatePixelPatches_Simulation_BestFit(CalibrationMatrix & cmx, Scene & sceneCopy, Frame & frame00, Point & camC, Point & camN, Object3D & screenFoVmeasNs, PixStoring ps_ = PIXELS_STORING_GLOBAL);
 
 // (2014-09-08)
-float dist(Frame & H, Frame & S);
+float distMeasSim(Frame & H, Frame & S);
 
 
 

@@ -1014,7 +1014,7 @@ void Object3D::setLaserRay(Scene & scene, float R_, float G_, float B_, float A_
 	// Set the line
 	s[0].set(scene.o[LASER].s[0].c, p1, s[0].c);	s[0].set(1.0f, R_, G_, B_, A_, LINE);
 }
-// Setter, Updater Volume Patches (9)	// TO-DO
+// Setter, Updater Volume Patches (9)
 void Object3D::setVolumePatches() {
 
 	// Set the Object3D
@@ -1054,7 +1054,6 @@ void Object3D::setVolumePatches() {
 	tra(refC);
 }
 void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_) { // TO-DO
-
 }
 // Setter, Updater Pixel Patches (10)
 void Object3D::setPixelPatches(Scene & scene, float distDefault, PixStoring ps_) {
@@ -1157,7 +1156,7 @@ void Object3D::updatePixelPatches_Sinusoid(Scene & scene, Frame & frame00, Frame
 	}
 	// --- END OF LOOP -----------------------------------------------------------------------------------------
 }
-void Object3D::updatePixelPatches_Simulation(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_) { // TO-DO (this is just a copy of updatePixelPatches_Sinusoid)
+void Object3D::updatePixelPatches_Simulation(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_) {
 	
 	// Setting constant elements
 	Point camC = scene.o[CAMERA].s[0].c;
@@ -1489,6 +1488,7 @@ Scene::Scene(Scene & scene) {
 	
 // Setter Default
 void Scene::set(SceneType sceneType_) {
+	o.clear();
 	o.resize(SCENE_SIZE);
 	sceneType = sceneType_;
 }
@@ -2003,31 +2003,5 @@ int main_scene(int argc, char**argv) {
 	return 0;
 }
 
-
-// TO-DO: CREATE ALL OF THIS (SOME ACTUALLY):
-
-void set_scene_diffused_mirror(bool loop) {}
-void set_scene_direct_vision_wall(bool loop) {}
-void set_scene_direct_vision_any(bool loop) {}
-void set_scene_calibration_matrix (Info* info_, PixStoring pixel_storing_) {}
-void set_scene_vision_simulation(float dist_cam_wall) {}
-void clear_scene() {}
-void set_camera(Point* camera_pos_, Point* camera_rot_, Point* camera_size_, Point* camera_centre_) {}
-void set_laser(Point* laser_pos_, Point* laser_rot_, Point* laser_size_, Point* laser_centre_) {}
-void set_box(Point* box_pos_, Point* box_rot_, Point* box_size_, Point* box_centre_, int Obj3D_idx, float albedo) {}
-void set_wall_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_size_, Point* camera_centre_, std::vector<Point*> & screen_patches_corners_normals_, std::vector<Point*> & screen_patches_centers_normals_, std::vector<float> & wall_patches_albedo_, PixStoring pixel_storing_) {}
-void set_camera_fov(Point* camera_pos_, std::vector<Point*> & screen_patches_corners_normals_, PixStoring pixel_storing_) {}
-void set_laser_ray() {}
-void set_volume_patches(Point* volume_pos_, Point* volume_rot_, Point* volume_size_, Point* volume_centre_,
-	std::vector<float> & volume_patches_albedo_, std::vector<Point*> & volume_patches_rot_, std::vector<bool> & volume_patches_bool_) {}
-void set_wall_patches_albedo(std::vector<float> & wall_patches_albedo_) {}
-void set_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_centre_, std::vector<Point*> & screen_patches_corners_normals_, std::vector<Point*> & screen_patches_centers_normals_) {}
-void update_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_centre_, std::vector<Point*> & screen_patches_corners_normals_, std::vector<Point*> & screen_patches_centers_normals_, bool loop) {}
-void update_wall_and_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_centre_, std::vector<Point*> & screen_patches_corners_normals_, std::vector<Point*> & screen_patches_centers_normals_, int r_div, int c_div, bool loop) {}
-void set_screen_normals_pixel_patches(std::vector<Point*> & screen_patches_corners_normals_, std::vector<Point*> & screen_patches_centers_normals_, Point* camera_pos_, Point* camera_rot_, Point* camera_centre_) {}
-void set_depth_map(std::vector<float> & depth_map_, Frame & Frame_00_cap, Frame & Frame_90_cap) {}
-void set_volume_patches_params(std::vector<float> & volume_patches_albedo_, std::vector<Point*> & volume_patches_rot_, std::vector<bool> & volume_patches_bool_) {}
-void mean_vector_of_points (std::vector<Point> & vec, Point & pt) {}
-void set_point_to_vector_distances (Point* p, std::vector<Point*> & vp, std::vector<float> & vd) {}
 
 
