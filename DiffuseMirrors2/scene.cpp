@@ -1892,12 +1892,14 @@ void updateVolumePatches_Occlusion_antiBugThread(Info & info, Scene & scene, Fra
 // ----------------------------------------------------------------------------------------------------------------------------------------
 
 // mean
-float mean(std::vector<float> & vf) {
-	float mean = 0.0f;
-	for (size_t i = 0; i < vf.size(); i++)
-		mean += vf[i];
-	return mean / vf.size();
+/*
+float mean(std::vector<float> & vf) {		// already defined in data.h/.cpp
+	float meanf = vf[0];
+	for (int i = 1; i < vf.size(); i++)
+		meanf += vf[i];
+	return meanf /= vf.size();
 }
+*/
 Point mean(std::vector<Point> & vp) {
 	Point mean (0.0f,0.0f,0.0f);
 	for (size_t i = 0; i < vp.size(); i++)
@@ -1925,7 +1927,7 @@ float dist(Point & p0, Point & p1) {
 }
 float distPow2(Point & p0, Point & p1) {
 	Point dif = p1 - p0;
-	return dif.dot(dif);
+	return dif.modPow2();
 }
 // normal / degrees
 Point crossN(Point & p0N, Point & p1N) {

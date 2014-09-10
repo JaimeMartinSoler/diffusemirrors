@@ -17,7 +17,7 @@ void get_data_sim_direct_vision_wall();
 
 
 // (2014-09-08)
-void set_DirectVision_Simulation_Frame (CalibrationMatrix & cmx, Scene & sceneCopy, Frame & frameSim, PixStoring ps_ = PIXELS_STORING_GLOBAL);
+void set_DirectVision_Simulation_Frame (CalibrationMatrix & cmx, Scene & sceneCopy, Frame & frameSim, int freq_idx, PixStoring ps_ = PIXELS_STORING_GLOBAL);
 
 
 

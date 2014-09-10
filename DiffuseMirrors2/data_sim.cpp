@@ -94,19 +94,17 @@ void get_data_sim_direct_vision_wall() {
 
 
 // (2014-09-08)
-void set_DirectVision_Simulation_Frame (CalibrationMatrix & cmx, Scene & sceneCopy, Frame & frameSim, PixStoring ps_) {
+void set_DirectVision_Simulation_Frame (CalibrationMatrix & cmx, Scene & sceneCopy, Frame & frameSim, int freq_idx, PixStoring ps_) {
 	
 	// Simulated Image Vector
 	float relativeAlbedo = 1.0f;
 	std::vector<float> DirectVision_Simulation(numPix(ps_));
-	std::cout << "\nHERE 003 - 001";
 	for (int r = 0; r < rows(ps_); r++) {
 		for (int c = 0; c < cols(ps_); c++) {
-			DirectVision_Simulation[rc2idx(r,c,ps_)] = cmx.S_DirectVision (cmx.info->freqV.size()-1, r, c,
+			DirectVision_Simulation[rc2idx(r,c,ps_)] = cmx.S_DirectVision (freq_idx, r, c,
 				sceneCopy.o[LASER].s[0].c, sceneCopy.o[PIXEL_PATCHES].s[rc2idx(r,c,ps_)].c,  sceneCopy.o[CAMERA].s[0].c, relativeAlbedo, ps_);
 	}	}
-	std::cout << "\nHERE 003 - 002";
-	frameSim.set(DirectVision_Simulation, rows(ps_), cols(ps_), cmx.info->freqV[cmx.info->freqV.size()-1], 0.0f, cmx.info->shutV[cmx.info->shutV.size()-1], 0.0f, ps_);
+	frameSim.set(DirectVision_Simulation, rows(ps_), cols(ps_), cmx.info->freqV[freq_idx], 0.0f, cmx.info->shutV[cmx.info->shutV.size()-1], 0.0f, ps_);
 }
 
 
@@ -501,21 +499,29 @@ void updatePixelPatches_Simulation_BestFit(CalibrationMatrix & cmx, Scene & scen
 	float distNow;
 	Frame frameSim;
 
+	// get freq_idx
+	int freq_idx = get_freq_idx(*(cmx.info), frame00.freq);	// returns -1 if no idx correspondance was found
+	if (freq_idx < 0) {
+		std::cout << "\nWarning: Frame freq = " << frame00.freq << " is not a freq in .cmx freqV = ";
+		print(cmx.info->freqV);
+		return;
+	}
+
 	// we will discretize the simulation just by the distances to the camera (constant for all pixel patches as screenFoVmeasNs[i]*dist)
-	float dRes = 0.1f;
+	float dRes = 0.05f;
 	float dMin = 1.0f;
-	float dMax = 4.0f + dRes / 2.0f;
+	float dMax = 5.0f + dRes / 2.0f;
 	for (float d = dMin; d < dMax; d += dRes) {
 		// Update pixel patches
 		for (int i = 0; i < sceneCopy.o[PIXEL_PATCHES].s.size(); i++) {
-			sceneCopy.o[PIXEL_PATCHES].s[i].p[0].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[0] * d);
-			sceneCopy.o[PIXEL_PATCHES].s[i].p[1].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[1] * d);
-			sceneCopy.o[PIXEL_PATCHES].s[i].p[2].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[2] * d);
-			sceneCopy.o[PIXEL_PATCHES].s[i].p[3].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[3] * d);
-			sceneCopy.o[PIXEL_PATCHES].s[i].c.set   (sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].c    * d);
+			sceneCopy.o[PIXEL_PATCHES].s[i].p[0].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[0] * d);	// Useless for meas but for rendering
+			sceneCopy.o[PIXEL_PATCHES].s[i].p[1].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[1] * d);	// Useless for meas but for rendering
+			sceneCopy.o[PIXEL_PATCHES].s[i].p[2].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[2] * d);	// Useless for meas but for rendering
+			sceneCopy.o[PIXEL_PATCHES].s[i].p[3].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[3] * d);	// Useless for meas but for rendering
+			sceneCopy.o[PIXEL_PATCHES].s[i].c.set   (sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].c    * d);	// Useful for meas
 		}
 		// Get Simulation Frame (S)
-		set_DirectVision_Simulation_Frame (cmx, sceneCopy, frameSim, ps_);
+		set_DirectVision_Simulation_Frame (cmx, sceneCopy, frameSim, freq_idx, ps_);
 		// Get Distance(H,S)
 		distNow = distMeasSim(frame00, frameSim);
 		// Check if Distance(H,S) is better and update the pixPatchesBestFit
@@ -529,49 +535,30 @@ void updatePixelPatches_Simulation_BestFit(CalibrationMatrix & cmx, Scene & scen
 
 // (2014-09-08)
 float distMeasSim(Frame & H, Frame & S) {
-
-	Frame HS;	// this will store (H/S) (data will be the only parameters correclty created)
+	
+	// Create the (H/S) vector
 	int sizeHS = H.data.size();
-	HS.data.resize(sizeHS);
+	std::vector<float> HS(sizeHS);	
 	for (size_t i = 0; i < sizeHS; i++)
-		HS.data[i] = H.data[i] / S.data[i];
-
-	// dist(H,S) = var(H/S)
-	return HS.var();
-
-	//  IMPLEMENTATION WITHOUT FRAME FUNCTIONS
-	/*
-	// get constants
-	int sizeHS = H.data.size();
-	int rows = H.rows;
-	int cols = H.cols;
-
-	// get the H/S vector
-	std::vector<float> HS(sizeHS);
-	for (int i = 0; i < sizeHS; i++)
 		HS[i] = H.data[i] / S.data[i];
 
-	// get the (H/S)mean
-	float HSmean = 0.0f;
-	for (int i = 0; i < sizeHS; i++)
-		HSmean += HS[i];
-	HSmean /= (rows * cols);
-	
-	// get the (H/S)var
-	float HSvar = 0.0f;
-	float HSdif = 0.0f;
-	for (int i = 0; i < sizeHS; i++) {
-		HSdif = HS[i] - HSmean;
-		HSvar += (HSdif * HSdif);
+	// (H/S)mean0, (H/S)var0
+	float mean0 = mean(HS);
+	float var0  = var(HS);
+
+	// Get rid of outliers
+	int outliersSym = 8;	// it erases one min and one max outlier each time
+	int min_idx, max_idx;
+	for (int i = 0; i < outliersSym; i++) {
+		min(HS, min_idx);
+		max(HS, max_idx);
+		HS[min_idx] = mean0;
+		HS[max_idx] = mean0;
 	}
-	//HSvar /= (rows * cols);	// this is optional as long as the result is scale-independent
-	return HSvar;
-	*/
+	float var1  = var(HS);
+
+	// dist(H,S) = [var1(H/S)^2] / var0(H/S)
+	return (var1 * var1) / var0;
 }
-
-
-
-
-
 
 

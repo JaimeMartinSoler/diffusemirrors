@@ -417,7 +417,7 @@ void updateVolumePatches_Occlusion_antiBugThread(Info & info, Scene & scene, Fra
 // ----------------------------------------------------------------------------------------------------------------------------------------
 
 // mean
-float mean(std::vector<float> & vf);
+//float mean(std::vector<float> & vf);	// already defined in data.h/.cpp
 Point mean(std::vector<Point> & vp);
 // Rotation Matrix
 void setRotationMatrix(float & r11, float & r12, float & r13,

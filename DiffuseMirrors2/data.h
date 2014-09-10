@@ -335,14 +335,6 @@ public:
 	// r,c Matrix-like, 0-idx.
 	float Frame::at (int r, int c);
 
-	// returns the min value of the data
-	float Frame::min();
-	// returns the max value of the data
-	float Frame::max();
-	// returns the mean of the data
-	float Frame::mean();
-	// returns the var of the data
-	float Frame::var();
 
 	// Plot frame with opencv
 	void Frame::plot(int delay_ms = 1000, bool destroyWindow_ = false, char* windowName = NULL);
@@ -362,11 +354,20 @@ void plot_frame_fov_measurement(Frame & frame_00, Frame & frame_90, bool loop = 
 // sets a vector of floats form a char array from a given delimiter
 void char_array_to_float_vector_from_delimiter (char* char_array, std::vector<float> & float_vector, char delimiter);
 
+// returns the min, max, mean, variance value or index of the vector
+float min(std::vector<float> & v);
+float max(std::vector<float> & v);
+float min(std::vector<float> & v, int & min_idx);
+float max(std::vector<float> & v, int & max_idx);
+float mean(std::vector<float> & v);
+float var(std::vector<float> & v);
+
 // these functions returns the corresponding idx/stuff of a vector from r,c considering Matrix-like ordering 0-indexed.
 int rc2idx (int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
 int rc2idxCor(int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);	// see scene.cpp, setPixelPatchesNCor(...)
 int rc2idxPT(int r, int c);
 int rc2idxPV(int r, int c);
+int rc2idxFromPT2PV(int r, int c);	// returns -1 if the PT(r,c) is out of PV(r,c) range !!!
 int numPix(PixStoring ps = PIXELS_STORING_GLOBAL);
 int numPixCor(PixStoring ps = PIXELS_STORING_GLOBAL);	// see scene.cpp, setPixelPatchesNCor(...)
 int numPixPT(int r, int c);
@@ -377,6 +378,14 @@ int cols(PixStoring ps = PIXELS_STORING_GLOBAL);
 int rowsCor(PixStoring ps = PIXELS_STORING_GLOBAL);
 int colsCor(PixStoring ps = PIXELS_STORING_GLOBAL);
 
+bool equalAproxf (float f0, float f1, float RelDiffMax = 0.0001);
+void print(std::vector<float> v, char* prefix = NULL, char* sufix = NULL);
+
+// returns the corresponding index. Return -1 if no correspondance found
+int get_freq_idx (Info & info, float freq, float RelDiffMax = 0.0001);
+int get_dist_idx (Info & info, float dist, float RelDiffMax = 0.0001);
+int get_shut_idx (Info & info, float shut, float RelDiffMax = 0.0001);
+int get_phas_idx (Info & info, float phas, float RelDiffMax = 0.0001);
 
 #endif
 

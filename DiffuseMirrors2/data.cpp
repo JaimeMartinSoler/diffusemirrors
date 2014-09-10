@@ -562,7 +562,7 @@ void CalibrationMatrix::set (Info & info_) { // by default: pixels_storing_ = PI
 	//free (C_size_);
 
 	// Calibration Matrix Parameters: pathDist0
-	pathDist0 = std::vector<float>(numPix(PIXELS_TOTAL));
+	pathDist0 = std::vector<float>(numPix(PIXELS_TOTAL)); // independent of PixStoring, the accessing depends on it. Ordering: for(r){ for(c){ // here...}} // r,c Matrix-like, 0-idx
 	Scene scene;	scene.clear();
 	scene.setScene_CalibrationMatrix(info_.laser_to_cam_offset_x, info_.laser_to_cam_offset_y, info_.laser_to_cam_offset_z, info_.dist_wall_cam);
 	for (size_t i = 0; i < numPix(PIXELS_TOTAL); i++)	// TO-DO: CHECK
@@ -879,41 +879,6 @@ float Frame::at (int r, int c) {
 	return data[data_idx(r,c)];
 } 
 
-// returns the min value of the data
-float Frame::min() {
-	float minf = data[0];
-	for (int i = 1; i < data.size(); i++)
-		if (data[i] < minf)
-			minf = data[i];
-	return minf;
-}
-// returns the max value of the data
-float Frame::max() {
-	float maxf = data[0];
-	for (int i = 1; i < data.size(); i++)
-		if (data[i] > maxf)
-			maxf = data[i];
-	return maxf;
-}
-// returns the mean of the data
-float Frame::mean() {
-	float meanf = data[0];
-	for (int i = 1; i < data.size(); i++)
-		meanf += data[i];
-	return meanf /= data.size();
-}
-// returns the var of the data
-float Frame::var() {
-	float meanf = mean();
-	float diff = data[0] - meanf;
-	float var = diff * diff;
-	for (int i = 1; i < data.size(); i++) {
-		diff = data[i] - meanf;
-		var = diff * diff;
-	}
-	return var /= data.size();
-}
-
 // Plot frame with opencv
 void Frame::plot(int delay_ms, bool destroyWindow_, char* windowName) { // by default: delay_ms = 1000, destroyWindow = false, windowName = NULL
 
@@ -1081,6 +1046,60 @@ void char_array_to_float_vector_from_delimiter (char* char_array, std::vector<fl
     }  
 }
 
+// returns the min, max, mean, variance value or index of the vector
+float min(std::vector<float> & v) {
+	float minf = v[0];
+	for (size_t i = 1; i < v.size(); i++) {
+		if (v[i] < minf)
+			minf = v[i];
+	}
+	return minf;
+}
+float max(std::vector<float> & v) {
+	float maxf = v[0];
+	for (size_t i = 1; i < v.size(); i++) {
+		if (v[i] > maxf)
+			maxf = v[i];
+	}
+	return maxf;
+}
+float min(std::vector<float> & v, int & min_idx) {
+	float minf = v[0];
+	min_idx = 0;
+	for (size_t i = 1; i < v.size(); i++) {
+		if (v[i] < minf) {
+			minf = v[i];
+			min_idx = i;
+	}	}
+	return minf;
+}
+float max(std::vector<float> & v, int & max_idx) {
+	float maxf = v[0];
+	max_idx = 0;
+	for (size_t i = 1; i < v.size(); i++) {
+		if (v[i] > maxf) {
+			maxf = v[i];
+			max_idx = i;
+	}	}
+	return maxf;
+}
+float mean(std::vector<float> & v) {
+	float meanf = v[0];
+	for (size_t i = 1; i < v.size(); i++)
+		meanf += v[i];
+	return meanf /= v.size();
+}
+float var(std::vector<float> & v) {
+	float meanf = mean(v);
+	float diff = v[0] - meanf;
+	float var = diff * diff;
+	for (size_t i = 1; i < v.size(); i++) {
+		diff = v[i] - meanf;
+		var += diff * diff;
+	}
+	return var /= v.size();
+}
+
 // these functions returns the corresponding idx/stuff of a vector from r,c considering Matrix-like ordering 0-indexed.
 int rc2idx(int r, int c, PixStoring ps) { // default: ps = PIXELS_STORING_GLOBAL
 	if (ps == PIXELS_VALID)
@@ -1115,6 +1134,11 @@ int rc2idxPT(int r, int c) {
 }
 int rc2idxPV(int r, int c) {
 	return CAMERA_PIX_X_VALID * r + c;
+}
+int rc2idxFromPT2PV(int r, int c) {	// returns -1 if the PT(r,c) is out of PV(r,c) range !!!
+	if ((r < CAMERA_PIX_Y_BAD_TOP) || (r >= (CAMERA_PIX_Y - CAMERA_PIX_Y_BAD_BOTTOM)) || (c < CAMERA_PIX_X_BAD_LEFT) || (c >= (CAMERA_PIX_X - CAMERA_PIX_X_BAD_RIGHT)))
+		return -1;
+	return CAMERA_PIX_X_VALID * (r - CAMERA_PIX_Y_BAD_TOP)  + (c - CAMERA_PIX_X_BAD_LEFT);
 }
 int numPixPT(int r, int c) {
 	return CAMERA_PIX_X * CAMERA_PIX_Y;
@@ -1151,3 +1175,56 @@ int colsCor(PixStoring ps) {
 		return CAMERA_PIX_X + 1;
 	return -1;
 }
+
+bool equalAproxf (float f0, float f1, float RelDiffMax) {
+	float diff = f1 - f0;
+	float diffMax = abs(f0 * RelDiffMax);
+	if (diffMax < 0.000001)	// this may happen if f0 is 0.0f or close to 0.0f
+		diffMax = 0.000001;
+	return ((diff < diffMax) && (diff > -diffMax));
+}
+void print(std::vector<float> v, char* prefix, char* sufix) {
+	if (prefix)
+		std::cout << prefix;
+	if (v.size() <= 0) {
+		std::cout << "[empty]";
+	} else {
+		std::cout << "[" << v[0];
+		for (size_t i = 1; i < v.size(); i++)
+			std::cout << ", " << v[i];
+		std::cout  << "]";
+	}
+	if (sufix)
+		std::cout << sufix;
+}
+
+// returns the corresponding index. Return -1 if no correspondance found
+int get_freq_idx (Info & info, float freq, float RelDiffMax) {
+	for (size_t i = 0; i < info.freqV.size(); i++) {
+		if (equalAproxf(freq, info.freqV[i]))
+			return i;
+	}
+	return -1;
+}
+int get_dist_idx (Info & info, float dist, float RelDiffMax) {
+	for (size_t i = 0; i < info.distV.size(); i++) {
+		if (equalAproxf(dist, info.distV[i]))
+			return i;
+	}
+	return -1;
+}
+int get_shut_idx (Info & info, float shut, float RelDiffMax) {
+	for (size_t i = 0; i < info.shutV.size(); i++) {
+		if (equalAproxf(shut, info.shutV[i]))
+			return i;
+	}
+	return -1;
+}
+int get_phas_idx (Info & info, float phas, float RelDiffMax) {
+	for (size_t i = 0; i < info.phasV.size(); i++) {
+		if (equalAproxf(phas, info.phasV[i]))
+			return i;
+	}
+	return -1;
+}
+

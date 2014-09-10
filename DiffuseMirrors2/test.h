@@ -2,6 +2,10 @@
 #ifndef __TEST_H
 #define __TEST_H
 
+
+#include "global.h"
+
+
 // test function for testing
 void test();
 
@@ -17,8 +21,11 @@ void test_create_raw_from_raw_takes();
 
 // test_RawData()
 void test_RawData();
+// test_CMX_iterator(). approximation considering camPos = lasPos
+void test_CMX_iterator();
 // test_CMX()
-void test_CMX();
+void test_CMX(float pathWallOffset, float ERROR_ON_PURPOSE_DIST_WALL_OFFSET, int pixClearTimes = 0); // Sets a Simulated Frame from a given dist_wall_cam. Used in test_CMX()
+void test_FrameSimFromWallDist (Frame & frame, Info & info, float dist_wall_cam, int freq_idx, int renderTime_ms = 0, PixStoring ps = PIXELS_STORING_GLOBAL);
 // test_calibration_matrix()
 void test_calibration_matrix();
 
