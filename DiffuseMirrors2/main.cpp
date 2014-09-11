@@ -46,7 +46,7 @@ void control_loop_pause() {
 
 
 
-
+// Direct Vision problem, Sinusoid f,g assumption. Real Time.
 int main_DirectVision_Sinusoid(bool loop = true) {
 
 	// capture data directly from PMD to Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE)
@@ -79,6 +79,7 @@ int main_DirectVision_Sinusoid(bool loop = true) {
 }
 
 
+// Direct Vision problem, Simulation, uses Calibration Matrix. Real Time.
 int main_DirectVision_Simulation(char* dir_name_, char* file_name_, bool loop = true) {
 
 	// set the Info
@@ -113,6 +114,44 @@ int main_DirectVision_Simulation(char* dir_name_, char* file_name_, bool loop = 
 	return 0;
 }
 
+
+// Direct Vision problem, Simulation, uses Calibration Matrix. NO Real Time, one only Frame from RawData.
+int main_DirectVision_Simulation_Frame(char* dir_name_, char* file_name_) {
+
+	// set the Info
+	Info info(dir_name_, file_name_);
+
+	// get a Frame from the RawData
+	RawData rawData(info);
+	float pathWallOffset = -0.5f;
+	PixStoring ps = PIXELS_VALID;
+	int dist_idx = get_dist_idx(info, pathWallOffset);	// returns -1 if no idx correspondance was found
+	if (dist_idx < 0) {
+		std::cout << "\nWarning: Distance Offset = " << pathWallOffset << " is not a dist in .cmx distV = ";
+		print(info.distV);
+		return -1;
+	}
+	Frame frame00(rawData, info.freqV.size() - 2, dist_idx, info.shutV.size() - 1, 0, ps);
+	Frame frame90(rawData, info.freqV.size() - 2, dist_idx, info.shutV.size() - 1, 1, ps);
+	UPDATED_NEW_FRAME = true;
+	//frame00.plot();
+
+	// Set all the corresponding scene and start updating
+	SCENEMAIN.setScene_DirectVision(ps);
+	updatePixelPatches_Simulation_antiBugThread(info, SCENEMAIN, frame00, frame90, false, ps);	// the second Fame is frame90 but it's not used
+
+	// Render all the object3D of the scene
+	int argcStub = 0;
+	char** argvStub = NULL;
+	std::thread thread_render(render_anti_bug_thread, argcStub, argvStub);
+	std::cout << "\n\nDo NOT close the openGL window while the PMD loop is runnung.\n(it wouldn't be the end of the world, but it's better not to)\n\n";
+
+	// joins
+	thread_render.join();
+	//cv::destroyAllWindows();
+
+	return 0;
+}
 // TO-DO (TO-DO related functions inside and TO-CHECK)
 int main_Occlusion(char* dir_name_, char* file_name_, bool loop = true) {
 	
@@ -262,24 +301,25 @@ int main_Test(bool loop = true) {
 int main(int argc, char** argv) {
 	
 	// Set parameteres
-	SceneType sceneType = DIRECT_VISION_SIMULATION;
+	SceneType sceneType = DIRECT_VISION_SIMULATION_FRAME;
 	SCENEMAIN.set(sceneType);
 	//char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\test_03";
 	//char file_name[1024] = "PMD";
-	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\cmx_01";	// F:\\Jaime\\CalibrationMatrix\\cmx_00
+	char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\cmx_01";	// F:\\Jaime\\CalibrationMatrix\\cmx_01
 	char file_name[1024] = "PMD";
 	bool loop = true;
 	
 	// Main Switcher
 	switch (sceneType) {
-		case DIRECT_VISION_SINUSOID:	main_DirectVision_Sinusoid (loop);							break;
-		case DIRECT_VISION_SIMULATION:	main_DirectVision_Simulation (dir_name, file_name, loop);	break;
-		case OCCLUSION:					main_Occlusion (dir_name, file_name, loop);					break;
-		case FOV_MEASUREMENT:			main_FoVmeas (loop);										break;
-		case RAW_DATA:					main_RawData (dir_name, file_name);							break;
-		case CALIBRATION_MATRIX:		main_CalibrationMatrix (dir_name, file_name);				break;
-		case TEST:						main_Test (loop);											break;
-		case TEST_TEST:					test ();													break;
+		case DIRECT_VISION_SINUSOID:		 main_DirectVision_Sinusoid(loop);							break;
+		case DIRECT_VISION_SIMULATION:		 main_DirectVision_Simulation(dir_name, file_name, loop);	break;
+		case DIRECT_VISION_SIMULATION_FRAME: main_DirectVision_Simulation_Frame(dir_name, file_name);	break;
+		case OCCLUSION:						 main_Occlusion (dir_name, file_name, loop);				break;
+		case FOV_MEASUREMENT:				 main_FoVmeas (loop);										break;
+		case RAW_DATA:						 main_RawData (dir_name, file_name);						break;
+		case CALIBRATION_MATRIX:			 main_CalibrationMatrix (dir_name, file_name);				break;
+		case TEST:							 main_Test (loop);											break;
+		case TEST_TEST:						 test(dir_name, file_name);									break;
 	}
 
 	system("pause");

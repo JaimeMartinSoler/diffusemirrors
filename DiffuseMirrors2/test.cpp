@@ -15,9 +15,9 @@
 #include "engine.h"
 
 // test function for testing
-void test() {
+void test(char* dir_name, char* file_name) {
 
-	test_CMX_iterator();
+	test_CMX_iterator(dir_name, file_name);
 
 	std::cout << "\n\nTest done...\n\n";
 }
@@ -133,8 +133,10 @@ void test_RawData() {
 }
 
 // test_CMX_iterator(). approximation considering camPos = lasPos
-void test_CMX_iterator() {
+void test_CMX_iterator(char* dir_name, char* file_name) {
 	
+	// Info info
+	//Info info(dir_name, file_name);
 	// pathWallOffset
 	float pathWallOffset_res = 0.2f;
 	float pathWallOffset_min = 0.0f;
@@ -149,19 +151,15 @@ void test_CMX_iterator() {
 	// iterator
 	for (float pwo = pathWallOffset_min; pwo < pathWallOffset_max; pwo += pathWallOffset_res) {
 		for (float eop = ERROR_ON_PURPOSE_DIST_WALL_OFFSET_min; eop < ERROR_ON_PURPOSE_DIST_WALL_OFFSET_max; eop += ERROR_ON_PURPOSE_DIST_WALL_OFFSET_res) {
-			test_CMX (pwo, eop, pixClearTimes);
+			Info info(dir_name, file_name); 
+			test_CMX(info, pwo, eop, pixClearTimes);
 	}	}
 }
 
 // test_CMX(). approximation considering camPos = lasPos
-void test_CMX (float pathWallOffset, float ERROR_ON_PURPOSE_DIST_WALL_OFFSET, int pixClearTimes) {
+void test_CMX(Info & info, float pathWallOffset, float ERROR_ON_PURPOSE_DIST_WALL_OFFSET, int pixClearTimes) {
 
-	// Info, CalibrationMatrix
-	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\cmx_01";
-	char file_name[1024] = "PMD";
-	//char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\DiffuseMirrors2\\CalibrationMatrix\\test_03";
-	//char file_name[1024] = "PMD";
-	Info info(dir_name, file_name);
+	// RawData, CalibrationMatrix
 	RawData rawData(info);
 	CalibrationMatrix cmx(info);
 

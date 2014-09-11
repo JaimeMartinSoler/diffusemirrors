@@ -296,7 +296,7 @@ void process_data_to_file(int w, int h, std::vector<std::pair<int, unsigned shor
 	//save_raw(fname, &(ushort_img[1][0]), w, capturecount*h, 65535, 1);
 	
 	if (pass == 0) 
-	{cvShowImage( WindowName, img );
+	{cvShowImage( WindowNameCVCAP, img );
 	cvWaitKey( 10 );}
 	delete jpg_img;
 	delete float_img;
@@ -407,7 +407,7 @@ void process_data_to_buffer(int w, int h, std::vector<std::pair<int, unsigned sh
 	sprintf_s<1024> (fname, "%s\\%s" FILENAME_APPEND, path, file_prefix, 0, "dat");
 	
 	if (pass == 0) 
-	{cvShowImage( WindowName, img );
+	{cvShowImage( WindowNameCVCAP, img );
 	cvWaitKey( 10 );}
 	delete jpg_img;
 	delete float_img;
@@ -1085,7 +1085,7 @@ int PMD_params_to_file (std::vector<float> & freqV, std::vector<float> & distV, 
 	char measpath[1024];	// For temporal files for CV_WHILE_CAPTURING
 	char fnprefix[256];		// For temporal files for CV_WHILE_CAPTURING
 	if (CV_WHILE_CAPTURING)
-		cvNamedWindow(WindowName, CV_WINDOW_AUTOSIZE);
+		cvNamedWindow(WindowNameCVCAP, CV_WINDOW_AUTOSIZE);
 	
 	// timing: loop
 	float ms_time_loop;
@@ -1238,7 +1238,7 @@ int PMD_params_to_file (std::vector<float> & freqV, std::vector<float> & distV, 
 	}
 	pmdClose (hnd);
 	if (CV_WHILE_CAPTURING)
-		cvDestroyWindow(WindowName);
+		cvDestroyWindow(WindowNameCVCAP);
 
 	// Build the averaged raw file if many takes were made
 	if (numtakes > 1) {
@@ -1286,7 +1286,7 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_
 	clock_t begin_time_loop, end_time_loop;
 	// Init OpenCV
 	if (CV_WHILE_CAPTURING)
-		cvNamedWindow(WindowName, CV_WINDOW_AUTOSIZE);
+		cvNamedWindow(WindowNameCVCAP, CV_WINDOW_AUTOSIZE);
 
 	// Syncronization
 	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
@@ -1362,7 +1362,7 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_
 	delete shutV[0].second;
 	pmdClose (hnd);
 	if (CV_WHILE_CAPTURING)
-		cvDestroyWindow(WindowName);
+		cvDestroyWindow(WindowNameCVCAP);
 
 	// Exit program
 	//Sleep(2000);
