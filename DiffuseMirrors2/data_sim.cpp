@@ -511,6 +511,22 @@ void updatePixelPatches_Simulation_BestFit(CalibrationMatrix & cmx, Scene & scen
 	float dRes = 0.05f;
 	float dMin = 1.0f;
 	float dMax = 5.0f + dRes / 2.0f;
+	/*
+	std::vector<float> pixPatchDist(numPix(ps_), 0.0f);
+	bool finishLoop = false;
+	int pos = 0;
+	while (!finishLoop) {
+		pos = 0;
+		pixPatchDist[pos] += dRes;
+		while (pixPatchDist[pos] > dMax) {
+			if (pos >= pixPatchDist.size() - 1) {
+				finishLoop = true;
+				break;
+			}
+			pixPatchDist[pos] = dMin;
+			pixPatchDist[++pos] += dRes;
+	}	}
+	*/
 	for (float d = dMin; d < dMax; d += dRes) {
 		// Update pixel patches
 		for (int i = 0; i < sceneCopy.o[PIXEL_PATCHES].s.size(); i++) {
@@ -555,7 +571,7 @@ float distMeasSim(Frame & H, Frame & S) {
 		HS[min_idx] = mean0;
 		HS[max_idx] = mean0;
 	}
-	float var1  = var(HS);
+	float var1 = var(HS);
 
 	// dist(H,S) = [var1(H/S)^2] / var0(H/S)
 	return (var1 * var1) / var0;
