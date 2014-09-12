@@ -298,8 +298,9 @@ RawData::RawData(RawData & raw_data) {
 	set (raw_data);
 }
 // Constructor All parameters
-RawData::RawData(Info & info_, unsigned short int* data_, int data_size_, int take_, int error_code_) { // by default: take_ = -1, error_code_ = 0
-	set (info_, data_, data_size_, take_, error_code_);
+RawData::RawData(Info & info_, unsigned short int* data_, int data_size_, int take_, int error_code_,
+	float* data_sim_PT_, float* data_sim_PV_, int data_sim_size_, int data_sim_rows_, int data_sim_cols_) {
+	set(info_, data_, data_size_, take_, error_code_, data_sim_PT_, data_sim_PV_, data_sim_size_, data_sim_rows_, data_sim_cols_);
 }
 // Constructor from Info. It creates a CalibrationMatrix object from the .raw file noted in the info object
 	// take: number of the raw_numtake file this is referencing to. take = -1 if refers to the normal raw file
@@ -308,7 +309,9 @@ RawData::RawData(Info & info_, int take_) { // by default: take = -1
 }
 // Destructor
 RawData::~RawData() {
-	delete [] data;
+	delete[] data;
+	delete[] data_sim_PT;
+	delete[] data_sim_PV;
 }
 
 // ----- SETTERS --------------------------------- // Note that each Constructor just contains its corresponding Setter
@@ -324,6 +327,13 @@ void RawData::set () {
 	data = NULL;
 	data_size = 0;	
 	error_code = 0;
+
+	// Simulation Parameters
+	data_sim_PT = NULL;
+	data_sim_PV = NULL;
+	data_sim_size = 0;
+	data_sim_rows = 0;
+	data_sim_cols = 0;
 }
 // Setter Copy
 // pointers are copied "as are", the data pointed is not duplicated. For this use .clone(...) (if implemented)
@@ -337,9 +347,17 @@ void RawData::set (RawData & raw_data) {
 	data = raw_data.data;
 	data_size = raw_data.data_size;	
 	error_code = raw_data.error_code;
+
+	// Simulation Parameters
+	data_sim_PT = raw_data.data_sim_PT;
+	data_sim_PV = raw_data.data_sim_PV;
+	data_sim_size = raw_data.data_sim_size;
+	data_sim_rows = raw_data.data_sim_rows;
+	data_sim_cols = raw_data.data_sim_cols;
 }
 // Setter All parameters
-void RawData::set (Info & info_, unsigned short int* data_, int data_size_, int take_, int error_code_) { // by default: take_ = -1, error_code_ = 0
+void RawData::set (Info & info_, unsigned short int* data_, int data_size_, int take_, int error_code_,
+	float* data_sim_PT_, float* data_sim_PV_, int data_sim_size_, int data_sim_rows_, int data_sim_cols_) {
 	
 	// External Parameters
 	info = &info_;
@@ -349,6 +367,13 @@ void RawData::set (Info & info_, unsigned short int* data_, int data_size_, int 
 	data = data_;
 	data_size = data_size_;	
 	error_code = error_code_;
+
+	// Simulation Parameters
+	data_sim_PT = data_sim_PT_;
+	data_sim_PV = data_sim_PV_;
+	data_sim_size = data_sim_size_;
+	data_sim_rows = data_sim_rows_;
+	data_sim_cols = data_sim_cols_;
 }
 // Setter from Info. It creates a CalibrationMatrix object from the .raw file noted in the info object
 // take: number of the raw_numtake file this is referencing to. take = -1 if refers to the normal raw file
@@ -388,7 +413,7 @@ void RawData::set (Info & info_, int take_) { // by default: take = -1
 	}
 
 	// allocate memory to contain the whole file
-	data = (unsigned short int*) malloc((*info).sizeof_value_raw*data_size);
+	data = (unsigned short int*) malloc((*info).sizeof_value_raw * data_size);
 	if (data == NULL) {
 		std::cout << "\n\nMemory Error while allocating \""<< raw_fn << "\"\n\n";
 		error_code = 2;
@@ -406,6 +431,34 @@ void RawData::set (Info & info_, int take_) { // by default: take = -1
 	fclose (raw_file);
 	//free (data_size_);
 
+	// Data Simulated
+	int data_sim_size = info->freqV.size() * info->distV.size() * info->shutV.size() * info->phasV.size() * PMD_SIM_ROWS * PMD_SIM_COLS;
+	data_sim_PT = new float[data_sim_size];
+	data_sim_PV = new float[data_sim_size];
+	data_sim_rows = PMD_SIM_ROWS;
+	data_sim_cols = PMD_SIM_COLS;
+	// data_sim_PT, data_sim_PV
+	Frame frame_sim_PT, frame_sim_PV;
+	double scalePTrows = (double)PMD_SIM_ROWS / CAMERA_PIX_Y;
+	double scalePTcols = (double)PMD_SIM_COLS / CAMERA_PIX_X;
+	double scalePVrows = (double)PMD_SIM_ROWS / CAMERA_PIX_Y_VALID;
+	double scalePVcols = (double)PMD_SIM_COLS / CAMERA_PIX_X_VALID;
+	for (int fi = 0; fi < info->freqV.size(); fi++) {
+		for (int di = 0; di < info->distV.size(); di++) {
+			for (int si = 0; si < info->shutV.size(); si++) {
+				for (int pi = 0; pi < info->phasV.size(); pi++) {
+					frame_sim_PT.set((*this), fi, di, si, pi, PIXELS_TOTAL, false);
+					frame_sim_PV.set((*this), fi, di, si, pi, PIXELS_VALID, false);
+					cv::Mat frame_sim_PT_Mat = cv::Mat(frame_sim_PT.rows, frame_sim_PT.cols, cv::DataType<float>::type);
+					cv::Mat frame_sim_PV_Mat = cv::Mat(frame_sim_PV.rows, frame_sim_PV.cols, cv::DataType<float>::type);
+					memcpy(frame_sim_PT_Mat.data, frame_sim_PT.data.data(), frame_sim_PT.data.size() * sizeof(float));
+					memcpy(frame_sim_PV_Mat.data, frame_sim_PV.data.data(), frame_sim_PV.data.size() * sizeof(float));
+					cv::resize(frame_sim_PT_Mat, frame_sim_PT_Mat, cv::Size(PMD_SIM_COLS, PMD_SIM_ROWS), scalePTcols, scalePTrows, cv::INTER_AREA);
+					cv::resize(frame_sim_PV_Mat, frame_sim_PV_Mat, cv::Size(PMD_SIM_COLS, PMD_SIM_ROWS), scalePVcols, scalePVrows, cv::INTER_AREA);
+					memcpy(data_sim_PT + data_idx(fi, di, si, pi, 0, 0, PIXELS_TOTAL, true), frame_sim_PT_Mat.data, frame_sim_PT_Mat.rows * frame_sim_PT_Mat.cols * sizeof(float));
+					memcpy(data_sim_PV + data_idx(fi, di, si, pi, 0, 0, PIXELS_VALID, true), frame_sim_PV_Mat.data, frame_sim_PV_Mat.rows * frame_sim_PV_Mat.cols * sizeof(float));
+	}	}	}	}
+	
 	error_code = 0;		// no errors
 }
 
@@ -414,9 +467,15 @@ void RawData::set (Info & info_, int take_) { // by default: take = -1
 
 // Returns the index in data[] corresponding to the parameter indices
 // input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
-int RawData::data_idx(int freq_idx, int dist_idx, int shut_idx, int phas_idx, int r, int c, PixStoring ps) { // by default: ps = PIXELS_STORING_GLOBAL
-	
-	if (ps == PIXELS_VALID) {
+int RawData::data_idx(int freq_idx, int dist_idx, int shut_idx, int phas_idx, int r, int c, PixStoring ps, bool pixSim) { // by default: ps = PIXELS_STORING_GLOBAL
+
+	if (pixSim) {
+		return info->freqV.size() * info->phasV.size() * info->shutV.size() * data_sim_rows * data_sim_cols * dist_idx +
+			                        info->phasV.size() * info->shutV.size() * data_sim_rows * data_sim_cols * freq_idx +
+			                                             info->shutV.size() * data_sim_rows * data_sim_cols * phas_idx +
+														                      data_sim_rows * data_sim_cols * shut_idx +
+																			                  data_sim_cols * r + c;
+	} else if (ps == PIXELS_VALID) {
 		return info->freqV.size() * info->phasV.size() * info->shutV.size() * info->rows * info->cols * dist_idx +
 	                                info->phasV.size() * info->shutV.size() * info->rows * info->cols * freq_idx +
 	                                                     info->shutV.size() * info->rows * info->cols * phas_idx +
@@ -446,8 +505,15 @@ int RawData::atI(int freq_idx, int dist_idx, int shut_idx, int phas_idx, int r, 
 	return (int)(data[data_idx(freq_idx, dist_idx, shut_idx, phas_idx, r, c, ps)] - 32768);
 }
 // Returns (float)(data[data_idx(...)] - 32768), fixing the 32768 default offset and converting it to float
-float RawData::atF(int freq_idx, int dist_idx, int shut_idx, int phas_idx, int r, int c, PixStoring ps) {
-	return (float)(data[data_idx(freq_idx, dist_idx, shut_idx, phas_idx, r, c, ps)] - 32768);
+float RawData::atF(int freq_idx, int dist_idx, int shut_idx, int phas_idx, int r, int c, PixStoring ps, bool pixSim) {
+	if (pixSim) {
+		if (ps == PIXELS_TOTAL)
+			return data_sim_PT[data_idx(freq_idx, dist_idx, shut_idx, phas_idx, r, c, ps, pixSim)];
+		else if (ps == PIXELS_VALID)
+			return data_sim_PV[data_idx(freq_idx, dist_idx, shut_idx, phas_idx, r, c, ps, pixSim)];
+	} else {
+		return (float)(data[data_idx(freq_idx, dist_idx, shut_idx, phas_idx, r, c, ps)] - 32768);
+	}
 }
 
 
@@ -477,7 +543,9 @@ CalibrationMatrix::CalibrationMatrix(Info & info_) { // by default: pixels_stori
 }
 // Destructor
 CalibrationMatrix::~CalibrationMatrix() {
-	delete [] C;
+	delete[] C;
+	delete[] C_sim_PT;
+	delete[] C_sim_PV;
 }
 
 // ----- SETTERS --------------------------------- // Note that each Constructor just contains its corresponding Setter
@@ -685,21 +753,21 @@ Frame::Frame (Frame & frame) {
 }
 // Constructor All parameters
 Frame::Frame (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_,
-			  std::vector<float> & data_, PixStoring ps_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_) {
-	set (RawData_src_, freq_idx_, dist_idx_, shut_idx_, phas_idx_, data_, ps_, rows_, cols_, freq_, dist_, shut_, phas_);
+	std::vector<float> & data_, PixStoring ps_, bool pSim_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_) {
+	set (RawData_src_, freq_idx_, dist_idx_, shut_idx_, phas_idx_, data_, ps_, pSim_, rows_, cols_, freq_, dist_, shut_, phas_);
 }
 // Constructor from RawData. RawData oriented
-Frame::Frame (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_, PixStoring ps_) { // by default: ps_ = PIXELS_STORING_GLOBAL
-	set (RawData_src_, freq_idx_, dist_idx_, shut_idx_, phas_idx_, ps_);
+Frame::Frame(RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_, PixStoring ps_, bool pSim_) { // by default: ps_ = PIXELS_STORING_GLOBAL
+	set (RawData_src_, freq_idx_, dist_idx_, shut_idx_, phas_idx_, ps_, pSim_);
 }
 // Constructor from vector. Simulation oriented. For any PixStoring it consideres the vector matrix_vector properly arranged
 // If rows_ and cols_ are > 0, they will be the new rows and cols (interesting while simulating arbitrary rows and cols. Otherwise rows and cols are made from ps_
-Frame::Frame(std::vector<float> & data_, int rows_, int cols_, float freq_, float dist_ , float shut_, float phas_, PixStoring ps_) { // by default: r,c,f,d,s,p = 0, ps_ = PIXELS_STORING_GLOBAL
-	set (data_, rows_, cols_, freq_, dist_ , shut_, phas_, ps_);
+Frame::Frame(std::vector<float> & data_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_, PixStoring ps_, bool pSim_ ) { // by default: r,c,f,d,s,p = 0, ps_ = PIXELS_STORING_GLOBAL
+	set (data_, rows_, cols_, freq_, dist_ , shut_, phas_, ps_, pSim_);
 }
 // Constructor from ushort int*. Real Time capture oriented. rows_ and cols_ must be refered to the sizes of the total frame, regerdingless to the PixStoring
-Frame::Frame(unsigned short int* data_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_) { // by default: ps_ = PIXELS_STORING_GLOBAL
-	set (data_, rows_, cols_, freq_, dist_, shut_, phas_, phas_idx_, ps_);
+Frame::Frame(unsigned short int* data_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_, bool pSim_) { // by default: ps_ = PIXELS_STORING_GLOBAL
+	set (data_, rows_, cols_, freq_, dist_, shut_, phas_, phas_idx_, ps_, pSim_);
 }
 
 
@@ -718,6 +786,7 @@ void Frame::set () {
 	// Frame Parameters
 	data = std::vector<float>(0);
 	ps = UNKNOWN_PIS;
+	pSim = false;
 	rows = 0;
 	cols = 0;
 	freq = 0.0f;
@@ -739,6 +808,7 @@ void Frame::set (Frame & frame) {
 	// Frame Parameters
 	data = frame.data;
 	ps = frame.ps;
+	pSim = frame.pSim;
 	rows = frame.rows;
 	cols = frame.cols;
 	freq = frame.freq;
@@ -748,7 +818,7 @@ void Frame::set (Frame & frame) {
 }
 // Setter All parameters
 void Frame::set (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_,
-			  std::vector<float> & data_, PixStoring ps_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_) {
+	std::vector<float> & data_, PixStoring ps_, bool pSim_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_) {
 
 	// External Parameters (RawData, Info)
 	RawData_src = &RawData_src_;
@@ -760,6 +830,7 @@ void Frame::set (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_
 	// Frame Parameters
 	data = data_;
 	ps = ps_;
+	pSim = pSim_;
 	rows = rows_;
 	cols = cols_;
 	freq = freq_;
@@ -768,7 +839,7 @@ void Frame::set (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_
 	phas = phas_;
 }
 // Setter from RawData. RawData oriented
-void Frame::set (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_, PixStoring ps_) { // by default: ps_ = PIXELS_STORING_GLOBAL
+void Frame::set(RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_, PixStoring ps_, bool pSim_) { // by default: ps_ = PIXELS_STORING_GLOBAL
 	
 	// External Parameters (RawData, idices)
 	RawData_src = &RawData_src_;
@@ -779,13 +850,16 @@ void Frame::set (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_
 	
 	// Frame Parameters
 	ps = ps_;
-	if (ps == PIXELS_VALID) {
+	pSim = pSim_;
+	if (pSim_) {
+		rows = PMD_SIM_ROWS;
+		cols = PMD_SIM_COLS;
+	} else if (ps_ == PIXELS_VALID) {
 		rows = CAMERA_PIX_Y_VALID;
 		cols = CAMERA_PIX_X_VALID;
-	}
-	else if (ps == PIXELS_TOTAL) {
-		rows = RawData_src->info->rows;
-		cols = RawData_src->info->cols;
+	} else if (ps_ == PIXELS_TOTAL) {
+		rows = CAMERA_PIX_Y;
+		cols = CAMERA_PIX_X;
 	}
 	freq = RawData_src->info->freqV[freq_idx];
 	dist = RawData_src->info->distV[dist_idx];
@@ -794,12 +868,12 @@ void Frame::set (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_
 	data.resize(rows*cols);
 	for (int r = 0; r < rows; r++) {
 		for (int c = 0; c < cols; c++) {
-			data[data_idx(r,c)] = RawData_src->atF(freq_idx, dist_idx, shut_idx, phas_idx, r, c, ps);
+			data[data_idx(r,c)] = RawData_src->atF(freq_idx, dist_idx, shut_idx, phas_idx, r, c, ps, pSim);
 	}	}
 }
 // Setter from vector. Simulation oriented. For any PixStoring it consideres the vector matrix_vector properly arranged
 // If rows_ and cols_ are > 0, they will be the new rows and cols (interesting while simulating arbitrary rows and cols. Otherwise rows and cols are made from ps_
-void Frame::set (std::vector<float> & data_, int rows_, int cols_, float freq_, float dist_ , float shut_, float phas_, PixStoring ps_) { // by default: r,c,f,d,s,p = 0, ps_ = PIXELS_STORING_GLOBAL
+void Frame::set(std::vector<float> & data_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_, PixStoring ps_, bool pSim_) { // by default: r,c,f,d,s,p = 0, ps_ = PIXELS_STORING_GLOBAL
 	
 	// External Parameters (RawData, indices)
 	RawData_src = NULL;
@@ -811,16 +885,19 @@ void Frame::set (std::vector<float> & data_, int rows_, int cols_, float freq_, 
 	// Frame Parameters
 	data = data_;
 	ps = ps_;
+	pSim = pSim_;
 	if ((rows_ > 0) && (cols_ > 0)) {
 		rows = rows_;
 		cols = cols_;
+	} else if (pSim_) {
+		rows = PMD_SIM_ROWS;
+		cols = PMD_SIM_COLS;
 	} else if (ps == PIXELS_VALID) {
 		rows = CAMERA_PIX_Y_VALID;
 		cols = CAMERA_PIX_X_VALID;
-	}
-	else if (ps == PIXELS_TOTAL) {
-		rows = RawData_src->info->rows;
-		cols = RawData_src->info->cols;
+	} else if (ps == PIXELS_TOTAL) {
+		rows = CAMERA_PIX_Y;
+		cols = CAMERA_PIX_X;
 	}
 	freq = freq_;
 	dist = dist_;
@@ -828,7 +905,7 @@ void Frame::set (std::vector<float> & data_, int rows_, int cols_, float freq_, 
 	phas = phas_;
 }
 // Setter from ushort int*. Real Time capture oriented. rows_ and cols_ must be refered to the sizes of the total frame, regerdingless to the PixStoring
-void Frame::set (unsigned short int* data_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_) { // by default: ps_ = PIXELS_STORING_GLOBAL
+void Frame::set(unsigned short int* data_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_, bool pSim_) { // by default: ps_ = PIXELS_STORING_GLOBAL
 	
 	// External Parameters (RawData, indices)
 	RawData_src = NULL;
@@ -847,6 +924,7 @@ void Frame::set (unsigned short int* data_, int rows_, int cols_, float freq_, f
 		rows = RawData_src->info->rows;
 		cols = RawData_src->info->cols;
 	}
+	pSim = pSim_;
 	freq = freq_;
 	dist = dist_;
 	shut = shut_;
@@ -865,6 +943,8 @@ void Frame::set (unsigned short int* data_, int rows_, int cols_, float freq_, f
 				idx_in_data = (rows_ * cols_ * phas_idx_) + (cols_ * (rows_ - 1 - r)) + c;
 				data[data_idx(r,c)] = (float)(data_[idx_in_data] - 32768); // data is not stored properly in raw file. -32768 fixes it
 	}	}	}
+	if (pSim_)
+		toPixSim();
 }
 
 
@@ -878,6 +958,135 @@ int Frame::data_idx (int r, int c) {
 float Frame::at (int r, int c) {
 	return data[data_idx(r,c)];
 } 
+
+// Frame Real to Frame with with Simulated Pixels
+void Frame::toPixSim(int rowsSim, int colsSim) {
+
+	// get scales
+	double scaleRows, scaleCols;
+	if (ps == PIXELS_TOTAL) {
+		scaleRows = (double)rowsSim / CAMERA_PIX_Y;
+		scaleCols = (double)colsSim / CAMERA_PIX_X;
+	}
+	else if (ps == PIXELS_VALID) {
+		scaleRows = (double)rowsSim / CAMERA_PIX_Y_VALID;
+		scaleCols = (double)colsSim / CAMERA_PIX_X_VALID;
+	}
+
+	// resize the frame
+	cv::Mat frameMat = cv::Mat(rows, cols, cv::DataType<float>::type);
+	memcpy(frameMat.data, data.data(), data.size()*sizeof(float));
+	cv::resize(frameMat, frameMat, cv::Size(colsSim, rowsSim), scaleCols, scaleRows, cv::INTER_AREA);
+	data.resize(rowsSim * colsSim);
+	memcpy(data.data(), frameMat.data, data.size()*sizeof(float));
+
+	// update parameters
+	pSim = true;
+	rows = rowsSim;
+	cols = colsSim;
+
+	// MY METHOD:
+	/*
+	// vector to fill
+	std::vector<float> dataSim(rowsSim * colsSim, 0.0f);
+
+	// variables
+	float rowPixSim = PMD_SIM_ROWS;
+	float colPixSim = PMD_SIM_COLS;
+	float rRealation = rows / rowPixSim;
+	float cRealation = cols / colPixSim;
+	float simArea = rRealation * cRealation;	// pixSizeSim / pixSizeReal
+	float rPixRealTopF, rPixRealBottomF, cPixRealLeftF, cPixRealRightF;
+	int rPixRealTopI, rPixRealBottomI, cPixRealLeftI, cPixRealRightI;
+	float rScaleTop, rScaleBottom, cScaleLeft, cScaleRight;
+
+	// Fill the Simulated Pixels rows
+	for (int rSim = 0; rSim < rowPixSim; rSim++) {
+	// Real pixels floats rows
+	rPixRealTopF = (float)rSim * rRealation;
+	rPixRealBottomF = ((float)rSim + 1.0f) * rRealation;
+	// Real pixels ints rows
+	rPixRealTopI = (int)rPixRealTopF + 1;		// >= 1, OK
+	rPixRealBottomI = (int)rPixRealBottomF - 1;	// <= rows - 1, needs fix
+	// Scales of edges cols
+	rScaleTop = (float)rPixRealTopI - rPixRealTopF;
+	rScaleBottom = rPixRealBottomF - (float)rPixRealBottomI - 1.0f;
+	if (rPixRealBottomI == rows - 1) { rPixRealBottomI--; rScaleBottom = 1.0f; } // <= rows - 2, fixed
+
+	// Fill the Simulated Pixels cols
+	for (int cSim = 0; cSim < colPixSim; cSim++) {
+	// Real pixels floats cols
+	cPixRealLeftF = (float)cSim * cRealation;
+	cPixRealRightF = ((float)cSim + 1.0f) * cRealation;
+	// Real pixels ints cols
+	cPixRealLeftI = (int)cPixRealLeftF + 1;		// >= 1, OK
+	cPixRealRightI = (int)cPixRealRightF - 1;	// <= cols - 1, needs fix
+	// Scales of edges cols
+	cScaleLeft = (float)cPixRealLeftI - cPixRealLeftF;
+	cScaleRight = cPixRealRightF - (float)cPixRealRightI - 1.0f;
+	if (cPixRealRightI == cols - 1) { cPixRealRightI--; cScaleRight = 1.0f; } // <= cols - 2, fixed
+
+	// Fill the Simulated pixel with the corresponding Real Full pixels
+	for (int rReal = rPixRealTopI; rReal <= rPixRealBottomI; rReal++) {
+	for (int cReal = cPixRealLeftI; cReal <= cPixRealRightI; cReal++) {
+	dataSim[rc2idxPSIM(rSim, cSim)] += data[rc2idx(rReal, cReal, ps)];
+	}	}
+	// Fill the Simulated pixel with the corresponding Real Edges pixels
+	for (int rReal = rPixRealTopI; rReal <= rPixRealBottomI; rReal++) {
+	dataSim[rc2idxPSIM(rSim, cSim)] += cScaleLeft * data[rc2idx(rReal, cPixRealLeftI - 1, ps)];
+	dataSim[rc2idxPSIM(rSim, cSim)] += cScaleRight * data[rc2idx(rReal, cPixRealRightI + 1, ps)];
+	}
+	for (int cReal = cPixRealLeftI; cReal <= cPixRealRightI; cReal++) {
+	dataSim[rc2idxPSIM(rSim, cSim)] += rScaleTop * data[rc2idx(rPixRealTopI - 1, cReal, ps)];
+	dataSim[rc2idxPSIM(rSim, cSim)] += rScaleBottom * data[rc2idx(rPixRealBottomI + 1, cReal, ps)];
+	}
+	// Fill the Simulated pixel with the corresponding Real Corner pixels
+	dataSim[rc2idxPSIM(rSim, cSim)] += rScaleTop * cScaleLeft * data[rc2idx(rPixRealTopI - 1, cPixRealLeftI - 1, ps)];
+	dataSim[rc2idxPSIM(rSim, cSim)] += rScaleTop * cScaleRight * data[rc2idx(rPixRealTopI - 1, cPixRealRightI + 1, ps)];
+	dataSim[rc2idxPSIM(rSim, cSim)] += rScaleBottom * cScaleLeft * data[rc2idx(rPixRealBottomI + 1, cPixRealLeftI - 1, ps)];
+	dataSim[rc2idxPSIM(rSim, cSim)] += rScaleBottom * cScaleRight * data[rc2idx(rPixRealBottomI + 1, cPixRealRightI + 1, ps)];
+	// Normalize with the area
+	dataSim[rc2idxPSIM(rSim, cSim)] /= simArea;
+	}	}
+
+	// update the Frame parameters
+	data = dataSim;
+	pSim = true;
+	rows = rowsSim;
+	cols = colsSim;
+	*/
+}
+// Frame Simulated to Frame Real (useless, but for testing)
+void Frame::toPixReal() {
+
+	// get scales
+	double scaleRows, scaleCols;
+	int rows_, cols_;
+	if (ps == PIXELS_TOTAL) {
+		scaleRows = CAMERA_PIX_Y / (double)rows;
+		scaleCols = CAMERA_PIX_X / (double)cols;
+		rows_ = CAMERA_PIX_Y;
+		cols_ = CAMERA_PIX_X;
+	}
+	else if (ps == PIXELS_VALID) {
+		scaleRows = CAMERA_PIX_Y_VALID / (double)rows;
+		scaleCols = CAMERA_PIX_X_VALID / (double)cols;
+		rows_ = CAMERA_PIX_Y_VALID;
+		cols_ = CAMERA_PIX_X_VALID;
+	}
+
+	// resize the frame
+	cv::Mat frameMat = cv::Mat(rows, cols, cv::DataType<float>::type);
+	memcpy(frameMat.data, data.data(), data.size()*sizeof(float));
+	cv::resize(frameMat, frameMat, cv::Size(cols_, rows_), scaleCols, scaleRows, cv::INTER_AREA);
+	data.resize(rows_ * cols_);
+	memcpy(data.data(), frameMat.data, data.size()*sizeof(float));
+
+	// update parameters
+	pSim = false;
+	rows = rows_;
+	cols = cols_;
+}
 
 // Plot frame with opencv
 void Frame::plot(int delay_ms, bool destroyWindow_, char* windowName) { // by default: delay_ms = 1000, destroyWindow = false, windowName = NULL
@@ -1115,6 +1324,20 @@ int rc2idxCor(int r, int c, PixStoring ps) { // default: ps = PIXELS_STORING_GLO
 		return (CAMERA_PIX_X + 1) * r + c;
 	return -1;
 }
+int rc2idxPT(int r, int c) {
+	return CAMERA_PIX_X * r + c;
+}
+int rc2idxPV(int r, int c) {
+	return CAMERA_PIX_X_VALID * r + c;
+}
+int rc2idxFromPT2PV(int r, int c) {	// returns -1 if the PT(r,c) is out of PV(r,c) range !!!
+	if ((r < CAMERA_PIX_Y_BAD_TOP) || (r >= (CAMERA_PIX_Y - CAMERA_PIX_Y_BAD_BOTTOM)) || (c < CAMERA_PIX_X_BAD_LEFT) || (c >= (CAMERA_PIX_X - CAMERA_PIX_X_BAD_RIGHT)))
+		return -1;
+	return CAMERA_PIX_X_VALID * (r - CAMERA_PIX_Y_BAD_TOP) + (c - CAMERA_PIX_X_BAD_LEFT);
+}
+int rc2idxPSIM(int r, int c) {
+	return PMD_SIM_COLS * r + c;
+}
 int numPix(PixStoring ps) {
 	if (ps == PIXELS_VALID)
 		return CAMERA_PIX_X_VALID * CAMERA_PIX_Y_VALID;
@@ -1129,22 +1352,14 @@ int numPixCor(PixStoring ps) {
 		return (CAMERA_PIX_X + 1) * (CAMERA_PIX_Y + 1);
 	return -1;
 }
-int rc2idxPT(int r, int c) {
-	return CAMERA_PIX_X * r + c;
-}
-int rc2idxPV(int r, int c) {
-	return CAMERA_PIX_X_VALID * r + c;
-}
-int rc2idxFromPT2PV(int r, int c) {	// returns -1 if the PT(r,c) is out of PV(r,c) range !!!
-	if ((r < CAMERA_PIX_Y_BAD_TOP) || (r >= (CAMERA_PIX_Y - CAMERA_PIX_Y_BAD_BOTTOM)) || (c < CAMERA_PIX_X_BAD_LEFT) || (c >= (CAMERA_PIX_X - CAMERA_PIX_X_BAD_RIGHT)))
-		return -1;
-	return CAMERA_PIX_X_VALID * (r - CAMERA_PIX_Y_BAD_TOP)  + (c - CAMERA_PIX_X_BAD_LEFT);
-}
-int numPixPT(int r, int c) {
+int numPixPT() {
 	return CAMERA_PIX_X * CAMERA_PIX_Y;
 }
-int numPixPV(int r, int c) {
+int numPixPV() {
 	return CAMERA_PIX_X_VALID * CAMERA_PIX_Y_VALID;
+}
+int numPixPSIM() {
+	return PMD_SIM_COLS * PMD_SIM_ROWS;
 }
 
 int rows(PixStoring ps) {
