@@ -137,9 +137,9 @@ public:
 	// Simulation Parameters
 	float* data_sim_PT;
 	float* data_sim_PV;
-	float data_sim_size;
-	float data_sim_rows;
-	float data_sim_cols;
+	int data_sim_size;
+	int data_sim_rows;
+	int data_sim_cols;
 
 	// ----- CONSTRUCTORS ---------------------------- // Note that each Constructor just contains its corresponding Setter
 	
@@ -186,7 +186,7 @@ public:
 	short int RawData::atSI(int freq_idx, int dist_idx, int shut_idx, int phas_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
 	// Returns (int)(data[data_idx(...)] - 32768), fixing the 32768 default offset and converting it to (signed) int
 	int RawData::atI(int freq_idx, int dist_idx, int shut_idx, int phas_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
-	// Returns (float)(data[data_idx(...)] - 32768), fixing the 32768 default offset and converting it to float
+	// Returns (float)(data[data_idx(...)] - 32768), fixing the 32768 default offset and converting it to float. Deals with data_sim_PT, data_sim_PV
 	float RawData::atF(int freq_idx, int dist_idx, int shut_idx, int phas_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL, bool pixSim = false);
 };
 
@@ -216,9 +216,11 @@ public:
 	// Simulation Parameters
 	float* C_sim_PT;
 	float* C_sim_PV;
-	float C_sim_size;
-	float C_sim_rows;
-	float C_sim_cols;
+	int C_sim_size;
+	int C_sim_rows;
+	int C_sim_cols;
+	std::vector<float> pathDist0_sim_PT;
+	std::vector<float> pathDist0_sim_PV;
 
 	// ----- CONSTRUCTORS ---------------------------- // Note that each Constructor just contains its corresponding Setter
 	
@@ -228,7 +230,8 @@ public:
 	// pointers are copied "as are", the C pointed is not duplicated. For this use .clone(...) (if implemented)
 	CalibrationMatrix::CalibrationMatrix(CalibrationMatrix & cmx);
 	// Constructor All parameters
-	CalibrationMatrix::CalibrationMatrix(Info & info_, float* C_, int C_size_, std::vector<float> & pathDist0_, int error_code_ = 0);
+	CalibrationMatrix::CalibrationMatrix(Info & info_, float* C_, int C_size_, std::vector<float> & pathDist0_, int error_code_,
+		float* C_sim_PT_, float* C_sim_PV_, int C_sim_size_, int C_sim_rows_, int C_sim_cols_, std::vector<float> & pathDist0_sim_PT_, std::vector<float> & pathDist0_sim_PV_);
 	// Constructor. It creates a CalibrationMatrix object from the .cmx file noted in the info object
  	CalibrationMatrix::CalibrationMatrix(Info & info_);
 	// Destructor
@@ -243,7 +246,8 @@ public:
 	// pointers are copied "as are", the C pointed is not duplicated. For this use .clone(...) (if implemented)
 	void CalibrationMatrix::set (CalibrationMatrix & cmx);
 	// Constructor All parameters
-	void CalibrationMatrix::set (Info & info_, float* C_, int C_size_, std::vector<float> & pathDist0_, int error_code_ = 0);
+	void CalibrationMatrix::set (Info & info_, float* C_, int C_size_, std::vector<float> & pathDist0_, int error_code_,
+		float* C_sim_PT_, float* C_sim_PV_, int C_sim_size_, int C_sim_rows_, int C_sim_cols_, std::vector<float> & pathDist0_sim_PT_, std::vector<float> & pathDist0_sim_PV_);
 	// Constructor. It creates a CalibrationMatrix object from the .cmx file noted in the info object
  	void CalibrationMatrix::set (Info & info_);
 	
@@ -253,25 +257,25 @@ public:
 
 	// Returns the index in C[], corresponding to the parameter indices.
 	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
-	int CalibrationMatrix::C_idx (int freq_idx, int dist_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
+	int CalibrationMatrix::C_idx (int freq_idx, int dist_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
 	// Returns C[C.C_idx(...)], the value from the Calibration Matrix C corresponding to the parameters
 	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
-	float CalibrationMatrix::C_at (int freq_idx, int dist_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
+	float CalibrationMatrix::C_at (int freq_idx, int dist_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
 	// Returns the C[...] interpolating with the closest path distances. Path distances have to be equidistant in vector
 	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
-	float CalibrationMatrix::C_atX (int freq_idx, float pathDist, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
+	float CalibrationMatrix::C_atX (int freq_idx, float pathDist, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
 	
 	// Returns the index in pathDist0, corresponding to the parameter indices.
 	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
-	int CalibrationMatrix::pathDist0_idx (int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
+	int CalibrationMatrix::pathDist0_idx (int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
 	// Returns the value from the pathDist0 corresponding to the parameter indices = pathDist0[pathDist0_idx]
 	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
-	float CalibrationMatrix::pathDist0_at (int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
+	float CalibrationMatrix::pathDist0_at (int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
 	
 	// This is the Simulation term for the direct vision problem: S_{i\;\omega}^{r,c}(\tau^{r,c}) in the Master Thesis document
 	// Returns the value of the Simulation from the Calibration Matrix C at any path distance interpolating with the closest path distances. Path distances have to be equidistant in vector
 	// Uses C_atX(...) for interpolating path distances
-	float CalibrationMatrix::S_DirectVision (int freq_idx, int r, int c, Point & r_src, Point & r_x,  Point & r_cam, float relative_albedo = 1.0f, PixStoring ps = PIXELS_STORING_GLOBAL);
+	float CalibrationMatrix::S_DirectVision (int freq_idx, int r, int c, Point & r_src, Point & r_x,  Point & r_cam, float relative_albedo = 1.0f, PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
 };
 
 
@@ -321,7 +325,7 @@ public:
 	// If rows_ and cols_ are > 0, they will be the new rows and cols (interesting while simulating arbitrary rows and cols. Otherwise rows and cols are made from ps_)
 	Frame::Frame(std::vector<float> & data_, int rows_ = 0, int cols_ = 0, float freq_ = 0.0f, float dist_ = 0.0f, float shut_ = 0.0f, float phas_ = 0.0f, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	// Constructor from ushort int*. Real Time capture oriented. rows_ and cols_ must be refered to the sizes of the total frame, regerdingless to the PixStoring
-	Frame::Frame(unsigned short int* data_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
+	Frame::Frame(unsigned short int* data_, int rowsPT, int colsPT, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	
 	
 	// ----- SETTERS --------------------------------- // Note that each Constructor just contains its corresponding Setter
@@ -339,8 +343,8 @@ public:
 	// Setter from vector. Simulation oriented. For any PixStoring it considers the vector matrix_vector properly arranged
 	// If rows_ and cols_ are > 0, they will be the new rows and cols (interesting while simulating arbitrary rows and cols. Otherwise rows and cols are made from ps_
 	void Frame::set(std::vector<float> & data_, int rows_ = 0, int cols_ = 0, float freq_ = 0.0f, float dist_ = 0.0f, float shut_ = 0.0f, float phas_ = 0.0f, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
-	// Setter from ushort int*. Real Time capture oriented. rows_ and cols_ must be refered to the sizes of the total frame, regerdingless to the PixStoring
-	void Frame::set(unsigned short int* data_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
+	// Setter from ushort int*. Real Time capture oriented. rowsPT and colsPT must be refered to the sizes of the total frame, regerdingless to the PixStoring
+	void Frame::set(unsigned short int* data_, int rowsPT, int colsPT, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	
 
 	// ----- FUNCTIONS -------------------------------
@@ -381,22 +385,22 @@ float mean(std::vector<float> & v);
 float var(std::vector<float> & v);
 
 // these functions returns the corresponding idx/stuff of a vector from r,c considering Matrix-like ordering 0-indexed.
-int rc2idx (int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
-int rc2idxCor(int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);	// see scene.cpp, setPixelPatchesNCor(...)
+int rc2idx (int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
+int rc2idxCor(int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);	// see scene.cpp, setPixelPatchesNCor(...)
 int rc2idxPT(int r, int c);
 int rc2idxPV(int r, int c);
-int rc2idxFromPT2PV(int r, int c);	// returns -1 if the PT(r,c) is out of PV(r,c) range !!!
 int rc2idxPSIM(int r, int c);
-int numPix(PixStoring ps = PIXELS_STORING_GLOBAL);
-int numPixCor(PixStoring ps = PIXELS_STORING_GLOBAL);	// see scene.cpp, setPixelPatchesNCor(...)
+int rc2idxFromPT2PV(int r, int c, bool pSim = false);	// returns -1 if the PT(r,c) is out of PV(r,c) range !!!
+int numPix(PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
+int numPixCor(PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);	// see scene.cpp, setPixelPatchesNCor(...)
 int numPixPT();
 int numPixPV();
 int numPixPSIM();
 
-int rows(PixStoring ps = PIXELS_STORING_GLOBAL);
-int cols(PixStoring ps = PIXELS_STORING_GLOBAL);
-int rowsCor(PixStoring ps = PIXELS_STORING_GLOBAL);
-int colsCor(PixStoring ps = PIXELS_STORING_GLOBAL);
+int rows(PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
+int cols(PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
+int rowsCor(PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
+int colsCor(PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
 
 bool equalAproxf (float f0, float f1, float RelDiffMax = 0.0001);
 void print(std::vector<float> v, char* prefix = NULL, char* sufix = NULL);

@@ -94,17 +94,17 @@ void get_data_sim_direct_vision_wall() {
 
 
 // (2014-09-08)
-void set_DirectVision_Simulation_Frame (CalibrationMatrix & cmx, Scene & sceneCopy, Frame & frameSim, int freq_idx, PixStoring ps_) {
+void set_DirectVision_Simulation_Frame (CalibrationMatrix & cmx, Scene & sceneCopy, Frame & frameSim, int freq_idx, PixStoring ps_, bool pSim_) {
 	
 	// Simulated Image Vector
 	float relativeAlbedo = 1.0f;
-	std::vector<float> DirectVision_Simulation(numPix(ps_));
-	for (int r = 0; r < rows(ps_); r++) {
-		for (int c = 0; c < cols(ps_); c++) {
-			DirectVision_Simulation[rc2idx(r,c,ps_)] = cmx.S_DirectVision (freq_idx, r, c,
-				sceneCopy.o[LASER].s[0].c, sceneCopy.o[PIXEL_PATCHES].s[rc2idx(r,c,ps_)].c,  sceneCopy.o[CAMERA].s[0].c, relativeAlbedo, ps_);
+	std::vector<float> DirectVision_Simulation(numPix(ps_, pSim_));
+	for (int r = 0; r < rows(ps_, pSim_); r++) {
+		for (int c = 0; c < cols(ps_, pSim_); c++) {
+			DirectVision_Simulation[rc2idx(r,c,ps_, pSim_)] = cmx.S_DirectVision (freq_idx, r, c,
+				sceneCopy.o[LASER].s[0].c, sceneCopy.o[PIXEL_PATCHES].s[rc2idx(r,c,ps_, pSim_)].c,  sceneCopy.o[CAMERA].s[0].c, relativeAlbedo, ps_, pSim_);
 	}	}
-	frameSim.set(DirectVision_Simulation, rows(ps_), cols(ps_), cmx.info->freqV[freq_idx], 0.0f, cmx.info->shutV[cmx.info->shutV.size()-1], 0.0f, ps_);
+	frameSim.set(DirectVision_Simulation, rows(ps_, pSim_), cols(ps_, pSim_), cmx.info->freqV[freq_idx], 0.0f, cmx.info->shutV[cmx.info->shutV.size()-1], 0.0f, ps_, pSim_);
 }
 
 
@@ -491,7 +491,7 @@ void get_data_sim_direct_vision(Frame & frame_in, Frame & frame_out) {
 // (2014-09-08)
 // This will include a minimization algorithm, but for now it will run some simulations manually and get the best fit
 // is totally inefficient with this implementation, just to try the system
-void updatePixelPatches_Simulation_BestFit(CalibrationMatrix & cmx, Scene & sceneCopy, Frame & frame00, Point & camC, Point & camN, Object3D & screenFoVmeasNs, PixStoring ps_) {
+void updatePixelPatches_Simulation_BestFit(CalibrationMatrix & cmx, Scene & sceneCopy, Frame & frame00, Point & camC, Point & camN, Object3D & screenFoVmeasNs, PixStoring ps_, bool pSim_) {
 
 	// pixPatchesBestFit
 	Object3D pixPatchesBestFit;
@@ -537,7 +537,7 @@ void updatePixelPatches_Simulation_BestFit(CalibrationMatrix & cmx, Scene & scen
 			sceneCopy.o[PIXEL_PATCHES].s[i].c.set   (sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].c    * d);	// Useful for meas
 		}
 		// Get Simulation Frame (S)
-		set_DirectVision_Simulation_Frame (cmx, sceneCopy, frameSim, freq_idx, ps_);
+		set_DirectVision_Simulation_Frame (cmx, sceneCopy, frameSim, freq_idx, ps_, pSim_);
 		// Get Distance(H,S)
 		distNow = distMeasSim(frame00, frameSim);
 		// Check if Distance(H,S) is better and update the pixPatchesBestFit

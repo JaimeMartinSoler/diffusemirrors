@@ -92,11 +92,17 @@ void transform_UI() {
 
 // It renders all the object3D's of a Scene
 void render_Scene(Scene & scene, bool renderEdges) {
+	
+	bool render_WALL_PATCHES		= true;
+	bool render_WALL_PATCHES_edges	= true;
+	bool render_PIXEL_PATCHES		= true;
+	bool render_PIXEL_PATCHES_edges = false;
+
 	for (std::size_t i = 0; i < scene.o.size(); i++) {
-		if (i == WALL_PATCHES)
-			continue;
-		else if (i == PIXEL_PATCHES)
-			render_Object3D(scene.o[i], false);
+		if ((i == WALL_PATCHES) && render_WALL_PATCHES)
+			render_Object3D(scene.o[i], render_WALL_PATCHES_edges);
+		else if ((i == PIXEL_PATCHES) && render_PIXEL_PATCHES)
+			render_Object3D(scene.o[i], render_PIXEL_PATCHES_edges);
 		else
 			render_Object3D(scene.o[i], renderEdges);
 	}

@@ -378,7 +378,7 @@ void RawData::set (Info & info_, unsigned short int* data_, int data_size_, int 
 // Setter from Info. It creates a CalibrationMatrix object from the .raw file noted in the info object
 // take: number of the raw_numtake file this is referencing to. take = -1 if refers to the normal raw file
 void RawData::set (Info & info_, int take_) { // by default: take = -1
-
+	
 	// External Parameters (Info) and take
 	info = &info_;	// Info object pointer
 	take = take_;	// number of the raw_numtake file this is referencing to. take = -1 if refers to the normal raw file
@@ -429,7 +429,6 @@ void RawData::set (Info & info_, int take_) { // by default: take = -1
 	}
 
 	fclose (raw_file);
-	//free (data_size_);
 
 	// Data Simulated
 	int data_sim_size = info->freqV.size() * info->distV.size() * info->shutV.size() * info->phasV.size() * PMD_SIM_ROWS * PMD_SIM_COLS;
@@ -447,15 +446,17 @@ void RawData::set (Info & info_, int take_) { // by default: take = -1
 		for (int di = 0; di < info->distV.size(); di++) {
 			for (int si = 0; si < info->shutV.size(); si++) {
 				for (int pi = 0; pi < info->phasV.size(); pi++) {
+					// data_sim_PT
 					frame_sim_PT.set((*this), fi, di, si, pi, PIXELS_TOTAL, false);
-					frame_sim_PV.set((*this), fi, di, si, pi, PIXELS_VALID, false);
 					cv::Mat frame_sim_PT_Mat = cv::Mat(frame_sim_PT.rows, frame_sim_PT.cols, cv::DataType<float>::type);
-					cv::Mat frame_sim_PV_Mat = cv::Mat(frame_sim_PV.rows, frame_sim_PV.cols, cv::DataType<float>::type);
 					memcpy(frame_sim_PT_Mat.data, frame_sim_PT.data.data(), frame_sim_PT.data.size() * sizeof(float));
-					memcpy(frame_sim_PV_Mat.data, frame_sim_PV.data.data(), frame_sim_PV.data.size() * sizeof(float));
 					cv::resize(frame_sim_PT_Mat, frame_sim_PT_Mat, cv::Size(PMD_SIM_COLS, PMD_SIM_ROWS), scalePTcols, scalePTrows, cv::INTER_AREA);
-					cv::resize(frame_sim_PV_Mat, frame_sim_PV_Mat, cv::Size(PMD_SIM_COLS, PMD_SIM_ROWS), scalePVcols, scalePVrows, cv::INTER_AREA);
 					memcpy(data_sim_PT + data_idx(fi, di, si, pi, 0, 0, PIXELS_TOTAL, true), frame_sim_PT_Mat.data, frame_sim_PT_Mat.rows * frame_sim_PT_Mat.cols * sizeof(float));
+					// data_sim_PV
+					frame_sim_PV.set((*this), fi, di, si, pi, PIXELS_VALID, false);
+					cv::Mat frame_sim_PV_Mat = cv::Mat(frame_sim_PV.rows, frame_sim_PV.cols, cv::DataType<float>::type);
+					memcpy(frame_sim_PV_Mat.data, frame_sim_PV.data.data(), frame_sim_PV.data.size() * sizeof(float));
+					cv::resize(frame_sim_PV_Mat, frame_sim_PV_Mat, cv::Size(PMD_SIM_COLS, PMD_SIM_ROWS), scalePVcols, scalePVrows, cv::INTER_AREA);
 					memcpy(data_sim_PV + data_idx(fi, di, si, pi, 0, 0, PIXELS_VALID, true), frame_sim_PV_Mat.data, frame_sim_PV_Mat.rows * frame_sim_PV_Mat.cols * sizeof(float));
 	}	}	}	}
 	
@@ -534,8 +535,9 @@ CalibrationMatrix::CalibrationMatrix(CalibrationMatrix & cmx) {
 	set (cmx);
 }
 // Constructor All parameters
-CalibrationMatrix::CalibrationMatrix(Info & info_, float* C_, int C_size_, std::vector<float> & pathDist0_, int error_code_) { // by default: error_code_ = 0
-	set (info_, C_, C_size_, pathDist0_, error_code_);
+CalibrationMatrix::CalibrationMatrix(Info & info_, float* C_, int C_size_, std::vector<float> & pathDist0_, int error_code_,
+	float* C_sim_PT_, float* C_sim_PV_, int C_sim_size_, int C_sim_rows_, int C_sim_cols_, std::vector<float> & pathDist0_sim_PT_, std::vector<float> & pathDist0_sim_PV_) {
+	set (info_, C_, C_size_, pathDist0_, error_code_, C_sim_PT_, C_sim_PV_,C_sim_size_, C_sim_rows_, C_sim_cols_, pathDist0_sim_PT_, pathDist0_sim_PV_);
 }
 // Constructor. It creates a CalibrationMatrix object from the .cmx file noted in the info object
 CalibrationMatrix::CalibrationMatrix(Info & info_) { // by default: pixels_storing_ = PIXELS_VALID
@@ -561,6 +563,15 @@ void CalibrationMatrix::set () {
 	C_size = 0;
 	pathDist0 = std::vector<float>(0);
 	error_code = 0;
+
+	// Simulation Parameters
+	C_sim_PT = NULL;
+	C_sim_PV = NULL;
+	C_sim_size = 0;
+	C_sim_rows = 0;
+	C_sim_cols = 0;
+	pathDist0_sim_PT = std::vector<float>(0);
+	pathDist0_sim_PV = std::vector<float>(0);
 }
 // Constructor Copy
 // pointers are copied "as are", the C pointed is not duplicated. For this use .clone(...) (if implemented)
@@ -573,9 +584,19 @@ void CalibrationMatrix::set (CalibrationMatrix & cmx) {
 	C_size = cmx.C_size;
 	pathDist0 = cmx.pathDist0;
 	error_code = cmx.error_code;
+
+	// Simulation Parameters
+	C_sim_PT = cmx.C_sim_PT;
+	C_sim_PV = cmx.C_sim_PV;
+	C_sim_size = cmx.C_sim_size;
+	C_sim_rows = cmx.C_sim_rows;
+	C_sim_cols = cmx.C_sim_cols;
+	pathDist0_sim_PT = cmx.pathDist0_sim_PT;
+	pathDist0_sim_PV = cmx.pathDist0_sim_PV;
 }
 // Constructor All parameters
-void CalibrationMatrix::set (Info & info_, float* C_, int C_size_, std::vector<float> & pathDist0_, int error_code_) { // by default: error_code_ = 0
+void CalibrationMatrix::set (Info & info_, float* C_, int C_size_, std::vector<float> & pathDist0_, int error_code_,
+	float* C_sim_PT_, float* C_sim_PV_, int C_sim_size_, int C_sim_rows_, int C_sim_cols_, std::vector<float> & pathDist0_sim_PT_, std::vector<float> & pathDist0_sim_PV_) {
 	
 	// External Parameters (RawData, Info)
 	info = &info_;
@@ -585,13 +606,110 @@ void CalibrationMatrix::set (Info & info_, float* C_, int C_size_, std::vector<f
 	C_size = C_size_;
 	pathDist0 = pathDist0_;
 	error_code = error_code_;
+
+	// Simulation Parameters
+	C_sim_PT = C_sim_PT_;
+	C_sim_PV = C_sim_PV_;
+	C_sim_size = C_sim_size_;
+	C_sim_rows = C_sim_rows_;
+	C_sim_cols = C_sim_cols_;
+	pathDist0_sim_PT = pathDist0_sim_PT_;
+	pathDist0_sim_PV = pathDist0_sim_PV_;
 }
 // Constructor. It creates a CalibrationMatrix object from the .cmx file noted in the info object
-void CalibrationMatrix::set (Info & info_) { // by default: pixels_storing_ = PIXELS_VALID
+void CalibrationMatrix::set (Info & info_) { 
 	
 	// External Parameters (Info)
 	info = &info_;
 
+	// Function Parameters
+	RawData rawData(info_);
+	Scene scene;
+	bool pSim = false;
+	// cmx_data_value = c * Em * albedo = H * distSrcPixPow2,    distSrcPixPow2 = |r_src - r_x0(r,c)|^2,
+	std::vector<float> distSrcPixPow2V, distSrcPixPow2V_sim_PT, distSrcPixPow2V_sim_PV;	
+	int phase_idx = 0;						// always
+	int shut_idx = info_.shutV.size() - 1;	//always, the calibration matrix is One shutter oriented
+
+	// C_size, C
+	C_size = info->freqV.size() * info->distV.size() * info->rows * info->cols;
+	C = new float[C_size];
+
+	// Simulation Parameters
+	C_sim_size = info->freqV.size() * info->distV.size() * PMD_SIM_ROWS * PMD_SIM_COLS;
+	C_sim_PT = new float[C_sim_size];
+	C_sim_PV = new float[C_sim_size];
+	C_sim_rows = PMD_SIM_ROWS;
+	C_sim_cols = PMD_SIM_COLS;
+
+	// Filling C
+	distSrcPixPow2V.resize(numPix(PIXELS_TOTAL, pSim));
+	scene.clear();
+	scene.setScene_CalibrationMatrix(info_.laser_to_cam_offset_x, info_.laser_to_cam_offset_y, info_.laser_to_cam_offset_z, info_.dist_wall_cam, PIXELS_TOTAL, pSim);
+	for (size_t i = 0; i < distSrcPixPow2V.size(); i++)	
+		distSrcPixPow2V[i] = (scene.o[LASER].s[0].c - scene.o[WALL_PATCHES].s[i].c).modPow2();
+	// data ordering: for(freq) { for(dist) { for(rows){ for(cols){ // here...}}}}
+	for (size_t fi = 0; fi < info_.freqV.size(); fi++) {
+		for (size_t di = 0; di < info_.distV.size(); di++) {
+			for (size_t r = 0; r < info_.rows; r++) {
+				for (size_t c = 0; c < info_.cols; c++) {
+					//cmx_data_value = c * Em * albedo = H * distSrcPixPow2,    distSrcPixPow2 = |r_src - r_x0(r,c)|^2,
+					C[C_idx(fi, di, r, c, PIXELS_TOTAL, pSim)] = rawData.atF(fi, di, shut_idx, phase_idx, r, c, PIXELS_TOTAL, pSim) *  distSrcPixPow2V[rc2idx(r, c, PIXELS_TOTAL, pSim)];
+	}	}	}	}
+	
+	// Filling C_sim_PT, C_sim_PV
+	pSim = true;
+	// FillingdistSrcPixPow2V_sim_PT
+	distSrcPixPow2V_sim_PT.resize(numPix(PIXELS_TOTAL, pSim));
+	scene.clear();
+	scene.setScene_CalibrationMatrix(info_.laser_to_cam_offset_x, info_.laser_to_cam_offset_y, info_.laser_to_cam_offset_z, info_.dist_wall_cam, PIXELS_TOTAL, pSim);
+	for (size_t i = 0; i < distSrcPixPow2V_sim_PT.size(); i++)	
+		distSrcPixPow2V_sim_PT[i] = (scene.o[LASER].s[0].c - scene.o[WALL_PATCHES].s[i].c).modPow2();
+	// FillingdistSrcPixPow2V_sim_PV
+	distSrcPixPow2V_sim_PV.resize(numPix(PIXELS_VALID, pSim));
+	scene.clear();
+	scene.setScene_CalibrationMatrix(info_.laser_to_cam_offset_x, info_.laser_to_cam_offset_y, info_.laser_to_cam_offset_z, info_.dist_wall_cam, PIXELS_VALID, pSim);
+	for (size_t i = 0; i < distSrcPixPow2V_sim_PV.size(); i++)	
+		distSrcPixPow2V_sim_PV[i] = (scene.o[LASER].s[0].c - scene.o[WALL_PATCHES].s[i].c).modPow2();
+	// data ordering: for(freq) { for(dist) { for(rows){ for(cols){ // here...}}}}
+	for (size_t fi = 0; fi < info_.freqV.size(); fi++) {
+		for (size_t di = 0; di < info_.distV.size(); di++) {
+			for (size_t r = 0; r < C_sim_rows; r++) {
+				for (size_t c = 0; c < C_sim_cols; c++) {
+					//cmx_data_value = c * Em * albedo = H * distSrcPixPow2,    distSrcPixPow2 = |r_src - r_x0(r,c)|^2,
+					// TO-DO
+					C_sim_PT[C_idx(fi, di, r, c, PIXELS_TOTAL, pSim)] = rawData.atF(fi, di, shut_idx, phase_idx, r, c, PIXELS_TOTAL, pSim) *  distSrcPixPow2V_sim_PT[rc2idx(r, c, PIXELS_TOTAL, pSim)];
+					C_sim_PV[C_idx(fi, di, r, c, PIXELS_VALID, pSim)] = rawData.atF(fi, di, shut_idx, phase_idx, r, c, PIXELS_VALID, pSim) *  distSrcPixPow2V_sim_PV[rc2idx(r, c, PIXELS_VALID, pSim)];
+	}	}	}	}
+	
+	// Filling pathDist0
+	pSim = false;
+	pathDist0.resize(numPix(PIXELS_TOTAL, pSim)); // independent of PixStoring, the accessing depends on it. Ordering: for(r){ for(c){ // here...}} // r,c Matrix-like, 0-idx
+	scene.clear();
+	scene.setScene_CalibrationMatrix(info_.laser_to_cam_offset_x, info_.laser_to_cam_offset_y, info_.laser_to_cam_offset_z, info_.dist_wall_cam, PIXELS_TOTAL, pSim);
+	for (size_t i = 0; i < pathDist0.size(); i++)
+		pathDist0[i] = dist(scene.o[LASER].s[0].c, scene.o[WALL_PATCHES].s[i].c) + dist(scene.o[CAMERA].s[0].c, scene.o[WALL_PATCHES].s[i].c);
+
+	// Filling pathDist0_sim_PT
+	pSim = true;
+	pathDist0_sim_PT.resize(numPix(PIXELS_TOTAL, pSim));
+	scene.clear();
+	scene.setScene_CalibrationMatrix(info_.laser_to_cam_offset_x, info_.laser_to_cam_offset_y, info_.laser_to_cam_offset_z, info_.dist_wall_cam, PIXELS_TOTAL, pSim);
+	for (size_t i = 0; i < pathDist0_sim_PT.size(); i++)
+		pathDist0_sim_PT[i] = dist(scene.o[LASER].s[0].c, scene.o[WALL_PATCHES].s[i].c) + dist(scene.o[CAMERA].s[0].c, scene.o[WALL_PATCHES].s[i].c);
+
+	// Filling pathDist0_sim_PV
+	pSim = true;
+	pathDist0_sim_PV.resize(numPix(PIXELS_VALID, pSim)); 
+	scene.clear();
+	scene.setScene_CalibrationMatrix(info_.laser_to_cam_offset_x, info_.laser_to_cam_offset_y, info_.laser_to_cam_offset_z, info_.dist_wall_cam, PIXELS_VALID, pSim);
+	for (size_t i = 0; i < pathDist0_sim_PV.size(); i++)
+		pathDist0_sim_PV[i] = dist(scene.o[LASER].s[0].c, scene.o[WALL_PATCHES].s[i].c) + dist(scene.o[CAMERA].s[0].c, scene.o[WALL_PATCHES].s[i].c);
+
+	// no errors
+	error_code = 0;		
+	
+	/*
 	// Calibration Matrix Parameters: C, C_size
 	// expected file size (in number of elements)
 	int file_C_size_expected = info->freqV.size() * info->distV.size() * info->rows * info->cols;
@@ -628,15 +746,7 @@ void CalibrationMatrix::set (Info & info_) { // by default: pixels_storing_ = PI
 	}
 	fclose (cmx_file);
 	//free (C_size_);
-
-	// Calibration Matrix Parameters: pathDist0
-	pathDist0 = std::vector<float>(numPix(PIXELS_TOTAL)); // independent of PixStoring, the accessing depends on it. Ordering: for(r){ for(c){ // here...}} // r,c Matrix-like, 0-idx
-	Scene scene;	scene.clear();
-	scene.setScene_CalibrationMatrix(info_.laser_to_cam_offset_x, info_.laser_to_cam_offset_y, info_.laser_to_cam_offset_z, info_.dist_wall_cam);
-	for (size_t i = 0; i < numPix(PIXELS_TOTAL); i++)	// TO-DO: CHECK
-		pathDist0[i] = dist(scene.o[LASER].s[0].c, scene.o[WALL_PATCHES].s[i].c) + dist(scene.o[CAMERA].s[0].c, scene.o[WALL_PATCHES].s[i].c);
-	scene.clear();
-	error_code = 0;		// no errors
+	*/
 }
 
 
@@ -644,9 +754,13 @@ void CalibrationMatrix::set (Info & info_) { // by default: pixels_storing_ = PI
 
 // Returns the index in C[], corresponding to the parameter indices. 
 // input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
-int CalibrationMatrix::C_idx (int freq_idx, int dist_idx, int r, int c, PixStoring ps) { // default: ps = PIXELS_STORING_GLOBAL
+int CalibrationMatrix::C_idx (int freq_idx, int dist_idx, int r, int c, PixStoring ps, bool pSim) { // default: ps = PIXELS_STORING_GLOBAL
 
-	if (ps == PIXELS_VALID) {
+	if (pSim) {
+		return info->distV.size() * C_sim_rows * C_sim_cols * freq_idx +
+	                                C_sim_rows * C_sim_cols * dist_idx +
+	                                             C_sim_cols * r	       + c;
+	} else if (ps == PIXELS_VALID) {
 		return info->distV.size() * info->rows * info->cols * freq_idx +
 	                                info->rows * info->cols * dist_idx +
 	                                             info->cols * (r + CAMERA_PIX_Y_BAD_TOP) +
@@ -659,14 +773,23 @@ int CalibrationMatrix::C_idx (int freq_idx, int dist_idx, int r, int c, PixStori
 }
 // Returns C[C.C_idx(...)], the value from the Calibration Matrix C corresponding to the parameters
 // input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
-float CalibrationMatrix::C_at (int freq_idx, int dist_idx, int r, int c, PixStoring ps) { // default: ps = PIXELS_STORING_GLOBAL
-	return C[C_idx(freq_idx, dist_idx, r, c, ps)];
+float CalibrationMatrix::C_at (int freq_idx, int dist_idx, int r, int c, PixStoring ps, bool pSim) {
+	
+	if (pSim) {
+		if (ps == PIXELS_TOTAL)
+			return C_sim_PT[C_idx(freq_idx, dist_idx, r, c, ps, pSim)];
+		else if (ps == PIXELS_VALID)
+			return C_sim_PV[C_idx(freq_idx, dist_idx, r, c, ps, pSim)];
+	}
+	else {
+		return C[C_idx(freq_idx, dist_idx, r, c, ps ,pSim)];
+	}
 }
 // Returns the C[...] interpolating with the closest path distances
 // input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
-float CalibrationMatrix::C_atX (int freq_idx, float pathDist, int r, int c, PixStoring ps)  { // default: ps = PIXELS_STORING_GLOBAL
+float CalibrationMatrix::C_atX (int freq_idx, float pathDist, int r, int c, PixStoring ps, bool pSim)  { // default: ps = PIXELS_STORING_GLOBAL
 	
-	float pathDist_offset = pathDist - pathDist0_at(r,c);
+	float pathDist_offset = pathDist - pathDist0_at(r, c, ps, pSim);
 	float pathDist_res = (info->distV[1] - info->distV[0]);	// dist of info store actually path distances as well
 
 	// pathDist Indices
@@ -675,10 +798,10 @@ float CalibrationMatrix::C_atX (int freq_idx, float pathDist, int r, int c, PixS
 	// checking if out of bounds
 	if (pathDist_idx_floor < 0) {
 		std::cout << "\nWarning: path_dist(" << r << "," << c << ") = " << pathDist << " out of .cmx min bound = " << info->distV[0] << " ---> pathDist\n";
-		return C_at(freq_idx, 0, r, c, ps);
+		return C_at(freq_idx, 0, r, c, ps, pSim);
 	} else if (pathDist_idx_floor >= info->distV.size() - 1) {
 		std::cout << "\nWarning: path_dist(" << r << "," << c << ") = " << pathDist << " out of .cmx max bound = " << info->distV[info->distV.size()-1] << " ---> pathDist\n";
-		return C_at(freq_idx, info->distV.size()-1, r, c, ps);
+		return C_at(freq_idx, info->distV.size()-1, r, c, ps, pSim);
 	}
 
 	// pathDist Scales
@@ -700,37 +823,46 @@ float CalibrationMatrix::C_atX (int freq_idx, float pathDist, int r, int c, PixS
 	std::cout << "\nat(fi_max, di=" << dist_idx_floor << ", cen) = " << at(info->freqV.size()-1, dist_idx_floor, w, h);
 	std::cout << "\nat(fi_max, di=" << dist_idx_ceil << ", cen) = " << at(info->freqV.size()-1, dist_idx_ceil, w, h);
 	*/
-	return (pathDist_scale_floor * C_at(freq_idx, pathDist_idx_floor, r, c, ps)) + (pathDist_scale_ceil * C_at(freq_idx, pathDist_idx_ceil, r, c, ps));
+	return (pathDist_scale_floor * C_at(freq_idx, pathDist_idx_floor, r, c, ps, pSim)) + (pathDist_scale_ceil * C_at(freq_idx, pathDist_idx_ceil, r, c, ps, pSim));
 }
 
 // Returns the index in pathDist0, corresponding to the parameter indices.
 // input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
-int CalibrationMatrix::pathDist0_idx (int r, int c, PixStoring ps) { // default: ps = PIXELS_STORING_GLOBAL
+int CalibrationMatrix::pathDist0_idx (int r, int c, PixStoring ps, bool pSim) { // default: ps = PIXELS_STORING_GLOBAL
 	
-	if (ps == PIXELS_VALID) {
-		return info->cols * (r + CAMERA_PIX_Y_BAD_TOP) +
-			                (c + CAMERA_PIX_X_BAD_LEFT);
-	} else if (ps == PIXELS_TOTAL) {
-		return info->cols * r + c;
-	}
+	if (pSim)
+		return C_sim_cols * r + c;
+	else if (ps == PIXELS_VALID)
+		return info->cols * (r + CAMERA_PIX_Y_BAD_TOP) + (c + CAMERA_PIX_X_BAD_LEFT);
+	else if (ps == PIXELS_TOTAL)
+			return info->cols * r + c;
 }
 // Returns the value from the pathDist0 corresponding to the parameter indices = pathDist0[pathDist0_idx]
 // input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
-float CalibrationMatrix::pathDist0_at (int r, int c, PixStoring ps) { // default: ps = PIXELS_STORING_GLOBAL
-	return pathDist0[pathDist0_idx(r,c,ps)];
+float CalibrationMatrix::pathDist0_at (int r, int c, PixStoring ps, bool pSim) { 
+	
+	if (pSim) {
+		if (ps == PIXELS_TOTAL)
+			return pathDist0_sim_PT[pathDist0_idx(r,c,ps,pSim)];
+		else if (ps == PIXELS_VALID)
+			return pathDist0_sim_PV[pathDist0_idx(r,c,ps,pSim)];
+	}
+	else {
+		return pathDist0[pathDist0_idx(r,c,ps,pSim)];
+	}
 }
 	
 
 // This is the Simulation term for the direct vision problem: S_{i\;\omega}^{r,c}(\tau^{r,c}) in the Master Thesis document
 // Returns the value of the Simulation from the Calibration Matrix C at any path distance interpolating with the closest path distances. Path distances have to be equidistant in vector
 // Uses C_atX(...) for interpolating path distances
-float CalibrationMatrix::S_DirectVision (int freq_idx, int r, int c, Point & r_src, Point & r_x,  Point & r_cam, float relative_albedo, PixStoring ps) { // by default: relative_albedo = 1.0f, ps = PIXELS_STORING_GLOBAL
+float CalibrationMatrix::S_DirectVision (int freq_idx, int r, int c, Point & r_src, Point & r_x,  Point & r_cam, float relative_albedo, PixStoring ps, bool pSim) { // by default: relative_albedo = 1.0f, ps = PIXELS_STORING_GLOBAL
 
 	float dist_src_x = dist(r_src, r_x);
 	float dist_cam_x = dist(r_cam, r_x);
 	float pathDist = dist_src_x + dist_cam_x;
 	
-	return C_atX (freq_idx, pathDist, r, c,ps) * relative_albedo / (dist_src_x * dist_src_x);
+	return C_atX (freq_idx, pathDist, r, c, ps, pSim) * relative_albedo / (dist_src_x * dist_src_x);
 }
 
 
@@ -766,8 +898,8 @@ Frame::Frame(std::vector<float> & data_, int rows_, int cols_, float freq_, floa
 	set (data_, rows_, cols_, freq_, dist_ , shut_, phas_, ps_, pSim_);
 }
 // Constructor from ushort int*. Real Time capture oriented. rows_ and cols_ must be refered to the sizes of the total frame, regerdingless to the PixStoring
-Frame::Frame(unsigned short int* data_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_, bool pSim_) { // by default: ps_ = PIXELS_STORING_GLOBAL
-	set (data_, rows_, cols_, freq_, dist_, shut_, phas_, phas_idx_, ps_, pSim_);
+Frame::Frame(unsigned short int* data_, int rowsPT, int colsPT, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_, bool pSim_) { // by default: ps_ = PIXELS_STORING_GLOBAL
+	set (data_, rowsPT, colsPT, freq_, dist_, shut_, phas_, phas_idx_, ps_, pSim_);
 }
 
 
@@ -868,7 +1000,7 @@ void Frame::set(RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_i
 	data.resize(rows*cols);
 	for (int r = 0; r < rows; r++) {
 		for (int c = 0; c < cols; c++) {
-			data[data_idx(r,c)] = RawData_src->atF(freq_idx, dist_idx, shut_idx, phas_idx, r, c, ps, pSim);
+			data[data_idx(r,c)] = RawData_src_.atF(freq_idx, dist_idx, shut_idx, phas_idx, r, c, ps, pSim);
 	}	}
 }
 // Setter from vector. Simulation oriented. For any PixStoring it consideres the vector matrix_vector properly arranged
@@ -904,8 +1036,8 @@ void Frame::set(std::vector<float> & data_, int rows_, int cols_, float freq_, f
 	shut = shut_;
 	phas = phas_;
 }
-// Setter from ushort int*. Real Time capture oriented. rows_ and cols_ must be refered to the sizes of the total frame, regerdingless to the PixStoring
-void Frame::set(unsigned short int* data_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_, bool pSim_) { // by default: ps_ = PIXELS_STORING_GLOBAL
+// Setter from ushort int*. Real Time capture oriented. rowsPT and colsPT must be refered to the sizes of the total frame, regerdingless to the PixStoring
+void Frame::set(unsigned short int* data_, int rowsPT, int colsPT, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_, bool pSim_) { // by default: ps_ = PIXELS_STORING_GLOBAL
 	
 	// External Parameters (RawData, indices)
 	RawData_src = NULL;
@@ -934,15 +1066,17 @@ void Frame::set(unsigned short int* data_, int rows_, int cols_, float freq_, fl
 	if (ps == PIXELS_VALID) {
 		for (int r = 0; r < rows; r++) {
 			for (int c = 0; c < cols; c++) {
-				idx_in_data = (rows_ * cols_ * phas_idx_) + (cols_ * (CAMERA_PIX_Y - CAMERA_PIX_Y_BAD_TOP - 1 - r)) + (c + CAMERA_PIX_X_BAD_LEFT);
+				idx_in_data = (rowsPT * colsPT * phas_idx_) + (colsPT * (CAMERA_PIX_Y - CAMERA_PIX_Y_BAD_TOP - 1 - r)) + (c + CAMERA_PIX_X_BAD_LEFT);
 				data[data_idx(r,c)] = (float)(data_[idx_in_data] - 32768); // data is not stored properly in raw file. -32768 fixes it
 	}	}	}
 	else if (ps == PIXELS_TOTAL) {
 		for (int r = 0; r < rows; r++) {
 			for (int c = 0; c < cols; c++) {
-				idx_in_data = (rows_ * cols_ * phas_idx_) + (cols_ * (rows_ - 1 - r)) + c;
+				idx_in_data = (rowsPT * colsPT * phas_idx_) + (colsPT * (rowsPT - 1 - r)) + c;
 				data[data_idx(r,c)] = (float)(data_[idx_in_data] - 32768); // data is not stored properly in raw file. -32768 fixes it
 	}	}	}
+
+	// pSim 
 	if (pSim_)
 		toPixSim();
 }
@@ -1211,7 +1345,7 @@ void plot_frame_fov_measurement(Frame & frame_00, Frame & frame_90, bool loop, b
 
 		// show window
 		cv::imshow(windowName, M_00);
-		cv::waitKey(20);
+		cv::waitKey(1);
 	}
 	if (destroyWindow_)
 		cv::destroyWindow(windowName);
@@ -1310,15 +1444,19 @@ float var(std::vector<float> & v) {
 }
 
 // these functions returns the corresponding idx/stuff of a vector from r,c considering Matrix-like ordering 0-indexed.
-int rc2idx(int r, int c, PixStoring ps) { // default: ps = PIXELS_STORING_GLOBAL
-	if (ps == PIXELS_VALID)
+int rc2idx(int r, int c, PixStoring ps, bool pSim) { // default: ps = PIXELS_STORING_GLOBAL, pSim = false
+	if (pSim)
+		return PMD_SIM_COLS * r + c;
+	else if (ps == PIXELS_VALID)
 		return CAMERA_PIX_X_VALID * r + c;
 	else if (ps == PIXELS_TOTAL)
 		return CAMERA_PIX_X * r + c;
 	return -1;
 }
-int rc2idxCor(int r, int c, PixStoring ps) { // default: ps = PIXELS_STORING_GLOBAL
-	if (ps == PIXELS_VALID)
+int rc2idxCor(int r, int c, PixStoring ps, bool pSim) { // default: ps = PIXELS_STORING_GLOBAL, pSim = false
+	if (pSim)
+		return (PMD_SIM_COLS + 1) * r + c;
+	else if (ps == PIXELS_VALID)
 		return (CAMERA_PIX_X_VALID + 1) * r + c;
 	else if (ps == PIXELS_TOTAL)
 		return (CAMERA_PIX_X + 1) * r + c;
@@ -1330,23 +1468,29 @@ int rc2idxPT(int r, int c) {
 int rc2idxPV(int r, int c) {
 	return CAMERA_PIX_X_VALID * r + c;
 }
-int rc2idxFromPT2PV(int r, int c) {	// returns -1 if the PT(r,c) is out of PV(r,c) range !!!
+int rc2idxPSIM(int r, int c) {
+	return PMD_SIM_COLS * r + c;
+}
+int rc2idxFromPT2PV(int r, int c, bool pSim) {	// returns -1 if the PT(r,c) is out of PV(r,c) range !!!
+	if (pSim)
+		return PMD_SIM_COLS * r + c;
 	if ((r < CAMERA_PIX_Y_BAD_TOP) || (r >= (CAMERA_PIX_Y - CAMERA_PIX_Y_BAD_BOTTOM)) || (c < CAMERA_PIX_X_BAD_LEFT) || (c >= (CAMERA_PIX_X - CAMERA_PIX_X_BAD_RIGHT)))
 		return -1;
 	return CAMERA_PIX_X_VALID * (r - CAMERA_PIX_Y_BAD_TOP) + (c - CAMERA_PIX_X_BAD_LEFT);
 }
-int rc2idxPSIM(int r, int c) {
-	return PMD_SIM_COLS * r + c;
-}
-int numPix(PixStoring ps) {
-	if (ps == PIXELS_VALID)
+int numPix(PixStoring ps, bool pSim) { // default: ps = PIXELS_STORING_GLOBAL, pSim = false
+	if (pSim)
+		return PMD_SIM_COLS * PMD_SIM_ROWS;
+	else if (ps == PIXELS_VALID)
 		return CAMERA_PIX_X_VALID * CAMERA_PIX_Y_VALID;
 	else if (ps == PIXELS_TOTAL)
 		return CAMERA_PIX_X * CAMERA_PIX_Y;
 	return -1;
 }
-int numPixCor(PixStoring ps) {
-	if (ps == PIXELS_VALID)
+int numPixCor(PixStoring ps, bool pSim) { // default: ps = PIXELS_STORING_GLOBAL, pSim = false
+	if (pSim)
+		return (PMD_SIM_COLS + 1) * (PMD_SIM_ROWS + 1);
+	else if (ps == PIXELS_VALID)
 		return (CAMERA_PIX_X_VALID + 1) * (CAMERA_PIX_Y_VALID + 1);
 	else if (ps == PIXELS_TOTAL)
 		return (CAMERA_PIX_X + 1) * (CAMERA_PIX_Y + 1);
@@ -1362,29 +1506,37 @@ int numPixPSIM() {
 	return PMD_SIM_COLS * PMD_SIM_ROWS;
 }
 
-int rows(PixStoring ps) {
-	if (ps == PIXELS_VALID)
+int rows(PixStoring ps, bool pSim) { // default: ps = PIXELS_STORING_GLOBAL, pSim = false
+	if (pSim)
+		return PMD_SIM_ROWS;
+	else if (ps == PIXELS_VALID)
 		return CAMERA_PIX_Y_VALID;
 	else if (ps == PIXELS_TOTAL)
 		return CAMERA_PIX_Y;
 	return -1;
 }
-int cols(PixStoring ps) {
-	if (ps == PIXELS_VALID)
+int cols(PixStoring ps, bool pSim) { // default: ps = PIXELS_STORING_GLOBAL, pSim = false
+	if (pSim)
+		return PMD_SIM_COLS;
+	else if (ps == PIXELS_VALID)
 		return CAMERA_PIX_X_VALID;
 	else if (ps == PIXELS_TOTAL)
 		return CAMERA_PIX_X;
 	return -1;
 }
-int rowsCor(PixStoring ps) {
-	if (ps == PIXELS_VALID)
+int rowsCor(PixStoring ps, bool pSim) { // default: ps = PIXELS_STORING_GLOBAL, pSim = false
+	if (pSim)
+		return PMD_SIM_ROWS + 1;
+	else if (ps == PIXELS_VALID)
 		return CAMERA_PIX_Y_VALID + 1;
 	else if (ps == PIXELS_TOTAL)
 		return CAMERA_PIX_Y + 1;
 	return -1;
 }
-int colsCor(PixStoring ps) {
-	if (ps == PIXELS_VALID)
+int colsCor(PixStoring ps, bool pSim) { // default: ps = PIXELS_STORING_GLOBAL, pSim = false
+	if (pSim)
+		return PMD_SIM_COLS + 1;
+	else if (ps == PIXELS_VALID)
 		return CAMERA_PIX_X_VALID + 1;
 	else if (ps == PIXELS_TOTAL)
 		return CAMERA_PIX_X + 1;
