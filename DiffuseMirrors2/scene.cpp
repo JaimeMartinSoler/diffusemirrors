@@ -868,6 +868,7 @@ void Object3D::setCamera(Point & posC, Point & axisN, float deg, Point & size, P
 	Point lensS (0.08f, 0.08f, 0.1f);
 	Point lensC(lensS.x / 2.0f, lensS.y / 2.0f, -lensS.z);
 	Object3D lensBox (lensPC, stub0, 0.0f, lensS, lensC, albedoVV[3], RVV[3], GVV[3], BVV[3], AVV[3]);
+	lensBox.s.erase(lensBox.s.begin() + BACK);
 	lensBox.s.erase(lensBox.s.begin() + FRONT);
 	add(lensBox);
 	

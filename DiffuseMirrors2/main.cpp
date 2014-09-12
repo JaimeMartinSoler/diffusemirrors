@@ -152,6 +152,7 @@ int main_DirectVision_Simulation_Frame(char* dir_name_, char* file_name_) {
 
 	return 0;
 }
+
 // TO-DO (TO-DO related functions inside and TO-CHECK)
 int main_Occlusion(char* dir_name_, char* file_name_, bool loop = true) {
 	
@@ -301,7 +302,7 @@ int main_Test(bool loop = true) {
 int main(int argc, char** argv) {
 	
 	// Set parameteres
-	SceneType sceneType = DIRECT_VISION_SIMULATION_FRAME;
+	SceneType sceneType = TEST_TEST;
 	SCENEMAIN.set(sceneType);
 	//char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\test_03";
 	//char file_name[1024] = "PMD";

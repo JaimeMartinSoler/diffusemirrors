@@ -10,6 +10,11 @@
 void test(char* dir_name, char* file_name);
 
 
+
+
+// test_toPixSim(...)
+void test_toPixSim(char* dir_name, char* file_name);
+
 // test_numbers()
 void test_numbers();
 

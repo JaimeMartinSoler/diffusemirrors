@@ -17,11 +17,52 @@
 // test function for testing
 void test(char* dir_name, char* file_name) {
 
-	test_CMX_iterator(dir_name, file_name);
+	test_toPixSim(dir_name, file_name);
 
 	std::cout << "\n\nTest done...\n\n";
 }
 
+
+
+
+// test_toPixSim(...)
+void test_toPixSim(char* dir_name, char* file_name) {
+
+	// create Frames
+	Info info(dir_name, file_name);
+	RawData rawData(info);
+	Frame frameRealPT(rawData, info.freqV.size() - 1, 0, info.shutV.size() - 1, 0, PIXELS_TOTAL, false);
+	Frame frameRealPV(rawData, info.freqV.size() - 1, 0, info.shutV.size() - 1, 0, PIXELS_VALID, false);
+	Frame frameSimPT(rawData, info.freqV.size() - 1, 0, info.shutV.size() - 1, 0, PIXELS_TOTAL, true);
+	Frame frameSimPV(rawData, info.freqV.size() - 1, 0, info.shutV.size() - 1, 0, PIXELS_VALID, true);
+	Frame frameUpPT(frameSimPT);
+	Frame frameUpPV(frameSimPV);
+	frameUpPT.toPixReal();
+	frameUpPV.toPixReal();
+
+	// plot Frames
+	int plotDelayMs = 1;
+	bool destroyWindow = false;
+	frameRealPT.plot(plotDelayMs, destroyWindow, "Frame Real PT");
+	frameRealPV.plot(plotDelayMs, destroyWindow, "Frame Real PV");
+	frameSimPT.plot(plotDelayMs, destroyWindow, "Frame Sim PT");
+	frameSimPV.plot(plotDelayMs, destroyWindow, "Frame Sim PV");
+	frameUpPT.plot(plotDelayMs, destroyWindow, "Frame Up PT");
+	frameUpPV.plot(plotDelayMs, destroyWindow, "Frame Up PV");
+
+	// Experiments
+	Frame frameRealDifUpPT(frameRealPT);
+	Frame frameRealDifUpPV(frameRealPV);
+	for (size_t i = 0; i < frameRealPT.data.size(); i++) {
+		frameRealDifUpPT.data[i] -= frameUpPT.data[i];
+	}
+	for (size_t i = 0; i < frameRealPV.data.size(); i++) {
+		frameRealDifUpPV.data[i] -= frameUpPV.data[i];
+	}
+	frameRealDifUpPT.plot(plotDelayMs, destroyWindow, "Frame Real-Up PT");
+	frameRealDifUpPV.plot(plotDelayMs, destroyWindow, "Frame Real-Up PV");
+
+}
 
 // test_numbers()
 void test_numbers() {

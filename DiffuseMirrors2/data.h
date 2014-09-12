@@ -133,7 +133,13 @@ public:
 	unsigned short int* data; // independent of PixStoring, the accessing depends on it
 	int data_size;
 	int error_code;	// 0=no_error, !=0:error
-	
+
+	// Simulation Parameters
+	float* data_sim_PT;
+	float* data_sim_PV;
+	float data_sim_size;
+	float data_sim_rows;
+	float data_sim_cols;
 
 	// ----- CONSTRUCTORS ---------------------------- // Note that each Constructor just contains its corresponding Setter
 	
@@ -143,7 +149,8 @@ public:
 	// pointers are copied "as are", the data pointed is not duplicated. For this use .clone(...) (if implemented)
 	RawData::RawData(RawData & raw_data);
 	// Constructor All parameters
-	RawData::RawData(Info & info_, unsigned short int* data_, int data_size_, int take_ = -1, int error_code_ = 0);
+	RawData::RawData(Info & info_, unsigned short int* data_, int data_size_, int take_, int error_code_,
+		float* data_sim_PT_, float* data_sim_PV_, int data_sim_size_, int data_sim_rows_, int data_sim_cols_);
 	// Constructor from Info. It creates a CalibrationMatrix object from the .raw file noted in the info object
 	// take: number of the raw_numtake file this is referencing to. take = -1 if refers to the normal raw file
 	RawData::RawData(Info & info_, int take_ = -1);
@@ -160,7 +167,8 @@ public:
 	// pointers are copied "as are", the data pointed is not duplicated. For this use .clone(...) (if implemented)
 	void RawData::set (RawData & raw_data);
 	// Setter All parameters
-	void RawData::set (Info & info_, unsigned short int* data_, int data_size_, int take_ = -1, int error_code_ = 0);
+	void RawData::set(Info & info_, unsigned short int* data_, int data_size_, int take_, int error_code_,
+		float* data_sim_PT_, float* data_sim_PV_, int data_sim_size_, int data_sim_rows_, int data_sim_cols_);
 	// Setter from Info. It creates a CalibrationMatrix object from the .raw file noted in the info object
 	// take: number of the raw_numtake file this is referencing to. take = -1 if refers to the normal raw file
 	void RawData::set (Info & info_, int take_ = -1);
@@ -170,7 +178,7 @@ public:
 
 	// Returns the index in data[], corresponding to the parameter indices
 	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
-	int RawData::data_idx(int freq_idx, int dist_idx, int shut_idx, int phas_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
+	int RawData::data_idx(int freq_idx, int dist_idx, int shut_idx, int phas_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL, bool pixSim = false);
 	// Returns the value corresponding to the parameter indices = data[idx_in_data]
 	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
 	unsigned short int RawData::at(int freq_idx, int dist_idx, int shut_idx, int phas_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
@@ -179,7 +187,7 @@ public:
 	// Returns (int)(data[data_idx(...)] - 32768), fixing the 32768 default offset and converting it to (signed) int
 	int RawData::atI(int freq_idx, int dist_idx, int shut_idx, int phas_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
 	// Returns (float)(data[data_idx(...)] - 32768), fixing the 32768 default offset and converting it to float
-	float RawData::atF(int freq_idx, int dist_idx, int shut_idx, int phas_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);
+	float RawData::atF(int freq_idx, int dist_idx, int shut_idx, int phas_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL, bool pixSim = false);
 };
 
 
@@ -204,7 +212,13 @@ public:
 	int C_size;		
 	std::vector<float> pathDist0;	// independent of PixStoring, the accessing depends on it. Ordering: for(r){ for(c){ // here... }}}} // r,c Matrix-like, 0-idx
 	int error_code;	// 0=no_error, !=0:error
-	
+
+	// Simulation Parameters
+	float* C_sim_PT;
+	float* C_sim_PV;
+	float C_sim_size;
+	float C_sim_rows;
+	float C_sim_cols;
 
 	// ----- CONSTRUCTORS ---------------------------- // Note that each Constructor just contains its corresponding Setter
 	
@@ -282,6 +296,7 @@ public:
 	// Frame Parameters
 	std::vector<float> data;	// PixStoring dependent. With all the values of the frame. // r,c Matrix-like, 0-idx. 
 	PixStoring ps;	// the kind of pixels it can store (PIXELS_TOTAL, PIXELS_VALID, UNKNOWN_PIS). See global.h
+	bool pSim;		// tells if the Frame is storing pixels with the Simulated size or if they are actual size. See global.h
 	int rows;			// PixStoring dependent
 	int cols;			// PixStoring dependent
 	float freq;	// (MHz)
@@ -299,14 +314,14 @@ public:
 	Frame::Frame (Frame & frame);
 	// Constructor All parameters
 	Frame::Frame (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_,
-				  std::vector<float> & data_, PixStoring ps_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_);
+		std::vector<float> & data_, PixStoring ps_, bool pSim_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_);
 	// Constructor from RawData. RawData oriented
-	Frame::Frame (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_, PixStoring ps_ = PIXELS_STORING_GLOBAL);
+	Frame::Frame(RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	// Constructor from vector. Simulation oriented. For any PixStoring it considers the vector matrix_vector properly arranged
-	// If rows_ and cols_ are > 0, they will be the new rows and cols (interesting while simulating arbitrary rows and cols. Otherwise rows and cols are made from ps_
-	Frame::Frame (std::vector<float> & data_, int rows_ = 0, int cols_ = 0, float freq_ = 0.0f, float dist_ = 0.0f, float shut_ = 0.0f, float phas_ = 0.0f, PixStoring ps_ = PIXELS_STORING_GLOBAL);
+	// If rows_ and cols_ are > 0, they will be the new rows and cols (interesting while simulating arbitrary rows and cols. Otherwise rows and cols are made from ps_)
+	Frame::Frame(std::vector<float> & data_, int rows_ = 0, int cols_ = 0, float freq_ = 0.0f, float dist_ = 0.0f, float shut_ = 0.0f, float phas_ = 0.0f, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	// Constructor from ushort int*. Real Time capture oriented. rows_ and cols_ must be refered to the sizes of the total frame, regerdingless to the PixStoring
-	Frame::Frame (unsigned short int* data_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_ = PIXELS_STORING_GLOBAL);
+	Frame::Frame(unsigned short int* data_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	
 	
 	// ----- SETTERS --------------------------------- // Note that each Constructor just contains its corresponding Setter
@@ -318,14 +333,14 @@ public:
 	void Frame::set (Frame & frame);
 	// Setter All parameters
 	void Frame::set (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_,
-				  std::vector<float> & data_, PixStoring ps_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_);
+				  std::vector<float> & data_, PixStoring ps_, bool pSim_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_);
 	// Setter from RawData. RawData oriented
-	void Frame::set (RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_, PixStoring ps_ = PIXELS_STORING_GLOBAL);
+	void Frame::set(RawData & RawData_src_, int freq_idx_, int dist_idx_, int shut_idx_, int phas_idx_, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	// Setter from vector. Simulation oriented. For any PixStoring it considers the vector matrix_vector properly arranged
 	// If rows_ and cols_ are > 0, they will be the new rows and cols (interesting while simulating arbitrary rows and cols. Otherwise rows and cols are made from ps_
-	void Frame::set (std::vector<float> & data_, int rows_ = 0, int cols_ = 0, float freq_ = 0.0f, float dist_ = 0.0f, float shut_ = 0.0f, float phas_ = 0.0f, PixStoring ps_ = PIXELS_STORING_GLOBAL);
+	void Frame::set(std::vector<float> & data_, int rows_ = 0, int cols_ = 0, float freq_ = 0.0f, float dist_ = 0.0f, float shut_ = 0.0f, float phas_ = 0.0f, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	// Setter from ushort int*. Real Time capture oriented. rows_ and cols_ must be refered to the sizes of the total frame, regerdingless to the PixStoring
-	void Frame::set (unsigned short int* data_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_ = PIXELS_STORING_GLOBAL);
+	void Frame::set(unsigned short int* data_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	
 
 	// ----- FUNCTIONS -------------------------------
@@ -335,7 +350,10 @@ public:
 	// r,c Matrix-like, 0-idx.
 	float Frame::at (int r, int c);
 
-
+	// Frame Real to Frame with with Simulated Pixels
+	void Frame::toPixSim(int rowsSim = PMD_SIM_ROWS, int colsSim = PMD_SIM_COLS);
+	// Frame Simulated to Frame Real (useless, but for testing)
+	void Frame::toPixReal();
 	// Plot frame with opencv
 	void Frame::plot(int delay_ms = 1000, bool destroyWindow_ = false, char* windowName = NULL);
 };
@@ -368,10 +386,12 @@ int rc2idxCor(int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL);	// see scene
 int rc2idxPT(int r, int c);
 int rc2idxPV(int r, int c);
 int rc2idxFromPT2PV(int r, int c);	// returns -1 if the PT(r,c) is out of PV(r,c) range !!!
+int rc2idxPSIM(int r, int c);
 int numPix(PixStoring ps = PIXELS_STORING_GLOBAL);
 int numPixCor(PixStoring ps = PIXELS_STORING_GLOBAL);	// see scene.cpp, setPixelPatchesNCor(...)
-int numPixPT(int r, int c);
-int numPixPV(int r, int c);
+int numPixPT();
+int numPixPV();
+int numPixPSIM();
 
 int rows(PixStoring ps = PIXELS_STORING_GLOBAL);
 int cols(PixStoring ps = PIXELS_STORING_GLOBAL);
