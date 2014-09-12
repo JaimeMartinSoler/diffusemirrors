@@ -30,7 +30,7 @@ class Object3D;
 class Scene;
 
 #define PIXELS_STORING_GLOBAL PIXELS_VALID		// PIXELS_TOTAL,    PIXELS_VALID,    UNKNOWN_PIS
-#define PIXELS_SIMULATION true		// determines if we will Simulate patches and pixels (when possible) with less resolution than the PMD 
+#define PIXELS_SIMULATION false		// determines if we will Simulate patches and pixels (when possible) with less resolution than the PMD 
 #define PMD_SIM_ROWS 12
 #define PMD_SIM_COLS 16
 

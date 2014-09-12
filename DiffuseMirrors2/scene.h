@@ -277,12 +277,12 @@ public:
 		std::vector<float> & albedoV, std::vector<float> & RV, std::vector<float> & GV, std::vector<float> & BV, std::vector<float> & AV);
 	
 	// Setter Screen FoV measurement. Here each Point is an actual Point
-	void Object3D::setScreenFoVmeasP(Point & camC, Point & camN, PixStoring ps_ = PIXELS_STORING_GLOBAL);
+	void Object3D::setScreenFoVmeasP(Point & camC, Point & camN, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	// Setter Screen FoV measurement. Here each Point is the Normal to the corresponding Point of setScreenFoVmeasP
-	void Object3D::setScreenFoVmeasN(Point & camC, Point & camN, PixStoring ps_ = PIXELS_STORING_GLOBAL);
+	void Object3D::setScreenFoVmeasN(Point & camC, Point & camN, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	// Setter Screen FoV measurement. Here each Point is a close to Normal vector to the corresponding Point of setScreenFoVmeasP,
 	// compensating the "spherical FoV", setting a constant ScreenPlane-CameraPlane distance
-	void Object3D::setScreenFoVmeasNs(Point & camC, Point & camN, PixStoring ps_ = PIXELS_STORING_GLOBAL);
+	void Object3D::setScreenFoVmeasNs(Point & camC, Point & camN, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	
 	// Setter Camera(0)
 	void Object3D::setCamera(Point & posC, Point & axisN, float deg, Point & size, Point & c_relToP0);
@@ -293,19 +293,19 @@ public:
 	void Object3D::setLaser(Point & posC, Point & axisN, float deg, Point & size, Point & c_relToP0,
 		std::vector<std::vector<float>> & albedoVV, std::vector<std::vector<float>> & RVV, std::vector<std::vector<float>> & GVV, std::vector<std::vector<float>> & BVV, std::vector<std::vector<float>> & AVV);
 	// Setter Wall Patches (6)
-	void Object3D::setWallPatches(Scene & scene, PixStoring ps_ = PIXELS_STORING_GLOBAL);
+	void Object3D::setWallPatches(Scene & scene, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	// Setter Camera FoV (7)
 	void Object3D::setCameraFoV(Scene & scene, float R_ = 0.0f, float G_ = 0.0f, float B_ = 1.0f, float A_ = 1.0f, PixStoring ps_ = PIXELS_STORING_GLOBAL, float distDefault = 5.0f);
 	// Setter Laser Ray (8)
 	void Object3D::setLaserRay(Scene & scene, float R_ = 0.0f, float G_ = 0.0f, float B_ = 1.0f, float A_ = 1.0f, PixStoring ps_ = PIXELS_STORING_GLOBAL);
 	// Setter, Updater Volume Patches (9)
 	void Object3D::setVolumePatches();
-	void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL);
+	void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	// Setter, Updater Pixel Patches (10)
-	void Object3D::setPixelPatches(Scene & scene, float distDefault = 2.0f, PixStoring ps_ = PIXELS_STORING_GLOBAL);
-	void Object3D::setPixelPatches(Scene & scene, Frame & frame00, Frame & frame90, PixStoring ps_ = PIXELS_STORING_GLOBAL);
-	void Object3D::updatePixelPatches_Sinusoid(Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL);
-	void Object3D::updatePixelPatches_Simulation(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL);
+	void Object3D::setPixelPatches(Scene & scene, float distDefault = 2.0f, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
+	void Object3D::setPixelPatches(Scene & scene, Frame & frame00, Frame & frame90, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
+	void Object3D::updatePixelPatches_Sinusoid(Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
+	void Object3D::updatePixelPatches_Simulation(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 
 	// ----- FUNCITONS -------------------------------
 
@@ -398,17 +398,18 @@ public:
 	void Scene::add(Object3D & o0);
 
 	// Setter Scene Direct Vision
-	void Scene::setScene_DirectVision(PixStoring ps = PIXELS_STORING_GLOBAL);	// the same for both Sinusoid and Simulation
+	void Scene::setScene_DirectVision(PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim_ = false);	// the same for both Sinusoid and Simulation
 	// Setter Scene Occlusion
-	void Scene::setScene_Occlusion(PixStoring ps = PIXELS_STORING_GLOBAL);
+	void Scene::setScene_Occlusion(PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	// Setter Scene Calibration Matrix
-	void Scene::setScene_CalibrationMatrix(float laser_to_cam_offset_x, float laser_to_cam_offset_y, float laser_to_cam_offset_z, float dist_wall_cam);
+	void Scene::setScene_CalibrationMatrix(float laser_to_cam_offset_x, float laser_to_cam_offset_y, float laser_to_cam_offset_z, float dist_wall_cam,
+		PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 
 };
 // ----- NON-MEMBER FUNCITONS ------------------------
-void updatePixelPatches_Sinusoid_antiBugThread(Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL);
-void updatePixelPatches_Simulation_antiBugThread(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL);
-void updateVolumePatches_Occlusion_antiBugThread(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL);
+void updatePixelPatches_Sinusoid_antiBugThread(Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
+void updatePixelPatches_Simulation_antiBugThread(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
+void updateVolumePatches_Occlusion_antiBugThread(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 
 
 

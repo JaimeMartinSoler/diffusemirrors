@@ -1257,7 +1257,7 @@ int PMD_params_to_file_anti_bug_thread (std::vector<float> & freqV, std::vector<
 
 // Author: Jaime Martin (modification of previous function)
 // PMD_params_to_Frame
-int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_, float dist_, float shut_, char* comport, bool loop, PixStoring ps) {
+int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_, float dist_, float shut_, char* comport, bool loop, PixStoring ps, bool pSim) {
 
 	// Checking input data
 	if (check_input_data(freq_, dist_, shut_, comport, loop, false, false) == 0)
@@ -1277,7 +1277,7 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_
 
 	// Init devices: Open PMD sensor
 	PMDHandle hnd;
-	int rows, cols, numframes;
+	int rowsPT, colsPT, numframes;
 	int res = pmdOpenSourcePlugin(&hnd, SOURCE_PLUGIN, SOURCE_PARAM);
 	pmd_handle_error(hnd, res, "Could not open device");
 	SerialPort port = control_init(comport_full_name);
@@ -1307,7 +1307,7 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_
 		
 		// PMD CAPTURE
 				//const clock_t begin_time_pmd_capture = clock();
-		pmd_capture(hnd, port, shut, freq_, dist_, buffer, cols, rows, numframes);
+		pmd_capture(hnd, port, shut, freq_, dist_, buffer, colsPT, rowsPT, numframes);
 				//const clock_t end_time_pmd_capture = clock();
 				//float ms_time_pmd_capture = 1000.0f * float(end_time_pmd_capture - begin_time_pmd_capture) / (float)CLOCKS_PER_SEC;
 				//std::cout << "pmd_capture    : time = " << ms_time_pmd_capture << " ms\n";
@@ -1316,9 +1316,9 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_
 		// will contain all the data captured for those shutV
 				//const clock_t begin_time_process_data_to_buffer = clock();
 		if (CV_WHILE_CAPTURING)
-			process_data_to_buffer(cols, rows, shutV, ushort_img, 0);
+			process_data_to_buffer(colsPT, rowsPT, shutV, ushort_img, 0);
 		else
-			process_data_to_buffer_no_cv(cols, rows, shutV, ushort_img);
+			process_data_to_buffer_no_cv(colsPT, rowsPT, shutV, ushort_img);
 				//const clock_t end_time_process_data_to_buffer = clock();
 				//float ms_time_process_data_to_buffer = 1000.0f * float(end_time_process_data_to_buffer - begin_time_process_data_to_buffer) / (float)CLOCKS_PER_SEC;
 				//std::cout << "data_to_buffer : time = " << ms_time_process_data_to_buffer << " ms\n";
@@ -1331,9 +1331,10 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_
 			cv_frame_object.wait(locker_frame_object);
 		}
 		if (&Frame_00_cap != NULL)
-			Frame_00_cap.set(ushort_img[0], rows, cols, freq_, dist_, shut_, phases[0], 0, ps);
+			Frame_00_cap.set(ushort_img[0], rowsPT, colsPT, freq_, dist_, shut_, phases[0], 0, ps, pSim);
 		if (&Frame_90_cap != NULL)
-			Frame_90_cap.set(ushort_img[0], rows, cols, freq_, dist_, shut_, phases[1], 1, ps);
+			Frame_90_cap.set(ushort_img[0], rowsPT, colsPT, freq_, dist_, shut_, phases[1], 1, ps, pSim);
+		plot_frame(Frame_00_cap, Frame_90_cap, 1, false, "Frame RT");
 		//std::cout << "UPDATED_NEW_FRAME";
 		UPDATED_NEW_FRAME = true;
 		UPDATED_NEW_SCENE = false;
@@ -1363,14 +1364,15 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_
 	pmdClose (hnd);
 	if (CV_WHILE_CAPTURING)
 		cvDestroyWindow(WindowNameCVCAP);
+	cv::destroyAllWindows();
 
 	// Exit program
 	//Sleep(2000);
 	return 0;
 }
 // there's a weird bug when calling directly to PMD_params_to_Frame from thread constructor. With this re-calling functtion the bug is avoided
-int PMD_params_to_Frame_anti_bug_thread (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_, float dist_, float shut_, char* comport, bool loop, PixStoring ps) {
-	return PMD_params_to_Frame (Frame_00_cap, Frame_90_cap, freq_, dist_, shut_, comport, loop, ps);
+int PMD_params_to_Frame_anti_bug_thread (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_, float dist_, float shut_, char* comport, bool loop, PixStoring ps, bool pSim) {
+	return PMD_params_to_Frame (Frame_00_cap, Frame_90_cap, freq_, dist_, shut_, comport, loop, ps, pSim);
 }
 
 // Author: Jaime Martin

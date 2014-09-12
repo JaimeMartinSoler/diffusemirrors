@@ -154,9 +154,9 @@ int PMD_params_to_file_anti_bug_thread (std::vector<float> & frequencies, std::v
 
 // Author: Jaime Martin (modification of previous function)
 // PMD_params_to_Frame
-int PMD_params_to_Frame(Frame & Frame_00_cap, Frame & Frame_90_cap, float frequency_, float distance_, float shutter_, char* comport, bool loop, PixStoring ps_ = PIXELS_STORING_GLOBAL);
+int PMD_params_to_Frame(Frame & Frame_00_cap, Frame & Frame_90_cap, float frequency_, float distance_, float shutter_, char* comport, bool loop, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim = false);
 // there's a weird bug when calling directly to PMD_params_to_Frame from thread constructor. With this re-calling functtion the bug is avoided
-int PMD_params_to_Frame_anti_bug_thread(Frame & Frame_00_cap, Frame & Frame_90_cap, float frequency_, float distance_, float shutter_, char* comport, bool loop, PixStoring ps_ = PIXELS_STORING_GLOBAL);
+int PMD_params_to_Frame_anti_bug_thread(Frame & Frame_00_cap, Frame & Frame_90_cap, float frequency_, float distance_, float shutter_, char* comport, bool loop, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim = false);
 
 // Author: Jaime Martin
 // PMD_charArray_to_file (...) (DEPRECATED)

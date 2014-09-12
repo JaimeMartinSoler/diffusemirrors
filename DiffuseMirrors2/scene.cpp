@@ -743,39 +743,67 @@ void Object3D::setBox(Point & boxPC, Point & boxRaxisN, float deg, Point & boxS,
 }
 
 // Setter Screen FoV measurement. Here each Point is an actual Point
-void Object3D::setScreenFoVmeasP(Point & camC, Point & camN, PixStoring ps_) {
+void Object3D::setScreenFoVmeasP(Point & camC, Point & camN, PixStoring ps_, bool pSim_) {
 
 	// setting the Object3D screen of the original camera FoV measurement
-	s.resize(numPix(ps_));
+	s.resize(numPix(ps_, pSim_));
 	ot = UNKOWN_OBT;
 	ps = ps_;
-	float pixelSr = CAMERA_FOV_Y_METERS / ((float)CAMERA_PIX_Y);	// pixel size 
-	float pixelSc = CAMERA_FOV_X_METERS / ((float)CAMERA_PIX_X);
-	int rOffset = 0, cOffset = 0;
-	if (ps_ == PIXELS_VALID) {rOffset = CAMERA_PIX_Y_BAD_TOP; cOffset = CAMERA_PIX_X_BAD_LEFT;}
-	for (int r = 0; r < rows(ps_); r++) {
-		for (int c = 0; c < cols(ps_); c++) {
-			s[rc2idx(r, c, ps_)].p.resize(QUAD);
-			//s[rc2idx(r, c, ps_)].set(1.0f, 1.0f, 1.0f, 1.0f, 1.0f, QUAD);	// erse_me
-			s[rc2idx(r, c, ps_)].p[0].set((c + cOffset) * pixelSc, -(r + rOffset) * pixelSr - pixelSr, 0.0f);
-			s[rc2idx(r, c, ps_)].p[1].set((c + cOffset) * pixelSc + pixelSc, -(r + rOffset) * pixelSr - pixelSr, 0.0f);
-			s[rc2idx(r, c, ps_)].p[2].set((c + cOffset) * pixelSc + pixelSc, -(r + rOffset) * pixelSr, 0.0f);
-			s[rc2idx(r, c, ps_)].p[3].set((c + cOffset) * pixelSc, -(r + rOffset) * pixelSr, 0.0f);
-			s[rc2idx(r, c, ps_)].c.set((c + cOffset) * pixelSc + pixelSc / 2.0f, -(r + rOffset) * pixelSr - pixelSr / 2.0f, 0.0f);
+	
+	// setting pixels sizes
+	float pixSizeRealR = CAMERA_FOV_Y_METERS / ((float)CAMERA_PIX_Y);
+	float pixSizeRealC = CAMERA_FOV_X_METERS / ((float)CAMERA_PIX_X);
+	float pixSizeR, pixSizeC, offsetR, offsetC;
+	if (pSim_) {
+		if (ps_ == PIXELS_TOTAL) {
+			pixSizeR = CAMERA_FOV_Y_METERS / ((float)PMD_SIM_ROWS);
+			pixSizeC = CAMERA_FOV_X_METERS / ((float)PMD_SIM_COLS);
+			offsetR = 0.0f;
+			offsetC = 0.0f;
+		} else if (ps_ == PIXELS_VALID) {
+			pixSizeR = CAMERA_FOV_Y_METERS * (((float)CAMERA_PIX_Y_VALID) / ((float)CAMERA_PIX_Y)) / ((float)PMD_SIM_ROWS);
+			pixSizeC = CAMERA_FOV_X_METERS * (((float)CAMERA_PIX_X_VALID) / ((float)CAMERA_PIX_X)) / ((float)PMD_SIM_COLS);
+			offsetR = - (float)CAMERA_PIX_Y_BAD_TOP * pixSizeRealR;
+			offsetC = (float)CAMERA_PIX_X_BAD_LEFT * pixSizeRealC;
+		}
+	} else {
+		pixSizeR = pixSizeRealR;
+		pixSizeC = pixSizeRealC;
+		if (ps_ == PIXELS_TOTAL) {
+			offsetR = 0.0f;
+			offsetC = 0.0f;
+		} else if (ps_ == PIXELS_VALID) {
+			offsetR = - (float)CAMERA_PIX_Y_BAD_TOP * pixSizeRealR;
+			offsetC = (float)CAMERA_PIX_X_BAD_LEFT * pixSizeRealC;
 	}	}
+
+	// fill the patches
+	int s_idx;
+	for (int r = 0; r < rows(ps_, pSim_); r++) {
+		for (int c = 0; c < cols(ps_, pSim_); c++) {
+			s_idx = rc2idx(r, c, ps_, pSim_);
+			s[s_idx].p.resize(QUAD);
+			//s[s_idx].set(1.0f, 1.0f, 1.0f, 1.0f, 1.0f, QUAD);	// just for testing
+			s[s_idx].p[0].set(offsetC + c * pixSizeC, offsetR - (r + 1) * pixSizeR, 0.0f);
+			s[s_idx].p[1].set(offsetC + (c + 1) * pixSizeC, offsetR - (r + 1) * pixSizeR, 0.0f);
+			s[s_idx].p[2].set(offsetC + (c + 1) * pixSizeC, offsetR - r * pixSizeR, 0.0f);
+			s[s_idx].p[3].set(offsetC + c * pixSizeC, offsetR - r * pixSizeR, 0.0f);
+			s[s_idx].c.set(offsetC + (c + 0.5f) * pixSizeC, offsetR - (r + 0.5f) * pixSizeR, 0.0f);
+	}	}
+
 	// setting the relative to the camera position of the screen as the original camera FoV meas
-	Point sreenC(CAMERA_FOV_X_METERS / 2.0f, -CAMERA_FOV_Y_METERS / 2.0f, 0.0f);	// actual center of screen, indep of ps
+	Point sreenC(CAMERA_FOV_X_METERS / 2.0f, -CAMERA_FOV_Y_METERS / 2.0f, 0.0f);	// actual center of screen, indep of ps, pSim
 	Point screenN(0.0f, 0.0f, 1.0f);
 	tra(camC - sreenC);
 	rotFromP(crossN(screenN, camN).normal(), radN(screenN, camN) + PI, camC);	// note +PI we need to add 180 deg
 	tra(camN * CAMERA_DIST_FOV_MEAS);
-	//if (SCENEMAIN.o.size() <= SCENE_SIZE)	// erse_me
-	//	SCENEMAIN.o.push_back((*this));		// erse_me
+	//if (SCENEMAIN.o.size() <= SCENE_SIZE)	// just for testing
+	//	SCENEMAIN.o.push_back((*this));		// just for testing
 }
 // Setter Screen FoV measurement. Here each Point is the Normal to the corresponding Point of setScreenFoVmeasP
-void Object3D::setScreenFoVmeasN(Point & camC, Point & camN, PixStoring ps_) {
+void Object3D::setScreenFoVmeasN(Point & camC, Point & camN, PixStoring ps_, bool pSim_) {
 	// get the setScreenFoVmeasP
-	setScreenFoVmeasP(camC, camN, ps_);
+	setScreenFoVmeasP(camC, camN, ps_, pSim_);
 	// get and normalize the vector, getting setScreenFoVmeasN
 	for (size_t i = 0; i < s.size(); i++) {
 		s[i].p[0] -= camC;	s[i].p[0].normalize();
@@ -786,9 +814,9 @@ void Object3D::setScreenFoVmeasN(Point & camC, Point & camN, PixStoring ps_) {
 	}
 }
 // Setter Screen FoV measurement. Here each Point is the Normal to the corresponding Point of setScreenFoVmeasP
-void Object3D::setScreenFoVmeasNs(Point & camC, Point & camN, PixStoring ps_) {
+void Object3D::setScreenFoVmeasNs(Point & camC, Point & camN, PixStoring ps_, bool pSim_) {
 	// get the setScreenFoVmeasP
-	setScreenFoVmeasP(camC, camN, ps_);
+	setScreenFoVmeasP(camC, camN, ps_, pSim_);
 	// get and normalize the vector, getting setScreenFoVmeasN
 	float distCamScreen = dist(camC, int_linePN_object3D(camC, camN, *this));
 	for (size_t i = 0; i < s.size(); i++) {
@@ -944,16 +972,16 @@ void Object3D::setLaser(Point & posC, Point & axisN, float deg, Point & size, Po
 	rotDegFromC(axisN, deg);
 }
 // Setter Wall Patches (6)
-void Object3D::setWallPatches(Scene & scene, PixStoring ps_) {
+void Object3D::setWallPatches(Scene & scene, PixStoring ps_, bool pSim_) {
 
 	// Set the Object3D
-	s.resize(numPix(ps_));
+	s.resize(numPix(ps_, pSim_));
 	ot = WALL_PATCHES;
 	ps = ps_;
 
 	// Setting constant elements
 	Object3D screenFoVmeasN;
-	screenFoVmeasN.setScreenFoVmeasN(scene.o[CAMERA].s[0].c, scene.o[CAMERA].normalQUAD(), ps_);
+	screenFoVmeasN.setScreenFoVmeasN(scene.o[CAMERA].s[0].c, scene.o[CAMERA].normalQUAD(), ps_, pSim_);
 
 	// Update pixel patches
 	for (int i = 0; i < s.size(); i++) {
@@ -975,21 +1003,22 @@ void Object3D::setCameraFoV(Scene & scene, float R_, float G_, float B_, float A
 	ps = ps_;
 
 	// Setting constant elements
+	bool pSim_ = true;	// doesn't matter true or false here as the concern is the edges, but true takes less calculations
 	Object3D screenFoVmeasN;
-	screenFoVmeasN.setScreenFoVmeasN(scene.o[CAMERA].s[0].c, scene.o[CAMERA].normalQUAD(), ps_);
+	screenFoVmeasN.setScreenFoVmeasN(scene.o[CAMERA].s[0].c, scene.o[CAMERA].normalQUAD(), ps_, pSim_);	
 
 	// Get intersections
 	Point p0, p1, p2, p3;
 	if (scene.o[WALL].s.size() > 0) {
-		p0.set(int_linePN_object3D(scene.o[CAMERA].s[0].c, screenFoVmeasN.s[rc2idx(rows(ps_) - 1, 0, ps_)].p[0], scene.o[WALL]));
-		p1.set(int_linePN_object3D(scene.o[CAMERA].s[0].c, screenFoVmeasN.s[rc2idx(rows(ps_) - 1, cols(ps_) - 1, ps_)].p[1], scene.o[WALL]));
-		p2.set(int_linePN_object3D(scene.o[CAMERA].s[0].c, screenFoVmeasN.s[rc2idx(0, cols(ps_) - 1, ps_)].p[2], scene.o[WALL]));
-		p3.set(int_linePN_object3D(scene.o[CAMERA].s[0].c, screenFoVmeasN.s[rc2idx(0, 0, ps_)].p[3], scene.o[WALL]));
+		p0.set(int_linePN_object3D(scene.o[CAMERA].s[0].c, screenFoVmeasN.s[rc2idx(rows(ps, pSim_) - 1, 0, ps, pSim_)].p[0], scene.o[WALL]));
+		p1.set(int_linePN_object3D(scene.o[CAMERA].s[0].c, screenFoVmeasN.s[rc2idx(rows(ps, pSim_) - 1, cols(ps, pSim_) - 1, ps, pSim_)].p[1], scene.o[WALL]));
+		p2.set(int_linePN_object3D(scene.o[CAMERA].s[0].c, screenFoVmeasN.s[rc2idx(0, cols(ps, pSim_) - 1, ps, pSim_)].p[2], scene.o[WALL]));
+		p3.set(int_linePN_object3D(scene.o[CAMERA].s[0].c, screenFoVmeasN.s[rc2idx(0, 0, ps, pSim_)].p[3], scene.o[WALL]));
 	} else {
-		p0.set(scene.o[CAMERA].s[0].c + screenFoVmeasN.s[rc2idx(rows(ps_) - 1, 0, ps_)].p[0] * distDefault);
-		p1.set(scene.o[CAMERA].s[0].c + screenFoVmeasN.s[rc2idx(rows(ps_) - 1, cols(ps_) - 1, ps_)].p[1] * distDefault);
-		p2.set(scene.o[CAMERA].s[0].c + screenFoVmeasN.s[rc2idx(0, cols(ps_) - 1, ps_)].p[2] * distDefault);
-		p3.set(scene.o[CAMERA].s[0].c + screenFoVmeasN.s[rc2idx(0, 0, ps_)].p[3] * distDefault);
+		p0.set(scene.o[CAMERA].s[0].c + screenFoVmeasN.s[rc2idx(rows(ps, pSim_) - 1, 0, ps, pSim_)].p[0] * distDefault);
+		p1.set(scene.o[CAMERA].s[0].c + screenFoVmeasN.s[rc2idx(rows(ps, pSim_) - 1, cols(ps, pSim_) - 1, ps, pSim_)].p[1] * distDefault);
+		p2.set(scene.o[CAMERA].s[0].c + screenFoVmeasN.s[rc2idx(0, cols(ps, pSim_) - 1, ps, pSim_)].p[2] * distDefault);
+		p3.set(scene.o[CAMERA].s[0].c + screenFoVmeasN.s[rc2idx(0, 0, ps, pSim_)].p[3] * distDefault);
 	}
 	// Set the lines
 	s[0].set(scene.o[CAMERA].s[0].c, p0, scene.o[CAMERA].s[0].c);		s[0].set(1.0f, R_, G_, B_, A_, LINE);
@@ -1054,19 +1083,19 @@ void Object3D::setVolumePatches() {
 	rotyFromP(radN(originN, refN) + PI, originC);
 	tra(refC);
 }
-void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_) { // TO-DO
+void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_, bool pSim_) { // TO-DO
 }
 // Setter, Updater Pixel Patches (10)
-void Object3D::setPixelPatches(Scene & scene, float distDefault, PixStoring ps_) {
+void Object3D::setPixelPatches(Scene & scene, float distDefault, PixStoring ps_, bool pSim_) {
 
 	// Set the Object3D
-	s.resize(numPix(ps_));
+	s.resize(numPix(ps_, pSim_));
 	ot = PIXEL_PATCHES;
 	ps = ps_;
 
 	// Setting constant elements
 	Object3D screenFoVmeasN;
-	screenFoVmeasN.setScreenFoVmeasN(scene.o[CAMERA].s[0].c, scene.o[CAMERA].normalQUAD(), ps_);
+	screenFoVmeasN.setScreenFoVmeasN(scene.o[CAMERA].s[0].c, scene.o[CAMERA].normalQUAD(), ps_, pSim_);
 
 	// Update pixel patches
 	for (int i = 0; i < s.size(); i++) {
@@ -1079,17 +1108,17 @@ void Object3D::setPixelPatches(Scene & scene, float distDefault, PixStoring ps_)
 		s[i].c.set   (scene.o[CAMERA].s[0].c + screenFoVmeasN.s[i].c    * distDefault);
 	}
 }
-void Object3D::setPixelPatches(Scene & scene, Frame & frame00, Frame & frame90, PixStoring ps_) {
+void Object3D::setPixelPatches(Scene & scene, Frame & frame00, Frame & frame90, PixStoring ps_, bool pSim_) {
 
 	// Set the Object3D
-	s.resize(numPix(ps_));
+	s.resize(numPix(ps_, pSim_));
 	ot = PIXEL_PATCHES;
 	ps = ps_;
 
 	// Setting constant elements
-	std::vector<float> depthMap(numPix(ps_));	// depthMap stores the relative to the camera distance per pixel
+	std::vector<float> depthMap(numPix(ps_, pSim_));	// depthMap stores the relative to the camera distance per pixel
 	Object3D screenFoVmeasN;
-	screenFoVmeasN.setScreenFoVmeasN(scene.o[CAMERA].s[0].c, scene.o[CAMERA].normalQUAD(), ps_);
+	screenFoVmeasN.setScreenFoVmeasN(scene.o[CAMERA].s[0].c, scene.o[CAMERA].normalQUAD(), ps_, pSim_);
 
 	// Setting Depth Map from the FRAMES captured
 	setDepthMap(depthMap, frame00, frame90);
@@ -1105,12 +1134,12 @@ void Object3D::setPixelPatches(Scene & scene, Frame & frame00, Frame & frame90, 
 		s[i].c.set(scene.o[CAMERA].s[0].c    + screenFoVmeasN.s[i].c    * depthMap[i]);
 	}
 }
-void Object3D::updatePixelPatches_Sinusoid(Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_) {
+void Object3D::updatePixelPatches_Sinusoid(Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_, bool pSim_) {
 
 	// Setting constant elements
-	std::vector<float> depthMap(numPix(ps_));	// depthMap stores the relative to the camera distance per pixel
+	std::vector<float> depthMap(numPix(ps_, pSim_));	// depthMap stores the relative to the camera distance per pixel
 	Object3D screenFoVmeasN;
-	screenFoVmeasN.setScreenFoVmeasN(scene.o[CAMERA].s[0].c, scene.o[CAMERA].normalQUAD(), ps_);
+	screenFoVmeasN.setScreenFoVmeasN(scene.o[CAMERA].s[0].c, scene.o[CAMERA].normalQUAD(), ps_, pSim_);
 
 	// Syncronization
 	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
@@ -1157,13 +1186,13 @@ void Object3D::updatePixelPatches_Sinusoid(Scene & scene, Frame & frame00, Frame
 	}
 	// --- END OF LOOP -----------------------------------------------------------------------------------------
 }
-void Object3D::updatePixelPatches_Simulation(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_) {
+void Object3D::updatePixelPatches_Simulation(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_, bool pSim_) {
 	
 	// Setting constant elements
 	Point camC = scene.o[CAMERA].s[0].c;
 	Point camN = scene.o[CAMERA].normalQUAD();
 	Object3D screenFoVmeasNs;
-	screenFoVmeasNs.setScreenFoVmeasNs(camC, camN, ps_);
+	screenFoVmeasNs.setScreenFoVmeasNs(camC, camN, ps_, pSim_);
 	Scene sceneCopy(scene);
 	CalibrationMatrix cmx(info);
 
@@ -1187,7 +1216,7 @@ void Object3D::updatePixelPatches_Simulation(Info & info, Scene & scene, Frame &
 			cv_frame_object.wait(locker_frame_object);
 
 		// Update pixel patches, setting the Best Fit
-		updatePixelPatches_Simulation_BestFit(cmx, sceneCopy, frame00, camC, camN, screenFoVmeasNs, ps_);
+		updatePixelPatches_Simulation_BestFit(cmx, sceneCopy, frame00, camC, camN, screenFoVmeasNs, ps_, pSim_);
 		scene.o[PIXEL_PATCHES] = sceneCopy.o[PIXEL_PATCHES];
 
 		// Syncronization
@@ -1525,7 +1554,7 @@ void Scene::add(Object3D & o0) {
 }
 
 // Setter Scene Direct Vision
-void Scene::setScene_DirectVision(PixStoring ps) {
+void Scene::setScene_DirectVision(PixStoring ps, bool pSim_) {
 
 	// CAMERA (0)
 	Point camPosC(0.0f, 0.75f, 0.0f);	// pos of the center of the camera
@@ -1628,19 +1657,19 @@ void Scene::setScene_DirectVision(PixStoring ps) {
 	o[CAMERA_FOV].setCameraFoV(*this, cafR, cafG, cafB, cafA, ps, cafDist);
 
 	// PIXEL_PATCHES (10)
-	o[PIXEL_PATCHES].setPixelPatches(*this, 2.0f, ps);
+	o[PIXEL_PATCHES].setPixelPatches(*this, 2.0f, ps, pSim_);
 	/*
 	char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\test_03";
 	char file_name[1024] = "PMD";
 	Info info(dir_name, file_name);
 	RawData rawData(info);
-	Frame frame00(rawData, 0, 0, 0, 0, ps);
-	Frame frame90(rawData, 0, 0, 0, 1, ps);
-	o[PIXEL_PATCHES].setPixelPatches(*this, frame00, frame90, ps);
+	Frame frame00(rawData, 0, 0, 0, 0, ps, pSim_);
+	Frame frame90(rawData, 0, 0, 0, 1, ps, pSim_);
+	o[PIXEL_PATCHES].setPixelPatches(*this, frame00, frame90, ps, pSim_);
 	*/
 }
 // Setter Scene Occlusion
-void Scene::setScene_Occlusion(PixStoring ps) {
+void Scene::setScene_Occlusion(PixStoring ps, bool pSim_) {
 
 	// CAMERA (0)
 	Point camPosC(0.0f, 0.75f, 0.0f);	// pos of the center of the camera
@@ -1762,7 +1791,7 @@ void Scene::setScene_Occlusion(PixStoring ps) {
 	o[FLOOR].ot = FLOOR;
 
 	// WALL_PATCHES (6)
-	o[WALL_PATCHES].setWallPatches(*this, ps);
+	o[WALL_PATCHES].setWallPatches(*this, ps, pSim_);
 
 	// CAMERA_FOV (7)
 	float cafR = 0.0f, cafG = 0.0f, cafB = 1.0f, cafA = 1.0f;
@@ -1776,7 +1805,8 @@ void Scene::setScene_Occlusion(PixStoring ps) {
 	o[VOLUME_PATCHES].setVolumePatches();
 }
 // Setter Scene Calibration Matrix
-void Scene::setScene_CalibrationMatrix(float laser_to_cam_offset_x, float laser_to_cam_offset_y, float laser_to_cam_offset_z, float dist_wall_cam) {
+void Scene::setScene_CalibrationMatrix(float laser_to_cam_offset_x, float laser_to_cam_offset_y, float laser_to_cam_offset_z, float dist_wall_cam,
+	PixStoring ps, bool pSim_) {
 	
 	// CAMERA (0)
 	Point camPosC(0.0f, 0.75f, 0.0f);	// pos of the center of the camera
@@ -1873,18 +1903,18 @@ void Scene::setScene_CalibrationMatrix(float laser_to_cam_offset_x, float laser_
 	o[FLOOR].ot = FLOOR;
 	
 	// WALL_PATCHES (6)
-	o[WALL_PATCHES].setWallPatches(*this, PIXELS_TOTAL);
+	o[WALL_PATCHES].setWallPatches(*this, ps, pSim_);
 }
 
 // ----- NON-MEMBER FUNCITONS ------------------------
-void updatePixelPatches_Sinusoid_antiBugThread(Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_) {
-	scene.o[PIXEL_PATCHES].updatePixelPatches_Sinusoid(scene, frame00, frame90, loop, ps_);
+void updatePixelPatches_Sinusoid_antiBugThread(Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_, bool pSim_) {
+	scene.o[PIXEL_PATCHES].updatePixelPatches_Sinusoid(scene, frame00, frame90, loop, ps_, pSim_);
 }
-void updatePixelPatches_Simulation_antiBugThread(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_) {
-	scene.o[PIXEL_PATCHES].updatePixelPatches_Simulation(info, scene, frame00, frame90, loop, ps_);
+void updatePixelPatches_Simulation_antiBugThread(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_, bool pSim_) {
+	scene.o[PIXEL_PATCHES].updatePixelPatches_Simulation(info, scene, frame00, frame90, loop, ps_, pSim_);
 }
-void updateVolumePatches_Occlusion_antiBugThread(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_) {
-	scene.o[VOLUME_PATCHES].updateVolumePatches_Occlusion(info, scene, frame00, frame90, loop, ps_);
+void updateVolumePatches_Occlusion_antiBugThread(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_, bool pSim_) {
+	scene.o[VOLUME_PATCHES].updateVolumePatches_Occlusion(info, scene, frame00, frame90, loop, ps_, pSim_);
 }
 
 
@@ -1970,7 +2000,7 @@ void setDepthMap(std::vector<float> & depthMap, Frame & frame00, Frame & frame90
 	for (int r = 0; r < frame00.rows; r++) {
 		for (int c = 0; c < frame00.cols; c++) {
 			pathDist = (atan2(-frame90.at(r, c), frame00.at(r, c)) + PI) * C_LIGHT_AIR / (2 * PI * frame00.freq * 1000000.0f) + delay_m_100MHz;
-			depthMap[rc2idx(r, c, frame00.ps)] = pathDist / 2.0f;	// this is an approximation that supposes camera and laser close enough
+			depthMap[rc2idx(r, c, frame00.ps, frame00.pSim)] = pathDist / 2.0f;	// this is an approximation that supposes camera and laser close enough
 	}	}
 }
 

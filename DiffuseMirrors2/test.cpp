@@ -31,14 +31,47 @@ void test_toPixSim(char* dir_name, char* file_name) {
 	// create Frames
 	Info info(dir_name, file_name);
 	RawData rawData(info);
-	Frame frameRealPT(rawData, info.freqV.size() - 1, 0, info.shutV.size() - 1, 0, PIXELS_TOTAL, false);
-	Frame frameRealPV(rawData, info.freqV.size() - 1, 0, info.shutV.size() - 1, 0, PIXELS_VALID, false);
-	Frame frameSimPT(rawData, info.freqV.size() - 1, 0, info.shutV.size() - 1, 0, PIXELS_TOTAL, true);
-	Frame frameSimPV(rawData, info.freqV.size() - 1, 0, info.shutV.size() - 1, 0, PIXELS_VALID, true);
+	CalibrationMatrix cmx(info);
+	int freqIdx = info.freqV.size() - 1;
+	int distIdx = 0;
+	int shutIdx = info.shutV.size() - 1;
+	int phasIdx = 0;
+	Frame frameRealPT(rawData, freqIdx, distIdx, shutIdx, phasIdx, PIXELS_TOTAL, false);
+	Frame frameRealPV(rawData, freqIdx, distIdx, shutIdx, phasIdx, PIXELS_VALID, false);
+	Frame frameSimPT(rawData, freqIdx, distIdx, shutIdx, phasIdx, PIXELS_TOTAL, true);
+	Frame frameSimPV(rawData, freqIdx, distIdx, shutIdx, phasIdx, PIXELS_VALID, true);
 	Frame frameUpPT(frameSimPT);
 	Frame frameUpPV(frameSimPV);
 	frameUpPT.toPixReal();
 	frameUpPV.toPixReal();
+	Frame frameRealPVcmx (frameRealPV);
+	Frame frameRealPV_div_cmx (frameRealPV);
+	Frame frameSimPTcmx (frameSimPT);
+	Frame frameSimPT_div_cmx (frameSimPT);
+	Frame frameSimPVcmx (frameSimPV);
+	Frame frameSimPV_div_cmx (frameSimPV);
+	int idx = 0;
+	bool pSim = false;
+	for(int r = 0; r < frameRealPVcmx.rows; r++) { 
+		for(int c = 0; c < frameRealPVcmx.cols; c++) {
+			idx = rc2idx(r,c,PIXELS_VALID, pSim);
+			frameRealPVcmx.data[idx] = cmx.C_at(freqIdx, distIdx, r, c, PIXELS_VALID, pSim);
+			frameRealPV_div_cmx.data[idx] = frameRealPVcmx.data[idx] / frameRealPV.data[idx];
+	}	}
+	pSim = true;
+	for(int r = 0; r < frameSimPTcmx.rows; r++) { 
+		for(int c = 0; c < frameSimPTcmx.cols; c++) {
+			idx = rc2idx(r,c,PIXELS_VALID, pSim);
+			frameSimPTcmx.data[idx] = cmx.C_at(freqIdx, distIdx, r, c, PIXELS_TOTAL, pSim);
+			frameSimPT_div_cmx.data[idx] = frameSimPTcmx.data[idx] / frameSimPT.data[idx];
+	}	}
+	pSim = true;
+	for(int r = 0; r < frameSimPVcmx.rows; r++) { 
+		for(int c = 0; c < frameSimPVcmx.cols; c++) {
+			idx = rc2idx(r,c,PIXELS_VALID, pSim);
+			frameSimPVcmx.data[idx] = cmx.C_at(freqIdx, distIdx, r, c, PIXELS_VALID, pSim);
+			frameSimPV_div_cmx.data[idx] = frameSimPVcmx.data[idx] / frameSimPV.data[idx];
+	}	}
 
 	// plot Frames
 	int plotDelayMs = 1;
@@ -49,6 +82,12 @@ void test_toPixSim(char* dir_name, char* file_name) {
 	frameSimPV.plot(plotDelayMs, destroyWindow, "Frame Sim PV");
 	frameUpPT.plot(plotDelayMs, destroyWindow, "Frame Up PT");
 	frameUpPV.plot(plotDelayMs, destroyWindow, "Frame Up PV");
+	frameRealPVcmx.plot(plotDelayMs, destroyWindow, "Frame Real PV cmx");
+	frameRealPV_div_cmx.plot(plotDelayMs, destroyWindow, "Frame Real PV/PVcmx");
+	frameSimPTcmx.plot(plotDelayMs, destroyWindow, "Frame Sim PT cmx");
+	frameSimPT_div_cmx.plot(plotDelayMs, destroyWindow, "Frame Sim PT/PTcmx");
+	frameSimPVcmx.plot(plotDelayMs, destroyWindow, "Frame Sim PV cmx");
+	frameSimPV_div_cmx.plot(plotDelayMs, destroyWindow, "Frame Sim PV/PVcmx");
 
 	// Experiments
 	Frame frameRealDifUpPT(frameRealPT);
