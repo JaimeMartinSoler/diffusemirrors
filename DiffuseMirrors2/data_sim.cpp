@@ -9,332 +9,306 @@
 // MATLAB
 #include "engine.h"
 
-// gets all the data results, once the scene (OBJECT3D_SET) has been configured
-void get_data_sim_diffused_mirror() {
 
-	// PAPER ------------------------------------------------------------------------------------
 
-	// L_E;		// Le(l) in the paper. Radiance from the light point in the wall from the laser
+// ----------------------------------------------------------------------------------------------------------------------------------------
+// ----- DIRECT VISION --------------------------------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------------------------------------------------------
+
+// This will include a minimization algorithm, but for now it will run some simulations manually and get the best fit
+// is totally inefficient with this implementation, just to try the system
+void updatePixelPatches_Simulation_BestFit(CalibrationMatrix & cmx, Scene & sceneCopy, Frame & frameSim, Frame & frame00, Point & camC, Point & camN, Object3D & screenFoVmeasNs, PixStoring ps_, bool pSim_) {
+
+	// pixPatchesBestFit
+	Object3D pixPatchesBestFit;
+	float distHSmin = FLT_MAX;
+	float distHS_;
+
+	// get freq_idx
+	int freq_idx = get_freq_idx(*(cmx.info), frame00.freq);	// returns -1 if no idx correspondance was found
+	if (freq_idx < 0) {
+		std::cout << "\nWarning: Frame freq = " << frame00.freq << " is not a freq in .cmx freqV = ";
+		print(cmx.info->freqV);
+		return;
+	}
+
+	// we will discretize the simulation just by the distances to the camera (constant for all pixel patches as screenFoVmeasNs[i]*dist)
+	float dRes = 0.05f;
+	float dMin = 1.0f;
+	float dMax = 5.0f + dRes / 2.0f;
 	
-	// Radiance from each volume patch. L(x) in the paper. 
-	std::cout << "\nHERE 00A: ";
-	int radiance_volume_patches_size = SCENEMAIN.o[VOLUME_PATCHES].s.size();	// TO-DO
-	std::cout << "\nHERE 00B";
-	std::vector<float> radiance_volume_patches(radiance_volume_patches_size);
-	get_radiance_volume_patches(radiance_volume_patches);
-	// (Radiance from each volume patch)·(Area of each volume patch). L(x)·Area(x)
-	// As long as we deal with patches instead of points, we are relating an L(x) with
-	// the patch which x represents weighted with its Area.
-	// If we don't weight each patch with each area, 4 wall patches of area 1.0 would give a
-	// 4 times higher combined L(x) than 1 wall patch (the comb of the previous ones) of area 4.0
-	// Also used in the "MYSELF" part
-	std::vector<float> radiance_volume_patches_x_area(radiance_volume_patches_size);
-	get_radiance_volume_patches_x_area(radiance_volume_patches_x_area, radiance_volume_patches);
+	// COMIBATION ITERATOR
+	/*
+	float dRes = 0.05f;
+	float dMin = 1.0f;
+	float dMax = 5.0f + dRes / 2.0f;
+	std::vector<float> pixPatchDist(numPix(ps_), 0.0f);
+	bool finishLoop = false;
+	int pos = 0;
+	while (!finishLoop) {
+	pixPatchDist[pos=0] += dRes;
+	while (pixPatchDist[pos] > dMax) {
+	if (pos >= pixPatchDist.size() - 1) {
+	finishLoop = true;
+	break;
+	}
+	pixPatchDist[pos] = dMin;
+	pixPatchDist[++pos] += dRes;
+	}	}
+	*/
 
-	// Radiance from the wall patch. L(w) in the paper. 
-	std::vector<float> radiance_wall_patches(CAMERA_PIX_X * CAMERA_PIX_Y);
-	get_radiance_wall_patches(radiance_wall_patches, radiance_volume_patches);
-
-
-	// MYSELF (Combined with Papers) ------------------------------------------------------------
-
-	// Transient pixel = Impulse response of the scene. alpha_r in Ref08
-	// vector of maps. One map for pixel representing
-	//   x axis = key   = time (r) in ns
-	//   y axis = value = amplitude of the impulse response
-	std::vector<std::multimap<float, float>> transient_image(CAMERA_PIX_X * CAMERA_PIX_Y);
-	get_transient_image(transient_image, radiance_volume_patches_x_area);
-	
-	// Pixels value. H(w,phi) in the paper
-	float distance = 0.0f;		// (m)
-	float frequency = 100.0f;	// (MHz)
-	float phase = 0.0f;			// (deg)
-	float shutter = 1920.0f;	// (us)
-	float Em = 1.0f;
-	std::vector<float> pixels_value(CAMERA_PIX_X * CAMERA_PIX_Y);
-	get_pixels_value(pixels_value, transient_image, distance, frequency, phase, shutter, Em);
-	
-	// Plot a transient pixel with MATLAB Engine, from transient_image
-	int pix_x = (CAMERA_PIX_X-1) / 2;	// max = CAMERA_PIX_X-1
-	int pix_y = (CAMERA_PIX_Y-1) / 2;	// max = CAMERA_PIX_Y-1
-	// MATLAB Engine takes too much time to start, comment out next line unless you need to debugg
-	//plot_transient_pixel(transient_image, pix_x, pix_y);
-
-	// Plot image pixels values with opencv, from pixels_value
-	Frame pixels_value_frame(pixels_value, false, distance, frequency, phase, shutter);
-	pixels_value_frame.plot();
+	for (float d = dMin; d < dMax; d += dRes) {
+		// Update pixel patches
+		for (int i = 0; i < sceneCopy.o[PIXEL_PATCHES].s.size(); i++) {
+			sceneCopy.o[PIXEL_PATCHES].s[i].p[0].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[0] * d);	// Useless for meas but for rendering
+			sceneCopy.o[PIXEL_PATCHES].s[i].p[1].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[1] * d);	// Useless for meas but for rendering
+			sceneCopy.o[PIXEL_PATCHES].s[i].p[2].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[2] * d);	// Useless for meas but for rendering
+			sceneCopy.o[PIXEL_PATCHES].s[i].p[3].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[3] * d);	// Useless for meas but for rendering
+			sceneCopy.o[PIXEL_PATCHES].s[i].c.set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].c    * d);	// Useful for meas
+		}
+		// get Simulation Frame (S)
+		set_DirectVision_Simulation_Frame(cmx, sceneCopy, frameSim, freq_idx, ps_, pSim_);
+		// get Distance(H,S)
+		distHS_ = distHS(frame00, frameSim);
+		// check if Distance(H,S) is better and update the pixPatchesBestFit
+		if (distHS_ < distHSmin) {
+			distHSmin = distHS_;
+			pixPatchesBestFit = sceneCopy.o[PIXEL_PATCHES];
+		}
+	}
+	sceneCopy.o[PIXEL_PATCHES] = pixPatchesBestFit;
 }
 
 
-// gets all the data results with the simple set-up, once the scene (OBJECT3D_SET) has been configured
-void get_data_sim_direct_vision_wall() {
+// sets a Simulated Frame for the Direct Vision case, from a Calibration Matrix
+void set_DirectVision_Simulation_Frame(CalibrationMatrix & cmx, Scene & sceneCopy, Frame & frameSim, int freq_idx, PixStoring ps_, bool pSim_) {
 
-	// Transient pixel = Impulse response of the scene. alpha_r in Ref08
-	// vector of maps. One map for pixel representing
-	//   x axis = key   = time (r) in ns
-	//   y axis = value = amplitude of the impulse response
-	std::vector<std::multimap<float, float>> transient_image_simple(CAMERA_PIX_X * CAMERA_PIX_Y);
-	get_transient_image_simple(transient_image_simple);
-
-	// Pixels value. H(w,phi) in the paper
-	float distance = 0.0f;		// (m)
-	float frequency = 100.0f;	// (MHz)
-	float phase = 0.0f;			// (deg)
-	float shutter = 1920.0f;	// (us)
-	float Em = 1.0f;
-	std::vector<float> pixels_value_simple(CAMERA_PIX_X * CAMERA_PIX_Y);
-	get_pixels_value(pixels_value_simple, transient_image_simple, distance, frequency, phase, shutter, Em);
-
-	// Plot image pixels values with opencv, from pixels_value
-	Frame pixels_value_simple_frame(pixels_value_simple, false, distance, frequency, phase, shutter);
-	pixels_value_simple_frame.plot();
-}
-
-
-
-
-// (2014-09-08)
-void set_DirectVision_Simulation_Frame (CalibrationMatrix & cmx, Scene & sceneCopy, Frame & frameSim, int freq_idx, PixStoring ps_, bool pSim_) {
-	
 	// Simulated Image Vector
 	float relativeAlbedo = 1.0f;
 	std::vector<float> DirectVision_Simulation(numPix(ps_, pSim_));
 	for (int r = 0; r < rows(ps_, pSim_); r++) {
 		for (int c = 0; c < cols(ps_, pSim_); c++) {
-			DirectVision_Simulation[rc2idx(r,c,ps_, pSim_)] = cmx.S_DirectVision (freq_idx, r, c,
-				sceneCopy.o[LASER].s[0].c, sceneCopy.o[PIXEL_PATCHES].s[rc2idx(r,c,ps_, pSim_)].c,  sceneCopy.o[CAMERA].s[0].c, relativeAlbedo, ps_, pSim_);
+			DirectVision_Simulation[rc2idx(r, c, ps_, pSim_)] = cmx.S_DirectVision(freq_idx, r, c,
+				sceneCopy.o[LASER].s[0].c, sceneCopy.o[PIXEL_PATCHES].s[rc2idx(r, c, ps_, pSim_)].c, sceneCopy.o[CAMERA].s[0].c, relativeAlbedo, ps_, pSim_);
 	}	}
-	frameSim.set(DirectVision_Simulation, rows(ps_, pSim_), cols(ps_, pSim_), cmx.info->freqV[freq_idx], 0.0f, cmx.info->shutV[cmx.info->shutV.size()-1], 0.0f, ps_, pSim_);
+	frameSim.set(DirectVision_Simulation, rows(ps_, pSim_), cols(ps_, pSim_), cmx.info->freqV[freq_idx], 0.0f, cmx.info->shutV[cmx.info->shutV.size() - 1], 0.0f, ps_, pSim_);
+}
+
+
+// Distance (Measurement, Simulation) function
+float distHS(Frame & H, Frame & S) {
+
+	// Create the (H/S) vector
+	int sizeHS = H.data.size();
+	std::vector<float> HS(sizeHS);
+	for (size_t i = 0; i < sizeHS; i++)
+		HS[i] = H.data[i] / S.data[i];
+
+	// (H/S)mean0, (H/S)var0
+	float mean0 = mean(HS);
+	float var0 = var(HS);
+
+	// Get rid of outliers
+	int outliersSym = 8;	// it erases one min and one max outlier each time
+	int min_idx, max_idx;
+	for (int i = 0; i < outliersSym; i++) {
+		min(HS, min_idx);
+		max(HS, max_idx);
+		HS[min_idx] = mean0;
+		HS[max_idx] = mean0;
+	}
+	float var1 = var(HS);
+
+	// dist(H,S) = [var1(H/S)^2] / var0(H/S)
+	return (var1 * var1) / var0;
 }
 
 
 
+
+// ----------------------------------------------------------------------------------------------------------------------------------------
+// ----- OCCLUSION ------------------------------------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------------------------------------------------------
+
+// This will include a minimization algorithm, but for now it will run some simulations manually and get the best fit
+// is totally inefficient with this implementation, just to try the system
+void updateVolumePatches_Occlusion_BestFit(CalibrationMatrix & cmx, Scene & sceneCopy, Object3D volPatchesCopy, Frame & frameSim, Frame & frame00, Point & walN, Point & refN, float dRes, PixStoring ps_, bool pSim_) {
+
+	// pixPatchesBestFit
+	Object3D volPatchesBestFit;
+	float distHSmin = FLT_MAX;
+	float distHS_;
+
+	// get freq_idx
+	int freq_idx = get_freq_idx(*(cmx.info), frame00.freq);	// returns -1 if no idx correspondance was found
+	if (freq_idx < 0) {
+		std::cout << "\nWarning: Frame freq = " << frame00.freq << " is not a freq in .cmx freqV = ";
+		print(cmx.info->freqV);
+		return;
+	}
+	
+	// Combination Iterator: we will discretize the simulation with all the possible combinations of volume patches
+	float dMin = 0.0f;
+	float dMax = dRes * (VOLUME_GRID_SIZE_Z + 0.5f);
+	std::vector<float> pixPatchDist(VOLUME_GRID_SIZE_X * VOLUME_GRID_SIZE_Y, 0.0f);
+	bool finishLoop = false;
+	int pos = 0;
+	int iter = 0;
+	while (!finishLoop) {
+		iter++; Sleep(200);
+		if (true || (iter % 100) == 0)
+			std::cout << "\niter = " << iter;
+		// get Simulation Frame (S)
+		set_Occlusion_Frame(cmx, SCENEMAIN, frame00, frameSim, walN, freq_idx, ps_, pSim_);
+		distHS_ = distHS(frame00, frameSim);
+		// check if Distance(H,S) is better and update the pixPatchesBestFit
+		if (distHS_ < distHSmin) {
+			distHSmin = distHS_;
+			volPatchesBestFit = SCENEMAIN.o[PIXEL_PATCHES];
+		}
+
+		// Combination Iteration:
+		SCENEMAIN.o[VOLUME_PATCHES].s[0].tra(refN * pixPatchDist[0]);
+		pixPatchDist[pos=0] += dRes;
+		while (pixPatchDist[pos] > dMax) {
+			if (pos >= pixPatchDist.size() - 1) {
+				finishLoop = true;
+				break;
+			}
+			pixPatchDist[pos] = dMin;
+			SCENEMAIN.o[VOLUME_PATCHES].s[pos] = volPatchesCopy.s[pos];
+			pixPatchDist[++pos] += dRes;
+			SCENEMAIN.o[VOLUME_PATCHES].s[pos].tra(refN * pixPatchDist[pos]);
+		}
+	}
+	SCENEMAIN.o[VOLUME_PATCHES] = volPatchesBestFit;
+}
+
+// sets a Simulated Frame for the Occlusion case, from a Transient Image and a Calibration Matrix. This does all the calculations
+void set_Occlusion_Frame(CalibrationMatrix & cmx, Scene & scene, Frame & frameReal, Frame & frameSim, Point & walN, int freq_idx, PixStoring ps_, bool pSim_) {
+	
+	// L_E;		// Le(l) in the paper. Radiance from the light point in the wall from the laser
+
+	// Radiance from each volume patch. L(x) in the paper. 
+	int radiance_volPatches_size = SCENEMAIN.o[VOLUME_PATCHES].s.size();
+	// set volPatches Normals
+	std::vector<Point> radiance_volPatchesN(radiance_volPatches_size);
+	for (std::size_t i = 0; i < scene.o[VOLUME_PATCHES].s.size(); i++)
+		radiance_volPatchesN[i] = scene.o[VOLUME_PATCHES].s[i].normalQUAD();
+	std::vector<float> radiance_volPatches(radiance_volPatches_size);
+	set_radiance_volPatches(radiance_volPatches, radiance_volPatchesN, scene, scene.o[LASER_RAY].s[0].p[1], walN, true, true);
+
+	// Transient pixel = Impulse response of the scene. alpha_r in Ref08
+	// vector of maps. One map for pixel representing:
+	//   x axis = key   = path length (r) in m
+	//   y axis = value = amplitude of the impulse response
+	std::vector<std::multimap<float, float>> transientImage(numPix(ps_, pSim_));
+	set_TransientImage(transientImage, radiance_volPatches, radiance_volPatchesN, scene, scene.o[LASER_RAY].s[0].p[1], walN);
+
+	// Pixels value. H(w,phi) in the paper
+	set_FrameSim(transientImage, cmx, frameSim, freq_idx, ps_, pSim_);
+
+
+	// Plot a transient pixel with MATLAB Engine, from TransientImage
+	/*
+	int pix_x = (CAMERA_PIX_X - 1) / 2;	// max = CAMERA_PIX_X-1
+	int pix_y = (CAMERA_PIX_Y - 1) / 2;	// max = CAMERA_PIX_Y-1
+	// MATLAB Engine takes too much time to start, comment out next line unless you need to debugg
+	plot_transient_pixel(TransientImage, pix_x, pix_y);
+	*/
+}
+
+// For set_Occlusion_Frame(...)
 // gets the Radiance from each volume patch (radiance from each volume patch). L(x) in the paper. 
 // It deals with patches backing (not facing) the wall (they are considered ALWAYS facing the wall)
-// TO-DO: SOLVE THIS
-void get_radiance_volume_patches(std::vector<float> & radiance_volume_patches_) {
-	/*
-	// wall and laser ray intersection point
-	Point* laser_ray_from = (*(*OBJECT3D_SET[LASER])[0]).c;			// center of laser
-	Point* laser_ray_normal = (*(*OBJECT3D_SET[LASER])[0]).n[0];	// normal of laser
-	PointMesh* wall_face = (*OBJECT3D_SET[WALL])[0];				// face of the wall
-	Point* wall_l = &(Point(get_intersection_linePointNormal_pointmesh(laser_ray_from, laser_ray_normal, wall_face)));
-	// wall normal vector
-	Point* wall_n = &(*(*(*OBJECT3D_SET[WALL])[0]).n[0]);
-	
-	// volume patch center point
-	Point* volume_patch_c;
-	// volume patch normal vector
-	Point* volume_patch_n;
-	// volume patch albedo
-	float volume_patch_albedo;
+void set_radiance_volPatches(std::vector<float> & radiance_volPatches, std::vector<Point> & radiance_volPatchesN, Scene & scene, Point & walL, Point & walN, bool normArea, bool constArea) {
 
 	// geometry term
-	float geometry_term;
+	float geometryTerm_;
 
-	// gets all (facing) rad_volume_patches_
-	for (std::size_t iv = 0; iv < radiance_volume_patches_.size(); iv++) {
-		volume_patch_c = (*(*OBJECT3D_SET[VOLUME_PATCHES])[iv]).c;
-		volume_patch_n = (*(*OBJECT3D_SET[VOLUME_PATCHES])[iv]).n[0];
-		volume_patch_albedo = (*(*OBJECT3D_SET[VOLUME_PATCHES])[iv]).albedo;
-		geometry_term = get_geometry_term(wall_l, wall_n, volume_patch_c, volume_patch_n);
-		if (geometry_term > 0.0f)
-			radiance_volume_patches_[iv] = L_E * volume_patch_albedo * geometry_term;
+	// gets all (facing) rad_volPatches_
+	for (std::size_t i = 0; i < scene.o[VOLUME_PATCHES].s.size(); i++) {
+		geometryTerm_ = geometryTerm(walL, walN, scene.o[VOLUME_PATCHES].s[i].c, radiance_volPatchesN[i]);
+		if (geometryTerm_ > 0.0f)
+			radiance_volPatches[i] = L_E * scene.o[VOLUME_PATCHES].s[i].albedo * geometryTerm_;
 		else
-			radiance_volume_patches_[iv] = - L_E * volume_patch_albedo * geometry_term;
+			radiance_volPatches[i] = -L_E * scene.o[VOLUME_PATCHES].s[i].albedo * geometryTerm_;
 	}
-	*/
+
+	// normalize with the Area of the pixel patch (if so)
+	if (normArea) {
+		if (constArea) {
+			float area = scene.o[VOLUME_PATCHES].s[0].areaRECTANGLE();
+			for (std::size_t i = 0; i < scene.o[VOLUME_PATCHES].s.size(); i++)
+				radiance_volPatches[i] *= area;
+		} else {
+			for (std::size_t i = 0; i < scene.o[VOLUME_PATCHES].s.size(); i++)
+				radiance_volPatches[i] *= scene.o[VOLUME_PATCHES].s[i].areaRECTANGLE();
+	}	}
 }
 
-
-// (Radiance from each volume patch)·(Area of each volume patch). L(x)·Area(x)
-// As long as we deal with patches instead of points, we are relating an L(x) with
-// the patch which x represents weighted with its Area.
-// If we don't weight each patch with each area, 4 wall patches of area 1.0 would give a
-// 4 times higher combined L(x) than 1 wall patch (the comb of the previous ones) of area 4.0
-// Also used in the "MYSELF" part
-void get_radiance_volume_patches_x_area(std::vector<float> & radiance_volume_patches_x_area_, std::vector<float> & radiance_volume_patches_) {
-	// TO-DO
-	/*
-	// volume patch
-	PointMesh* volume_patch;
-
-	for (std::size_t iv = 0; iv < radiance_volume_patches_.size(); iv++) {
-		volume_patch = (*OBJECT3D_SET[VOLUME_PATCHES])[iv];
-		radiance_volume_patches_x_area_[iv] = radiance_volume_patches_[iv]*(*volume_patch).get_area();
-	}
-	*/
-}
-
-
-// gets the Radiance from the wall patch (radiance from each wall patch). L(w) in the paper. 
-// It deals with volume patches backing (not facing) wall patches (they are considered ALWAYS facing the wall)
-// TO-DO: Solve This
-void get_radiance_wall_patches(std::vector<float> & radiance_wall_patches_, std::vector<float> & radiance_volume_patches_) {
-	/*
-	// wall patch center
-	Point* wall_patch_c;
-	// wall patch normal
-	Point* wall_patch_n;
-	// wall patch albedo
-	float wall_patch_albedo;
-
-	// volume patch center point
-	Point* volume_patch_c;
-	// volume patch normal vector
-	Point* volume_patch_n;
-
-	// geometry term
-	float geometry_term;
-
-	// gets all radiance_wall_patches_
-	for (std::size_t iw = 0; iw < radiance_wall_patches_.size(); iw++) {
-		wall_patch_c = (*(*OBJECT3D_SET[WALL_PATCHES])[iw]).c;
-		wall_patch_n = (*(*OBJECT3D_SET[WALL_PATCHES])[iw]).n[0];
-		wall_patch_albedo = (*(*OBJECT3D_SET[WALL_PATCHES])[iw]).albedo;
-		radiance_wall_patches_[iw] = 0.0f;
-
-		// gets the radiance for the wall patch iw
-		for (std::size_t iv = 0; iv < radiance_volume_patches_.size(); iv++) {
-			volume_patch_c = (*(*OBJECT3D_SET[VOLUME_PATCHES])[iv]).c;
-			volume_patch_n = (*(*OBJECT3D_SET[VOLUME_PATCHES])[iv]).n[0];
-			geometry_term = get_geometry_term(volume_patch_c, volume_patch_n, wall_patch_c, wall_patch_n);
-			if (geometry_term > 0.0f)
-				radiance_wall_patches_[iw] += radiance_volume_patches_[iv] * wall_patch_albedo * geometry_term;
-			else
-				radiance_wall_patches_[iw] -= radiance_volume_patches_[iv] * wall_patch_albedo * geometry_term;
-		}
-	}
-	*/
-}
-
-
+// For set_Occlusion_Frame(...)
 // gets the Transient pixel = Impulse response of the scene. alpha_r in Ref08
-// vector of maps. One map for pixel representing
-//   x axis = key   = time (r) in ns
+// vector of maps. One map for pixel representing:
+//   x axis = key   = path length (r) in m
 //   y axis = value = amplitude of the impulse response
-void get_transient_image(std::vector<std::multimap<float, float>> & transient_image_, std::vector<float> & radiance_volume_patches_) {
-
-	// TO-DO
-	/*
-	// laser center
-	Point* laser_c = (*(*OBJECT3D_SET[LASER])[0]).c;				// center of laser
-	// wall and laser ray intersection point
-	Point* laser_ray_normal = (*(*OBJECT3D_SET[LASER])[0]).n[0];	// normal of laser
-	PointMesh* wall_face = (*OBJECT3D_SET[WALL])[0];				// face of the wall
-	Point* wall_l = &(Point(get_intersection_linePointNormal_pointmesh(laser_c, laser_ray_normal, wall_face)));
-	// camera center
-	Point* camera_c = (*(*OBJECT3D_SET[CAMERA])[0]).c;				// center of camera
-
-	// wall patch center
-	Point* wall_patch_c;
-	// wall patch normal
-	Point* wall_patch_n;
-	// wall patch albedo
-	float wall_patch_albedo;
-
-	// volume patch center point
-	Point* volume_patch_c;
-	// volume patch normal vector
-	Point* volume_patch_n;
+void set_TransientImage(std::vector<std::multimap<float, float>> & transientImage, std::vector<float> & radiance_volPatches_, std::vector<Point> & radiance_volPatchesN, Scene & scene, Point & walL, Point & walN) {
 
 	// geometry_term_xw, alpha_r, r
-	float geometry_term_xw;
-	float alpha_r;	// alpha_r	= L_E * albedo_w * alpha_x		=
-					//			= L_E * albedo_w * g(x) * v(x)	= 
-					//			= albedo_w * L(x) * geometry_term_xw
-	float r;	// time (in ns) when the value alpha_r arrives to the pixel
+	float geometryTerm_xw;
+	float alpha_r;	// alpha_r =    L_E * albedo_w * alpha_x =    L_E * albedo_w * g(x) * v(x) =    albedo_w * L(x) * geometryTerm_xw
+	float r;		// path length (r) in m, when the value alpha_r arrives to the pixel
 
 	// gets Transient Image
-	for (std::size_t iw = 0; iw < transient_image_.size(); iw++) {
-		wall_patch_c = (*(*OBJECT3D_SET[WALL_PATCHES])[iw]).c;
-		wall_patch_n = (*(*OBJECT3D_SET[WALL_PATCHES])[iw]).n[0];
-		wall_patch_albedo = (*(*OBJECT3D_SET[WALL_PATCHES])[iw]).albedo;
+	for (std::size_t wi = 0; wi < transientImage.size(); wi++) {
 		std::multimap<float, float> transient_pixel;
-
-		for (std::size_t iv = 0; iv < radiance_volume_patches_.size(); iv++) {
-			volume_patch_c = (*(*OBJECT3D_SET[VOLUME_PATCHES])[iv]).c;
-			volume_patch_n = (*(*OBJECT3D_SET[VOLUME_PATCHES])[iv]).n[0];
-			geometry_term_xw = get_geometry_term(volume_patch_c, volume_patch_n, wall_patch_c, wall_patch_n);
-			if (geometry_term_xw > 0.0f)
-				alpha_r = wall_patch_albedo * radiance_volume_patches_[iv] * geometry_term_xw;
+		for (std::size_t vi = 0; vi < radiance_volPatches_.size(); vi++) {
+			geometryTerm_xw = geometryTerm(scene.o[VOLUME_PATCHES].s[vi].c, radiance_volPatchesN[vi], scene.o[WALL_PATCHES].s[wi].c, walN);
+			if (geometryTerm_xw > 0.0f)
+				alpha_r = scene.o[WALL_PATCHES].s[wi].albedo * radiance_volPatches_[vi] * geometryTerm_xw;
 			else
-				alpha_r = - wall_patch_albedo * radiance_volume_patches_[iv] * geometry_term_xw;
-			r = 1000000000.0f * dist_5(laser_c, wall_l, volume_patch_c, wall_patch_c, camera_c) / C_LIGHT_AIR;
+				alpha_r = -scene.o[WALL_PATCHES].s[wi].albedo * radiance_volPatches_[vi] * geometryTerm_xw;
+			r = distPath5(scene.o[LASER].s[0].c, walL, scene.o[VOLUME_PATCHES].s[vi].c, scene.o[WALL_PATCHES].s[wi].c, scene.o[CAMERA].s[0].c);
 			transient_pixel.insert(std::pair<float, float>(r, alpha_r));	// auto sorted by key
 		}
-		transient_image_[iw] = transient_pixel;
+		transientImage[wi] = transient_pixel;
 	}
-	*/
+}
+
+// For set_Occlusion_Frame(...)
+// sets a Simulated Frame for the Occlusion case, from a Transient Image and a Calibration Matrix. This does NOT do any calculations
+void set_FrameSim(std::vector<std::multimap<float, float>> & transientImage, CalibrationMatrix & cmx, Frame & frameSim, int freq_idx, PixStoring ps_, bool pSim_) {
+
+	// Simulated Image Vector
+	int idx;
+	std::vector<float> vectorSim(numPix(ps_, pSim_), 0.0f);
+	// Go pixel by pixel
+	for (int r = 0; r < rows(ps_, pSim_); r++) {
+		for (int c = 0; c < cols(ps_, pSim_); c++) {
+			idx = rc2idx(r, c, ps_, pSim_);
+			// Fill with the values of the Transient Pixel
+			for (std::multimap<float, float>::iterator it = transientImage[idx].begin(); it != transientImage[idx].end(); ++it)
+				vectorSim[idx] += (*it).second * cmx.C_atX(freq_idx, (*it).first, r, c, ps_, pSim_);
+	}	}
+	// set the new Frame Simulated
+	frameSim.set(vectorSim, rows(ps_, pSim_), cols(ps_, pSim_), cmx.info->freqV[freq_idx], 0.0f, cmx.info->shutV[cmx.info->shutV.size() - 1], 0.0f, ps_, pSim_);
 }
 
 
 
-// Transient pixel = Impulse response of the scene. alpha_r in Ref08
-// vector of maps. One map for pixel representing
-//   x axis = key   = time (r) in ns
-//   y axis = value = amplitude of the impulse response
-void get_transient_image_simple(std::vector<std::multimap<float, float>> & transient_image_simple_) {
-	
-	// TO-DO
-	/*
-	// laser center
-	Point* laser_c = (*(*OBJECT3D_SET[LASER])[0]).c;				// center of laser
-	// camera center
-	Point* camera_c = (*(*OBJECT3D_SET[CAMERA])[0]).c;				// center of camera
-	// wall patch center
-	Point* wall_patch_c;
-	// wall patch albedo
-	float wall_patch_albedo;
 
-	float r;		// time (in ns) when the value alpha_r arrives to the pixel
-	float alpha_r;	// alpha_r	= L_E / (dist(laser, wall_patch))^2
-	float dist_l_w;	// dist(laser, wall_patch)
+// ----------------------------------------------------------------------------------------------------------------------------------------
+// ----- OTHER ----------------------------------------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------------------------------------------------------
 
-	// get get_transient_image_simple
-	for (std::size_t i = 0; i < transient_image_simple_.size(); i++) {
-
-		wall_patch_c = (*(*OBJECT3D_SET[WALL_PATCHES])[i]).c;
-		wall_patch_albedo = (*(*OBJECT3D_SET[WALL_PATCHES])[i]).albedo;
-
-		dist_l_w = dist_2(laser_c, wall_patch_c);
-		alpha_r = L_E / (dist_l_w * dist_l_w);
-		r = 1000000000.0f * dist_3(laser_c, wall_patch_c, camera_c) / C_LIGHT_AIR;
-
-		std::multimap<float, float> transient_pixel_simple;
-		transient_pixel_simple.insert(std::pair<float, float>(r, alpha_r));
-		transient_image_simple_[i] = transient_pixel_simple;
-	}
-	*/
-}
-
-
-// Pixels value. H(w,phi) in the paper
-void get_pixels_value(std::vector<float> & pixels_value_, std::vector<std::multimap<float, float>> & transient_image_, float distance_, float frequency_, float phase_, float shutter_, float Em_) {
-
-	float wave_length = C_LIGHT_AIR / (frequency_ * 1000000.0f);
-	float phase_total = phase_ + 360.f * distance_ / wave_length;	// (deg)
-	float N = shutter_ * frequency_;
-
-	for (std::size_t i = 0; i < pixels_value_.size(); i++) {
-		pixels_value_[i] = 0.0f;
-		for (std::multimap<float, float>::iterator it = transient_image_[i].begin(); it != transient_image_[i].end(); ++it) {
-			pixels_value_[i] += Em_ * (*it).second * correlation(frequency_, phase_total, (*it).first, N);
-		}
-	}
-}
-
-
-// Correlation. c(w,phi)(r) in Paper. Here defined as a function. Later should be a matrix
+// Correlation with Sinusoid asumption. c(w,phi)(r) in Paper.
 // frequency (MHz), phase (deg), r(ns), N (abs)
 float correlation(float frequency_, float phase_, float r_, float N_) {
 	return (N_/(2*frequency_)) * cos(2*PI*frequency_*r_/1000.0f + phase_*PI/180.0f);
 }
 
-
-
 // Plot a transient pixel with MATLAB Engine
-void plot_transient_pixel (std::vector<std::multimap<float, float>> & transient_image_, int pix_x_, int pix_y_) {
+void plot_transient_pixel (std::vector<std::multimap<float, float>> & transientImage, int pix_x_, int pix_y_) {
 	
 	// MATLAB variables
 	Engine *ep;
@@ -342,7 +316,7 @@ void plot_transient_pixel (std::vector<std::multimap<float, float>> & transient_
 	mxArray *V = NULL;
 	// Variables. Array structure needed to deal with MATLAB functions
 	int pos_in_vector = pix_y_*CAMERA_PIX_X + pix_x_;
-	std::multimap<float, float>* transient_pixel = & transient_image_[pos_in_vector];	// pos_in_vector = pix_y_*CAMERA_PIX_X + pix_x_;
+	std::multimap<float, float>* transient_pixel = & transientImage[pos_in_vector];	// pos_in_vector = pix_y_*CAMERA_PIX_X + pix_x_;
 	int size = (*transient_pixel).size();
 	double* time_ns = new double[size];
 	double* value = new double[size];
@@ -441,140 +415,4 @@ void plot_image_pixels_values(std::vector<float> & pixels_value_, int heigth_, i
 	engClose(ep);
 }
 */
-
-
-
-
-
-
-// ----------------------------------------------------------------
-// ----------------------------------------------------------------
-// THE FUNCTIONS BELOW ARE JUST TEMPORTAL AND MAY BE NON-FUNCTIONAL:
-// ----------------------------------------------------------------
-// ----------------------------------------------------------------
-
-
-// gets all the data results with the simple set-up, once the scene (OBJECT3D_SET) has been configured
-void get_data_sim_direct_vision(Frame & frame_in, Frame & frame_out) {
-
-	// Transient pixel = Impulse response of the scene. alpha_r in Ref08
-	// vector of maps. One map for pixel representing
-	//   x axis = key   = time (r) in ns
-	//   y axis = value = amplitude of the impulse response
-	std::vector<std::multimap<float, float>> transient_image_simple;
-	if (frame_in.ps == PIXELS_TOTAL)
-		transient_image_simple.resize(CAMERA_PIX_X * CAMERA_PIX_Y);
-	else if (frame_in.ps == PIXELS_VALID)
-		transient_image_simple.resize(CAMERA_PIX_X_VALID * CAMERA_PIX_Y_VALID);
-	get_transient_image_simple(transient_image_simple);
-
-	// Pixels value. H(w,phi) in the paper
-	float distance	= frame_in.dist;	// (m)
-	float frequency	= frame_in.freq;	// (MHz)
-	float phase		= frame_in.phas;		// (deg)
-	float shutter	= frame_in.shut;		// (us)
-	float Em		= 1.0f;
-	std::vector<float> pixels_value_simple;
-	if (frame_in.ps == PIXELS_TOTAL)
-		pixels_value_simple.resize(CAMERA_PIX_X * CAMERA_PIX_Y);
-	else if (frame_in.ps == PIXELS_VALID)
-		pixels_value_simple.resize(CAMERA_PIX_X_VALID * CAMERA_PIX_Y_VALID);
-	get_pixels_value(pixels_value_simple, transient_image_simple, distance, frequency, phase, shutter, Em);
-
-	// Plot image pixels values with opencv, from pixels_value
-	Frame pixels_value_simple_frame(pixels_value_simple, false, distance, frequency, phase, shutter);
-	pixels_value_simple_frame.plot();
-}
-
-
-
-// (2014-09-08)
-// This will include a minimization algorithm, but for now it will run some simulations manually and get the best fit
-// is totally inefficient with this implementation, just to try the system
-void updatePixelPatches_Simulation_BestFit(CalibrationMatrix & cmx, Scene & sceneCopy, Frame & frame00, Point & camC, Point & camN, Object3D & screenFoVmeasNs, PixStoring ps_, bool pSim_) {
-
-	// pixPatchesBestFit
-	Object3D pixPatchesBestFit;
-	float distMin = FLT_MAX;
-	float distNow;
-	Frame frameSim;
-
-	// get freq_idx
-	int freq_idx = get_freq_idx(*(cmx.info), frame00.freq);	// returns -1 if no idx correspondance was found
-	if (freq_idx < 0) {
-		std::cout << "\nWarning: Frame freq = " << frame00.freq << " is not a freq in .cmx freqV = ";
-		print(cmx.info->freqV);
-		return;
-	}
-
-	// we will discretize the simulation just by the distances to the camera (constant for all pixel patches as screenFoVmeasNs[i]*dist)
-	float dRes = 0.05f;
-	float dMin = 1.0f;
-	float dMax = 5.0f + dRes / 2.0f;
-	/*
-	std::vector<float> pixPatchDist(numPix(ps_), 0.0f);
-	bool finishLoop = false;
-	int pos = 0;
-	while (!finishLoop) {
-		pos = 0;
-		pixPatchDist[pos] += dRes;
-		while (pixPatchDist[pos] > dMax) {
-			if (pos >= pixPatchDist.size() - 1) {
-				finishLoop = true;
-				break;
-			}
-			pixPatchDist[pos] = dMin;
-			pixPatchDist[++pos] += dRes;
-	}	}
-	*/
-	for (float d = dMin; d < dMax; d += dRes) {
-		// Update pixel patches
-		for (int i = 0; i < sceneCopy.o[PIXEL_PATCHES].s.size(); i++) {
-			sceneCopy.o[PIXEL_PATCHES].s[i].p[0].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[0] * d);	// Useless for meas but for rendering
-			sceneCopy.o[PIXEL_PATCHES].s[i].p[1].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[1] * d);	// Useless for meas but for rendering
-			sceneCopy.o[PIXEL_PATCHES].s[i].p[2].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[2] * d);	// Useless for meas but for rendering
-			sceneCopy.o[PIXEL_PATCHES].s[i].p[3].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[3] * d);	// Useless for meas but for rendering
-			sceneCopy.o[PIXEL_PATCHES].s[i].c.set   (sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].c    * d);	// Useful for meas
-		}
-		// Get Simulation Frame (S)
-		set_DirectVision_Simulation_Frame (cmx, sceneCopy, frameSim, freq_idx, ps_, pSim_);
-		// Get Distance(H,S)
-		distNow = distMeasSim(frame00, frameSim);
-		// Check if Distance(H,S) is better and update the pixPatchesBestFit
-		if (distNow < distMin) {
-			distMin = distNow;
-			pixPatchesBestFit = sceneCopy.o[PIXEL_PATCHES];
-	}	}
-	sceneCopy.o[PIXEL_PATCHES] = pixPatchesBestFit;
-}
-
-
-// (2014-09-08)
-float distMeasSim(Frame & H, Frame & S) {
-	
-	// Create the (H/S) vector
-	int sizeHS = H.data.size();
-	std::vector<float> HS(sizeHS);	
-	for (size_t i = 0; i < sizeHS; i++)
-		HS[i] = H.data[i] / S.data[i];
-
-	// (H/S)mean0, (H/S)var0
-	float mean0 = mean(HS);
-	float var0  = var(HS);
-
-	// Get rid of outliers
-	int outliersSym = 8;	// it erases one min and one max outlier each time
-	int min_idx, max_idx;
-	for (int i = 0; i < outliersSym; i++) {
-		min(HS, min_idx);
-		max(HS, max_idx);
-		HS[min_idx] = mean0;
-		HS[max_idx] = mean0;
-	}
-	float var1 = var(HS);
-
-	// dist(H,S) = [var1(H/S)^2] / var0(H/S)
-	return (var1 * var1) / var0;
-}
-
 

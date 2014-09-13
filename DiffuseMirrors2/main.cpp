@@ -153,7 +153,7 @@ int main_DirectVision_Simulation_Frame(char* dir_name_, char* file_name_) {
 	return 0;
 }
 
-// TO-DO (TO-DO related functions inside and TO-CHECK)
+// Occlusion problem. Real Time.
 int main_Occlusion(char* dir_name_, char* file_name_, bool loop = true) {
 	
 	// set the Info
@@ -165,12 +165,12 @@ int main_Occlusion(char* dir_name_, char* file_name_, bool loop = true) {
 	float shutter = 1920.0f;
 	char comport[128] = "COM6";
 	PixStoring ps = PIXELS_STORING_GLOBAL;
-	bool pSim = false;
+	bool pSim = true;
 	std::thread thread_PMD_params_to_Frame(PMD_params_to_Frame_anti_bug_thread, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), frequency, distance, shutter, comport, loop, ps, pSim);
 
 	// Set all the corresponding scene and start updating
 	SCENEMAIN.setScene_Occlusion(ps, pSim);
-	std::thread thread_updateVolumePatches_Occlusion(updateVolumePatches_Occlusion_antiBugThread, std::ref(info), std::ref(SCENEMAIN), std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), loop, ps, pSim);
+	std::thread thread_updateVolumePatches_Occlusion(updateVolumePatches_Occlusion_antiBugThread, std::ref(info), std::ref(SCENEMAIN), std::ref(FRAME_00_CAPTURE), loop, ps, pSim);
 
 	// Render all the object3D of the scene
 	int argcStub = 0;
@@ -188,6 +188,47 @@ int main_Occlusion(char* dir_name_, char* file_name_, bool loop = true) {
 
 	return 0;
 }
+
+// Occlusion problem. NO Real Time, one only Frame from RawData.
+int main_Occlusion_Frame(char* dir_name_, char* file_name_) {
+
+	// set the Info
+	Info info(dir_name_, file_name_);
+
+	// get a Frame from the RawData
+	RawData rawData(info);
+	float pathWallOffset = -0.5f;
+	PixStoring ps = PIXELS_VALID;
+	bool pSim = true;
+	int dist_idx = get_dist_idx(info, pathWallOffset);	// returns -1 if no idx correspondance was found
+	if (dist_idx < 0) {
+		std::cout << "\nWarning: Distance Offset = " << pathWallOffset << " is not a dist in .cmx distV = ";
+		print(info.distV);
+		return -1;
+	}
+	Frame frame00(rawData, info.freqV.size() - 1, dist_idx, info.shutV.size() - 1, 0, ps, pSim);
+	Frame frame90(rawData, info.freqV.size() - 1, dist_idx, info.shutV.size() - 1, 1, ps, pSim);
+	UPDATED_NEW_FRAME = true;
+	//frame00.plot();
+
+	// Set all the corresponding scene and start updating
+	SCENEMAIN.setScene_Occlusion(ps, pSim);
+	std::thread thread_updateVolumePatches_Occlusion(updateVolumePatches_Occlusion_antiBugThread, std::ref(info), std::ref(SCENEMAIN), std::ref(frame00), false, ps, pSim);
+
+	// Render all the object3D of the scene
+	int argcStub = 0;
+	char** argvStub = NULL;
+	std::thread thread_render(render_anti_bug_thread, argcStub, argvStub);
+
+	// joins
+	thread_updateVolumePatches_Occlusion.join();
+	thread_render.join();
+	//cv::destroyAllWindows();
+
+	return 0;
+}
+
+
 
 int main_FoVmeas(bool loop = true) {
 
@@ -309,20 +350,21 @@ int main_Test(char* dir_name_, char* file_name_, bool loop = true) {
 int main(int argc, char** argv) {
 	
 	// Set parameteres
-	SceneType sceneType = DIRECT_VISION_SIMULATION; 
+	SceneType sceneType = OCCLUSION_FRAME;
 	SCENEMAIN.set(sceneType);
-	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\cmx_01";
-	char file_name[1024] = "PMD";
-	//char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\cmx_01";
+	//char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\cmx_01";
 	//char file_name[1024] = "PMD";
-	bool loop = true;
+	char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\cmx_01";
+	char file_name[1024] = "PMD";
+	bool loop = false;
 	
 	// Main Switcher
 	switch (sceneType) {
 		case DIRECT_VISION_SINUSOID:		 main_DirectVision_Sinusoid(loop);							break;
 		case DIRECT_VISION_SIMULATION:		 main_DirectVision_Simulation(dir_name, file_name, loop);	break;
 		case DIRECT_VISION_SIMULATION_FRAME: main_DirectVision_Simulation_Frame(dir_name, file_name);	break;
-		case OCCLUSION:						 main_Occlusion (dir_name, file_name, loop);				break;
+		case OCCLUSION:						 main_Occlusion(dir_name, file_name, loop);					break;
+		case OCCLUSION_FRAME:				 main_Occlusion_Frame(dir_name, file_name);					break;
 		case FOV_MEASUREMENT:				 main_FoVmeas (loop);										break;
 		case RAW_DATA:						 main_RawData (dir_name, file_name);						break;
 		case CALIBRATION_MATRIX:			 main_CalibrationMatrix (dir_name, file_name);				break;

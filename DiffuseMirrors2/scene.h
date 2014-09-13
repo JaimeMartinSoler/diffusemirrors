@@ -179,6 +179,8 @@ public:
 	Point Shape::normalLINE();		// normal of line : (p[1]-p[0]).normal()
 	Point Shape::normalTRIANGLE();	// normal to tri  : normalTo3P(p[0],p[1],p[2])
 	Point Shape::normalQUAD();		// normal to quad : normalTo3P(p[0],p[1],p[2])
+	// area
+	float Shape::areaRECTANGLE();
 	// translation (setter)
 	void Shape::tra(Point const & pr);
 	void Shape::traCto(Point & Cto);
@@ -300,12 +302,13 @@ public:
 	void Object3D::setLaserRay(Scene & scene, float R_ = 0.0f, float G_ = 0.0f, float B_ = 1.0f, float A_ = 1.0f, PixStoring ps_ = PIXELS_STORING_GLOBAL);
 	// Setter, Updater Volume Patches (9)
 	void Object3D::setVolumePatches();
-	void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
+	void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame & frame00, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	// Setter, Updater Pixel Patches (10)
 	void Object3D::setPixelPatches(Scene & scene, float distDefault = 2.0f, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	void Object3D::setPixelPatches(Scene & scene, Frame & frame00, Frame & frame90, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	void Object3D::updatePixelPatches_Sinusoid(Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	void Object3D::updatePixelPatches_Simulation(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
+	
 
 	// ----- FUNCITONS -------------------------------
 
@@ -354,6 +357,10 @@ public:
 	void Object3D::add(Object3D & o0);
 };
 // ----- NON-MEMBER FUNCITONS ------------------------
+
+void updateVolumePatches_Occlusion_antiBugThread(Info & info, Scene & scene, Frame & frame00, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
+void updatePixelPatches_Sinusoid_antiBugThread(Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
+void updatePixelPatches_Simulation_antiBugThread(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 
 // normal to Object3D (TRIANGLE or QUAD)
 Point normalToObject3D(Object3D & o0);
@@ -406,11 +413,6 @@ public:
 		PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 
 };
-// ----- NON-MEMBER FUNCITONS ------------------------
-void updatePixelPatches_Sinusoid_antiBugThread(Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
-void updatePixelPatches_Simulation_antiBugThread(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
-void updateVolumePatches_Occlusion_antiBugThread(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
-
 
 
 // ----------------------------------------------------------------------------------------------------------------------------------------
@@ -435,19 +437,22 @@ float degN(Point & p0N, Point & p1N);
 Point cross(Point & p0, Point & p1);
 float rad(Point & p0, Point & p1);
 float deg(Point & p0, Point & p1);
+float cosNN(Point & n0, Point & n1);
+float cosVN(Point & v, Point & n);
+float cosVV(Point & v0, Point & v1);
 // set depth map
 void setDepthMap(std::vector<float> & depthMap, Frame & frame00, Frame & frame90);
-
-
-// MAIN OPERATORS
-int main_scene(int argc, char**argv);
-
-
-
+// simulation.cpp uses
+float geometryTerm(Point & p0, Point & n0, Point & p1, Point & n1);
+// distPath
+float distPath2(Point & p0, Point & p1);
+float distPath3(Point & p0, Point & p1, Point & p2);
+float distPath4(Point & p0, Point & p1, Point & p2, Point & p3);
+float distPath5(Point & p0, Point & p1, Point & p2, Point & p3, Point & p4);
 
 
 // TO-DO: CREATE ALL OF THIS (SOME ACTUALLY):
-
+/*
 void set_scene_diffused_mirror(bool loop = false);
 void set_scene_direct_vision_wall(bool loop = false);
 void set_scene_direct_vision_any(bool loop = false);
@@ -471,14 +476,6 @@ void set_depth_map(std::vector<float> & depth_map_, Frame & Frame_00_cap, Frame 
 void set_volume_patches_params(std::vector<float> & volume_patches_albedo_, std::vector<Point*> & volume_patches_rot_, std::vector<bool> & volume_patches_bool_);
 void mean_vector_of_points (std::vector<Point> & vec, Point & pt);
 void set_point_to_vector_distances (Point* p, std::vector<Point*> & vp, std::vector<float> & vd);
-
+*/
 #endif
-
-
-
-
-
-
-
-
 
