@@ -397,6 +397,10 @@ Point Shape::normalTRIANGLE() {
 Point Shape::normalQUAD() {
 	return normalTo3P(p[0], p[1], p[2]);
 }
+// area
+float Shape::areaRECTANGLE() {
+	return dist(p[0], p[1]) * dist(p[1], p[2]);
+}
 // translation (setter)
 void Shape::tra(Point const & pr) {
 	for (size_t i = 0; i < p.size(); i++)
@@ -1054,7 +1058,7 @@ void Object3D::setVolumePatches() {
 
 	// Set reference from which the Volume Patches are made (at the end the corresponded transformation will be applied)
 	Point refC(3.0f, 0.0f, 0.0f);
-	Point refN(0.0f, 0.0f, 1.0f);
+	Point refN(0.0f, 0.0f, -1.0f);
 	Point originC(0.0f, 0.0f, 0.0f);
 	Point originN(0.0f, 0.0f, 1.0f);
 
@@ -1080,10 +1084,64 @@ void Object3D::setVolumePatches() {
 	}	}
 
 	// Apply transformations
-	rotyFromP(radN(originN, refN) + PI, originC);
+	rotyFromP(radN(originN, refN), originC);
 	tra(refC);
 }
-void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_, bool pSim_) { // TO-DO
+void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame & frame00, bool loop, PixStoring ps_, bool pSim_) {
+
+	// Setting constant elements
+	CalibrationMatrix cmx(info);
+	Scene sceneCopy(scene);
+	Object3D volPatchesCopy(scene.o[VOLUME_PATCHES]);
+	Frame frameSim;
+	Point camC = scene.o[CAMERA].s[0].c;
+	Point camN = scene.o[CAMERA].normalQUAD();
+	Object3D screenFoVmeasNs;
+	screenFoVmeasNs.setScreenFoVmeasNs(camC, camN, ps_, pSim_);
+	Point walN = scene.o[WALL].normalQUAD();
+	Point refN = scene.o[VOLUME_PATCHES].s[0].normalQUAD();
+	float dRes = dist(scene.o[VOLUME_PATCHES].s[0].p[0], scene.o[VOLUME_PATCHES].s[0].p[1]);
+
+	// Syncronization
+	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
+	locker_frame_object = std::unique_lock<std::mutex>(mutex_frame_object, std::defer_lock);
+
+	// --- LOOP ------------------------------------------------------------------------------------------------
+	bool first_iter = true;
+	while (loop || first_iter) {
+
+		//const clock_t begin_time = clock();
+
+		if (!PMD_LOOP_ENABLE && !first_iter)
+			break;
+		first_iter = false;
+
+		// Syncronization
+		locker_frame_object.lock();		// Lock mutex_frame_object, any thread which used mutex_frame_object can NOT continue until unlock()
+		while (!UPDATED_NEW_FRAME)	//std::cout << "Waiting in Object to finish the UPDATED_NEW_Frame. This is OK!\n";
+			cv_frame_object.wait(locker_frame_object);
+
+		// Update pixel patches, setting the Best Fit
+		updateVolumePatches_Occlusion_BestFit(cmx, sceneCopy, volPatchesCopy, frameSim, frame00, walN, refN, dRes, ps_, pSim_);
+		scene.o[VOLUME_PATCHES] = sceneCopy.o[VOLUME_PATCHES];
+		//frameSim.plot(1, false, "Frame Sim Occ");
+
+		// Syncronization
+		//std::cout << ",    UPDATED_NEW_SCENE\n";
+		UPDATED_NEW_FRAME = false;
+		UPDATED_NEW_SCENE = true;
+		cv_frame_object.notify_all();	// Notify all cv_frame_object. All threads waiting for cv_frame_object will break the wait after waking up
+		locker_frame_object.unlock();	// Unlock mutex_frame_object, now threads which used mutex_frame_object can continue
+
+		//const clock_t end_time = clock();
+		//float ms_time = 1000.0f * float(end_time - begin_time) / (float)CLOCKS_PER_SEC;
+		//float fps_time = 1000.0f / ms_time;
+		//std::cout << "time = " << ms_time << " ms,    fps = " << fps_time <<  " fps\n";
+	}
+	// --- END OF LOOP -----------------------------------------------------------------------------------------
+}
+void updateVolumePatches_Occlusion_antiBugThread(Info & info, Scene & scene, Frame & frame00, bool loop, PixStoring ps_, bool pSim_) {
+	scene.o[VOLUME_PATCHES].updateVolumePatches_Occlusion(info, scene, frame00, loop, ps_, pSim_);
 }
 // Setter, Updater Pixel Patches (10)
 void Object3D::setPixelPatches(Scene & scene, float distDefault, PixStoring ps_, bool pSim_) {
@@ -1186,15 +1244,19 @@ void Object3D::updatePixelPatches_Sinusoid(Scene & scene, Frame & frame00, Frame
 	}
 	// --- END OF LOOP -----------------------------------------------------------------------------------------
 }
+void updatePixelPatches_Sinusoid_antiBugThread(Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_, bool pSim_) {
+	scene.o[PIXEL_PATCHES].updatePixelPatches_Sinusoid(scene, frame00, frame90, loop, ps_, pSim_);
+}
 void Object3D::updatePixelPatches_Simulation(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_, bool pSim_) {
 	
 	// Setting constant elements
+	CalibrationMatrix cmx(info);
+	Scene sceneCopy(scene);
+	Frame frameSim;
 	Point camC = scene.o[CAMERA].s[0].c;
 	Point camN = scene.o[CAMERA].normalQUAD();
 	Object3D screenFoVmeasNs;
 	screenFoVmeasNs.setScreenFoVmeasNs(camC, camN, ps_, pSim_);
-	Scene sceneCopy(scene);
-	CalibrationMatrix cmx(info);
 
 	// Syncronization
 	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
@@ -1216,8 +1278,9 @@ void Object3D::updatePixelPatches_Simulation(Info & info, Scene & scene, Frame &
 			cv_frame_object.wait(locker_frame_object);
 
 		// Update pixel patches, setting the Best Fit
-		updatePixelPatches_Simulation_BestFit(cmx, sceneCopy, frame00, camC, camN, screenFoVmeasNs, ps_, pSim_);
+		updatePixelPatches_Simulation_BestFit(cmx, sceneCopy, frameSim, frame00, camC, camN, screenFoVmeasNs, ps_, pSim_);
 		scene.o[PIXEL_PATCHES] = sceneCopy.o[PIXEL_PATCHES];
+		//frameSim.plot(1, false, "Frame Sim Dir");
 
 		// Syncronization
 		//std::cout << ",    UPDATED_NEW_SCENE\n";
@@ -1232,6 +1295,9 @@ void Object3D::updatePixelPatches_Simulation(Info & info, Scene & scene, Frame &
 		//std::cout << "time = " << ms_time << " ms,    fps = " << fps_time <<  " fps\n";
 	}
 	// --- END OF LOOP -----------------------------------------------------------------------------------------
+}
+void updatePixelPatches_Simulation_antiBugThread(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_, bool pSim_) {
+	scene.o[PIXEL_PATCHES].updatePixelPatches_Simulation(info, scene, frame00, frame90, loop, ps_, pSim_);
 }
 
 
@@ -1906,17 +1972,6 @@ void Scene::setScene_CalibrationMatrix(float laser_to_cam_offset_x, float laser_
 	o[WALL_PATCHES].setWallPatches(*this, ps, pSim_);
 }
 
-// ----- NON-MEMBER FUNCITONS ------------------------
-void updatePixelPatches_Sinusoid_antiBugThread(Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_, bool pSim_) {
-	scene.o[PIXEL_PATCHES].updatePixelPatches_Sinusoid(scene, frame00, frame90, loop, ps_, pSim_);
-}
-void updatePixelPatches_Simulation_antiBugThread(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_, bool pSim_) {
-	scene.o[PIXEL_PATCHES].updatePixelPatches_Simulation(info, scene, frame00, frame90, loop, ps_, pSim_);
-}
-void updateVolumePatches_Occlusion_antiBugThread(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_, bool pSim_) {
-	scene.o[VOLUME_PATCHES].updateVolumePatches_Occlusion(info, scene, frame00, frame90, loop, ps_, pSim_);
-}
-
 
 // ----------------------------------------------------------------------------------------------------------------------------------------
 // ----- OTHER NON-MEMBER FUNCTIONS -------------------------------------------------------------------------------------------------------
@@ -1979,6 +2034,15 @@ float rad(Point & p0, Point & p1) {
 float deg(Point & p0, Point & p1) {
 	return radN(p0.normal(), p1.normal()) * PI / 180.0f;
 }
+float cosNN(Point & n0, Point & n1) {
+	return n0.dot(n1);
+}
+float cosVN(Point & v, Point & n) {
+	return (v.normal()).dot(n);
+}
+float cosVV(Point & v0, Point & v1) {
+	return (v0.normal()).dot(v1.normal());
+}
 // set depth map
 void setDepthMap(std::vector<float> & depthMap, Frame & frame00, Frame & frame90) {
 
@@ -2003,38 +2067,23 @@ void setDepthMap(std::vector<float> & depthMap, Frame & frame00, Frame & frame90
 			depthMap[rc2idx(r, c, frame00.ps, frame00.pSim)] = pathDist / 2.0f;	// this is an approximation that supposes camera and laser close enough
 	}	}
 }
-
-
-// MAIN SCENE
-int main_scene(int argc, char**argv) {
-
-	std::cout << "\nSome Point operations will be shown:\n";
-
-	Point p0;
-	Point p1(1.0f, 1.0f, 1.0f);
-	Point p2(0.3f, -1.6f, 3.2f);
-	Point p3 = p2;
-
-	p0.print("\n  p0 = ", "");
-	p1.print("\n  p1 = ", "");
-	p2.print("\n  p2 = ", "");
-	p3.print("\n  p3 = ", "");
-
-	p0 += p1;	std::cout << "\n\np0 += p1";
-	p1 += p2;	std::cout << "\np1 += p2";
-	p3 *= 2.0f;	std::cout << "\np3 *= 2.0f";
-	p0.print("\n  p0 = ", "");
-	p1.print("\n  p1 = ", "");
-	p2.print("\n  p2 = ", "");
-	p3.print("\n  p3 = ", "");
-
-	std::cout << "\np3[1] = " << p3[1];
-
-
-	std::cout << "\n\n\n";
-	system("pause");
-	return 0;
+// simulation.cpp uses
+float geometryTerm(Point & p0, Point & n0, Point & p1, Point & n1) {
+	Point nX = (p1 - p0);
+	float distPow2_ = nX.modPow2();
+	nX.normalize();
+	return -cosNN(nX, n0) * cosNN(nX, n1) / distPow2_;
 }
-
-
-
+// distPath
+float distPath2(Point & p0, Point & p1) {
+	return dist(p0, p1);
+}
+float distPath3(Point & p0, Point & p1, Point & p2) {
+	return dist(p0, p1) + dist(p1, p2);
+}
+float distPath4(Point & p0, Point & p1, Point & p2, Point & p3) {
+	return dist(p0, p1) + dist(p1, p2) + dist(p2, p3);
+}
+float distPath5(Point & p0, Point & p1, Point & p2, Point & p3, Point & p4) {
+	return dist(p0, p1) + dist(p1, p2) + dist(p2, p3) + dist(p3, p4);
+}
