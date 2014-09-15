@@ -47,13 +47,14 @@ void control_loop_pause() {
 
 
 // Direct Vision problem, Sinusoid f,g assumption. Real Time.
-int main_DirectVision_Sinusoid(bool loop = true) {
+int main_DirectVision_Sinusoid() {
 
 	// capture data directly from PMD to Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE)
 	float frequency = 100.0f;
 	float distance = 0.0f;
 	float shutter = 1920.0f;
 	char comport[128] = "COM6";
+	bool loop = true;
 	PixStoring ps = PIXELS_STORING_GLOBAL;
 	bool pSim = true;
 	std::thread thread_PMD_params_to_Frame(PMD_params_to_Frame_anti_bug_thread, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), frequency, distance, shutter, comport, loop, ps, pSim);
@@ -80,7 +81,7 @@ int main_DirectVision_Sinusoid(bool loop = true) {
 }
 
 // Direct Vision problem, Simulation, uses Calibration Matrix. Real Time.
-int main_DirectVision_Simulation(char* dir_name_, char* file_name_, bool loop = true) {
+int main_DirectVision_Simulation(char* dir_name_, char* file_name_) {
 
 	// set the Info
 	Info info(dir_name_, file_name_);
@@ -90,6 +91,7 @@ int main_DirectVision_Simulation(char* dir_name_, char* file_name_, bool loop = 
 	float distance = 0.0f;
 	float shutter = 1920.0f;
 	char comport[128] = "COM6";
+	bool loop = true;
 	PixStoring ps = PIXELS_STORING_GLOBAL;
 	bool pSim = true;
 	std::thread thread_PMD_params_to_Frame(PMD_params_to_Frame_anti_bug_thread, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), frequency, distance, shutter, comport, loop, ps, pSim);
@@ -138,8 +140,9 @@ int main_DirectVision_Simulation_Frame(char* dir_name_, char* file_name_) {
 	//frame00.plot();
 
 	// Set all the corresponding scene and start updating
+	bool loop = false;
 	SCENEMAIN.setScene_DirectVision(ps, pSim);
-	updatePixelPatches_Simulation_antiBugThread(info, SCENEMAIN, frame00, frame90, false, ps, pSim);	// the second Fame is frame90 but it's not used
+	updatePixelPatches_Simulation_antiBugThread(info, SCENEMAIN, frame00, frame90, loop, ps, pSim);	// the second Fame is frame90 but it's not used
 
 	// Render all the object3D of the scene
 	int argcStub = 0;
@@ -154,7 +157,7 @@ int main_DirectVision_Simulation_Frame(char* dir_name_, char* file_name_) {
 }
 
 // Occlusion problem. Real Time.
-int main_Occlusion(char* dir_name_, char* file_name_, bool loop = true) {
+int main_Occlusion(char* dir_name_, char* file_name_) {
 	
 	// set the Info
 	Info info(dir_name_, file_name_);
@@ -164,6 +167,7 @@ int main_Occlusion(char* dir_name_, char* file_name_, bool loop = true) {
 	float distance = 0.0f;
 	float shutter = 1920.0f;
 	char comport[128] = "COM6";
+	bool loop = true;
 	PixStoring ps = PIXELS_STORING_GLOBAL;
 	bool pSim = true;
 	std::thread thread_PMD_params_to_Frame(PMD_params_to_Frame_anti_bug_thread, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), frequency, distance, shutter, comport, loop, ps, pSim);
@@ -212,8 +216,9 @@ int main_Occlusion_Frame(char* dir_name_, char* file_name_) {
 	//frame00.plot();
 
 	// Set all the corresponding scene and start updating
+	bool loop = false;
 	SCENEMAIN.setScene_Occlusion(ps, pSim);
-	std::thread thread_updateVolumePatches_Occlusion(updateVolumePatches_Occlusion_antiBugThread, std::ref(info), std::ref(SCENEMAIN), std::ref(frame00), false, ps, pSim);
+	std::thread thread_updateVolumePatches_Occlusion(updateVolumePatches_Occlusion_antiBugThread, std::ref(info), std::ref(SCENEMAIN), std::ref(frame00), loop, ps, pSim);
 
 	// Render all the object3D of the scene
 	int argcStub = 0;
@@ -230,30 +235,8 @@ int main_Occlusion_Frame(char* dir_name_, char* file_name_) {
 
 
 
-int main_FoVmeas(bool loop = true) {
 
-	// capture data directly from PMD to Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE)
-	float frequency = 100.0f;
-	float distance = 0.0f;
-	float shutter = 1920.0f;
-	char comport[128] = "COM6";
-	PixStoring ps = PIXELS_STORING_GLOBAL;
-	bool pSim = false;
-	std::thread thread_PMD_params_to_Frame(PMD_params_to_Frame_anti_bug_thread, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), frequency, distance, shutter, comport, loop, ps, pSim);
-	
-	// plot the Frame (combining frame00 and frame90)
-	std::thread thread_plot_frame_fov_measurement (plot_frame_fov_measurement, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), loop, false, (char*)NULL);
-
-	// pause in main to allow control when the loops will finish
-	control_loop_pause();
-
-	// joins
-	thread_PMD_params_to_Frame.join();
-	thread_plot_frame_fov_measurement.join();
-
-	return 0;
-}
-
+// Raw Data Measurement
 int main_RawData(char* dir_name_, char* file_name_) {
 	
 	// set all the object3D of the corresponding scene (just camera, laser and wall)
@@ -275,7 +258,7 @@ int main_RawData(char* dir_name_, char* file_name_) {
 		frequencies.push_back(fi);
 	// DISTANCES
 	std::vector<float> delays;		// (m)
-	float delay_res = 0.1f;
+	float delay_res = 2.0f;
 	float delay_min = -3.0f;
 	float delay_max = 10.0f + delay_res/2.0f;	// (+ delay_res/2.0f) is due to avoid rounding problems
 	for (float di = delay_min; di <= delay_max; di += delay_res)
@@ -303,28 +286,39 @@ int main_RawData(char* dir_name_, char* file_name_) {
 	return 0;
 }
 
-// CHECKED OK: It builds a .cmx file from a .raw file with the parameters stored in the .inf file
-int main_CalibrationMatrix (char* dir_name_, char* file_name_) {
+// Field of View Measurement. Image upscaled in Real Time.
+int main_FoVmeas() {
+
+	// capture data directly from PMD to Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE)
+	float frequency = 100.0f;
+	float distance = 0.0f;
+	float shutter = 1920.0f; // 1920.0f;
+	char comport[128] = "COM6";
+	bool loop = true;
+	PixStoring ps = PIXELS_STORING_GLOBAL;
+	bool pSim = false;
+	std::thread thread_PMD_params_to_Frame(PMD_params_to_Frame_anti_bug_thread, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), frequency, distance, shutter, comport, loop, ps, pSim);
 	
-	// built the global Info instance INFO
-	Info info = Info(dir_name_, file_name_);
-	
-	// create the .cmx file, dealing with the .inf and .raw files. It internally creates the corresponding scene
-	std::thread thread_create_cmx_from_raw (create_cmx_from_raw_anti_bug_thread, std::ref(info));
+	// plot the Frame (combining frame00 and frame90)
+	char windowName[128] = "Frame FoV";
+	std::thread thread_plot_frame_fov_measurement (plot_frame_fov_measurement, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), loop, false, windowName);//(char*)NULL);
 
 	// pause in main to allow control when the loops will finish
-	//control_loop_pause();
-	
+	control_loop_pause();
+
 	// joins
-	thread_create_cmx_from_raw.join();
+	thread_PMD_params_to_Frame.join();
+	thread_plot_frame_fov_measurement.join();
 
 	return 0;
 }
 
-int main_Test(char* dir_name_, char* file_name_, bool loop = true) {
+// Testing main.
+int main_Test(char* dir_name_, char* file_name_) {
 
 	// Set all the object3D of the corresponding scene
 	Info info(dir_name_, file_name_);
+	bool loop = true;
 	PixStoring ps = PIXELS_STORING_GLOBAL;
 	bool pSim = true;
 	//SCENEMAIN.setScene_DirectVision(ps, pSim);
@@ -343,32 +337,49 @@ int main_Test(char* dir_name_, char* file_name_, bool loop = true) {
 	return 0;
 }
 
+// DEPRECATED (now CalibrationMatrix constructor build it from .raw, no need .cmx) .raw to .cmx.
+/*
+int main_CalibrationMatrix (char* dir_name_, char* file_name_) {
+	
+	// built the global Info instance INFO
+	Info info = Info(dir_name_, file_name_);
+	
+	// create the .cmx file, dealing with the .inf and .raw files. It internally creates the corresponding scene
+	std::thread thread_create_cmx_from_raw (create_cmx_from_raw_anti_bug_thread, std::ref(info));
+
+	// pause in main to allow control when the loops will finish
+	//control_loop_pause();
+	
+	// joins
+	thread_create_cmx_from_raw.join();
+
+	return 0;
+}
+*/
 
 
 
 // MAIN
 int main(int argc, char** argv) {
 	
-	// Set parameteres
-	SceneType sceneType = OCCLUSION_FRAME;
+	// Set RAW_DATA
+	SceneType sceneType = FOV_MEASUREMENT;
 	SCENEMAIN.set(sceneType);
-	//char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\cmx_01";
-	//char file_name[1024] = "PMD";
-	char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\cmx_01";
+	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\cmx_01";
+	//char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\cmx_01";
 	char file_name[1024] = "PMD";
-	bool loop = false;
 	
 	// Main Switcher
 	switch (sceneType) {
-		case DIRECT_VISION_SINUSOID:		 main_DirectVision_Sinusoid(loop);							break;
-		case DIRECT_VISION_SIMULATION:		 main_DirectVision_Simulation(dir_name, file_name, loop);	break;
+		case DIRECT_VISION_SINUSOID:		 main_DirectVision_Sinusoid();								break;
+		case DIRECT_VISION_SIMULATION:		 main_DirectVision_Simulation(dir_name, file_name);			break;
 		case DIRECT_VISION_SIMULATION_FRAME: main_DirectVision_Simulation_Frame(dir_name, file_name);	break;
-		case OCCLUSION:						 main_Occlusion(dir_name, file_name, loop);					break;
+		case OCCLUSION:						 main_Occlusion(dir_name, file_name);						break;
 		case OCCLUSION_FRAME:				 main_Occlusion_Frame(dir_name, file_name);					break;
-		case FOV_MEASUREMENT:				 main_FoVmeas (loop);										break;
 		case RAW_DATA:						 main_RawData (dir_name, file_name);						break;
-		case CALIBRATION_MATRIX:			 main_CalibrationMatrix (dir_name, file_name);				break;
-		case TEST:							 main_Test (dir_name, file_name, loop);						break;
+		case FOV_MEASUREMENT:				 main_FoVmeas ();											break;
+		//case CALIBRATION_MATRIX:			 main_CalibrationMatrix (dir_name, file_name);				break;
+		case TEST:							 main_Test (dir_name, file_name);							break;
 		case TEST_TEST:						 test(dir_name, file_name);									break;
 	}
 

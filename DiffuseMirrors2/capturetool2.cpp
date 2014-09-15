@@ -1358,7 +1358,7 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_
 				//std::cout << "total          : time = " << ms_time_loop_total << " ms,    fps = " << fps_time_loop_total <<  " fps\n\n";
 	}
 	// --- END OF CAPTURE LOOP -------------------------------------------------------------------------------
-	
+
 	// closing, deleting, the aftermath
 	delete shutV[0].second;
 	pmdClose (hnd);
