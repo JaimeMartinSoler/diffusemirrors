@@ -36,46 +36,35 @@ void updatePixelPatches_Simulation_BestFit(CalibrationMatrix & cmx, Scene & scen
 	float dRes = 0.05f;
 	float dMin = 1.0f;
 	float dMax = 5.0f + dRes / 2.0f;
+	float albedoRes = 0.1f;
+	float albedoMin = 0.5f;
+	float albedoMax = 1.5f + albedoRes / 2.0f;
 	
-	// COMIBATION ITERATOR
-	/*
-	float dRes = 0.05f;
-	float dMin = 1.0f;
-	float dMax = 5.0f + dRes / 2.0f;
-	std::vector<float> pixPatchDist(numPix(ps_), 0.0f);
-	bool finishLoop = false;
-	int pos = 0;
-	while (!finishLoop) {
-	pixPatchDist[pos=0] += dRes;
-	while (pixPatchDist[pos] > dMax) {
-	if (pos >= pixPatchDist.size() - 1) {
-	finishLoop = true;
-	break;
-	}
-	pixPatchDist[pos] = dMin;
-	pixPatchDist[++pos] += dRes;
-	}	}
-	*/
-
+	// For all distance
 	for (float d = dMin; d < dMax; d += dRes) {
-		// Update pixel patches
+		// Update pixel patches distances 
 		for (int i = 0; i < sceneCopy.o[PIXEL_PATCHES].s.size(); i++) {
 			sceneCopy.o[PIXEL_PATCHES].s[i].p[0].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[0] * d);	// Useless for meas but for rendering
 			sceneCopy.o[PIXEL_PATCHES].s[i].p[1].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[1] * d);	// Useless for meas but for rendering
 			sceneCopy.o[PIXEL_PATCHES].s[i].p[2].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[2] * d);	// Useless for meas but for rendering
 			sceneCopy.o[PIXEL_PATCHES].s[i].p[3].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[3] * d);	// Useless for meas but for rendering
-			sceneCopy.o[PIXEL_PATCHES].s[i].c.set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].c    * d);	// Useful for meas
+			sceneCopy.o[PIXEL_PATCHES].s[i].c.   set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].c    * d);	// Useful for meas
 		}
-		// get Simulation Frame (S)
-		set_DirectVision_Simulation_Frame(cmx, sceneCopy, frameSim, freq_idx, ps_, pSim_);
-		// get Distance(H,S)
-		distHS_ = distHS(frame00, frameSim);
-		// check if Distance(H,S) is better and update the pixPatchesBestFit
-		if (distHS_ < distHSmin) {
-			distHSmin = distHS_;
-			pixPatchesBestFit = sceneCopy.o[PIXEL_PATCHES];
-		}
-	}
+		// For all albedo
+		for (float albedo = albedoMin; albedo < albedoMax; albedo += albedoRes) {
+			// Update pixel patches albedos 
+			for (int i = 0; i < sceneCopy.o[PIXEL_PATCHES].s.size(); i++) {
+				sceneCopy.o[PIXEL_PATCHES].s[i].albedo = albedo;	// Useful for meas
+			}
+			// get Simulation Frame (S)
+			set_DirectVision_Simulation_Frame(cmx, sceneCopy, frameSim, freq_idx, ps_, pSim_);
+			// get Distance(H,S)
+			distHS_ = distHS(frame00, frameSim);
+			// check if Distance(H,S) is better and update the pixPatchesBestFit
+			if (distHS_ < distHSmin) {
+				distHSmin = distHS_;
+				pixPatchesBestFit = sceneCopy.o[PIXEL_PATCHES];
+	}	}	}
 	sceneCopy.o[PIXEL_PATCHES] = pixPatchesBestFit;
 }
 
@@ -95,32 +84,18 @@ void set_DirectVision_Simulation_Frame(CalibrationMatrix & cmx, Scene & sceneCop
 }
 
 
-// Distance (Measurement, Simulation) function
+// dist(H,S) = Sum{(Hi-Si)^2}. Distance (Measurement, Simulation) function. Actually, sed for both Direct Vision and Occlusion problems
 float distHS(Frame & H, Frame & S) {
 
-	// Create the (H/S) vector
-	int sizeHS = H.data.size();
-	std::vector<float> HS(sizeHS);
-	for (size_t i = 0; i < sizeHS; i++)
-		HS[i] = H.data[i] / S.data[i];
-
-	// (H/S)mean0, (H/S)var0
-	float mean0 = mean(HS);
-	float var0 = var(HS);
-
-	// Get rid of outliers
-	int outliersSym = 8;	// it erases one min and one max outlier each time
-	int min_idx, max_idx;
-	for (int i = 0; i < outliersSym; i++) {
-		min(HS, min_idx);
-		max(HS, max_idx);
-		HS[min_idx] = mean0;
-		HS[max_idx] = mean0;
+	// dist(H,S) = Sum{(Hi-Si)^2}
+	float distResult = 0.0f;
+	float H_S_diffPow2;
+	for (size_t i = 0; i < H.data.size(); i++) {
+		H_S_diffPow2 = H.data[i] - S.data[i];
+		distResult += (H_S_diffPow2 * H_S_diffPow2);
 	}
-	float var1 = var(HS);
-
-	// dist(H,S) = [var1(H/S)^2] / var0(H/S)
-	return (var1 * var1) / var0;
+	return distResult;
+	//return distResult * H.data.size();	// to normalize the result to the number of pixels
 }
 
 
@@ -132,7 +107,7 @@ float distHS(Frame & H, Frame & S) {
 
 // This will include a minimization algorithm, but for now it will run some simulations manually and get the best fit
 // is totally inefficient with this implementation, just to try the system
-void updateVolumePatches_Occlusion_BestFit(CalibrationMatrix & cmx, Scene & sceneCopy, Object3D volPatchesCopy, Frame & frameSim, Frame & frame00, Point & walN, Point & refN, float dRes, PixStoring ps_, bool pSim_) {
+void updateVolumePatches_Occlusion_BestFit(CalibrationMatrix & cmx, Scene & sceneCopy, Object3D volPatchesCopy, Frame & frameSim, Frame & frame00, Point & walN, Point & _vopN, float dRes, PixStoring ps_, bool pSim_) {
 
 	// pixPatchesBestFit
 	Object3D volPatchesBestFit;
@@ -147,7 +122,9 @@ void updateVolumePatches_Occlusion_BestFit(CalibrationMatrix & cmx, Scene & scen
 		return;
 	}
 	
+
 	// Combination Iterator: we will discretize the simulation with all the possible combinations of volume patches
+	/*
 	float dMin = 0.0f;
 	float dMax = dRes * (VOLUME_GRID_SIZE_Z + 0.5f);
 	std::vector<float> pixPatchDist(VOLUME_GRID_SIZE_X * VOLUME_GRID_SIZE_Y, 0.0f);
@@ -159,33 +136,70 @@ void updateVolumePatches_Occlusion_BestFit(CalibrationMatrix & cmx, Scene & scen
 		if (true || (iter % 100) == 0)
 			std::cout << "\niter = " << iter;
 		// get Simulation Frame (S)
-		set_Occlusion_Frame(cmx, SCENEMAIN, frame00, frameSim, walN, freq_idx, ps_, pSim_);
+		set_Occlusion_Simulation_Frame(cmx, sceneCopy, frame00, frameSim, walN, freq_idx, ps_, pSim_);
 		distHS_ = distHS(frame00, frameSim);
+		frameSim.plot(1, false, "Frame Sim Occ");
 		// check if Distance(H,S) is better and update the pixPatchesBestFit
 		if (distHS_ < distHSmin) {
 			distHSmin = distHS_;
-			volPatchesBestFit = SCENEMAIN.o[PIXEL_PATCHES];
+			volPatchesBestFit = sceneCopy.o[PIXEL_PATCHES];
 		}
-
-		// Combination Iteration:
-		SCENEMAIN.o[VOLUME_PATCHES].s[0].tra(refN * pixPatchDist[0]);
+		sceneCopy.o[VOLUME_PATCHES].s[0].tra(_vopN * pixPatchDist[0]);
 		pixPatchDist[pos=0] += dRes;
+		// Combination Iteration:
 		while (pixPatchDist[pos] > dMax) {
 			if (pos >= pixPatchDist.size() - 1) {
 				finishLoop = true;
 				break;
 			}
 			pixPatchDist[pos] = dMin;
-			SCENEMAIN.o[VOLUME_PATCHES].s[pos] = volPatchesCopy.s[pos];
+			sceneCopy.o[VOLUME_PATCHES].s[pos] = volPatchesCopy.s[pos];
 			pixPatchDist[++pos] += dRes;
-			SCENEMAIN.o[VOLUME_PATCHES].s[pos].tra(refN * pixPatchDist[pos]);
+			sceneCopy.o[VOLUME_PATCHES].s[pos].tra(_vopN * pixPatchDist[pos]);
 		}
 	}
-	SCENEMAIN.o[VOLUME_PATCHES] = volPatchesBestFit;
+	*/
+
+	// Distances Iterator: te set up is discretized by changing the distances of the volume patches (all together) and the albedos. dRes = 0.05f in updateVolumePatches_Occlusion(...)
+	float dMin = -1.0f;
+	float dMax = 1.0f + dRes / 2.0f;
+	Point traV;
+	float albedoRes = 0.1f;
+	float albedoMin = 0.5f;
+	float albedoMax = 1.5f + albedoRes / 2.0f;
+	// For all distance
+	for (float d = dMin; d < dMax; d += dRes) {
+		//Sleep(100);
+		// Update pixel patches distances 
+		traV = _vopN * d;
+		for (int i = 0; i < sceneCopy.o[VOLUME_PATCHES].s.size(); i++) {
+			sceneCopy.o[VOLUME_PATCHES].s[i].p[0] = volPatchesCopy.s[i].p[0] + traV;	// Useless for meas but for rendering
+			sceneCopy.o[VOLUME_PATCHES].s[i].p[1] = volPatchesCopy.s[i].p[1] + traV;	// Useless for meas but for rendering
+			sceneCopy.o[VOLUME_PATCHES].s[i].p[2] = volPatchesCopy.s[i].p[2] + traV;	// Useless for meas but for rendering
+			sceneCopy.o[VOLUME_PATCHES].s[i].p[3] = volPatchesCopy.s[i].p[3] + traV;	// Useless for meas but for rendering
+			sceneCopy.o[VOLUME_PATCHES].s[i].c    = volPatchesCopy.s[i].c    + traV;	// Useful for meas
+		}
+		// For all albedo
+		for (float albedo = albedoMin; albedo < albedoMax; albedo += albedoRes) {
+			// Update pixel patches albedos 
+			for (int i = 0; i < sceneCopy.o[VOLUME_PATCHES].s.size(); i++)
+				sceneCopy.o[VOLUME_PATCHES].s[i].albedo = albedo;	// Useful for meas
+			// get Simulation Frame (S)
+			set_Occlusion_Simulation_Frame(cmx, sceneCopy, frame00, frameSim, walN, freq_idx, ps_, pSim_);
+			//frameSim.plot(1, false, "Frame Sim Occ");
+			// get Distance(H,S)
+			distHS_ = distHS(frame00, frameSim);
+			// check if Distance(H,S) is better and update the pixPatchesBestFit
+			if (distHS_ < distHSmin) {
+				distHSmin = distHS_;
+				volPatchesBestFit = sceneCopy.o[PIXEL_PATCHES];
+	}	}	}
+
+	sceneCopy.o[VOLUME_PATCHES] = volPatchesBestFit;
 }
 
 // sets a Simulated Frame for the Occlusion case, from a Transient Image and a Calibration Matrix. This does all the calculations
-void set_Occlusion_Frame(CalibrationMatrix & cmx, Scene & scene, Frame & frameReal, Frame & frameSim, Point & walN, int freq_idx, PixStoring ps_, bool pSim_) {
+void set_Occlusion_Simulation_Frame(CalibrationMatrix & cmx, Scene & scene, Frame & frameReal, Frame & frameSim, Point & walN, int freq_idx, PixStoring ps_, bool pSim_) {
 	
 	// L_E;		// Le(l) in the paper. Radiance from the light point in the wall from the laser
 
@@ -196,7 +210,9 @@ void set_Occlusion_Frame(CalibrationMatrix & cmx, Scene & scene, Frame & frameRe
 	for (std::size_t i = 0; i < scene.o[VOLUME_PATCHES].s.size(); i++)
 		radiance_volPatchesN[i] = scene.o[VOLUME_PATCHES].s[i].normalQUAD();
 	std::vector<float> radiance_volPatches(radiance_volPatches_size);
-	set_radiance_volPatches(radiance_volPatches, radiance_volPatchesN, scene, scene.o[LASER_RAY].s[0].p[1], walN, true, true);
+	bool normArea = true;	// normalize rediance to the volume path area. Useful to check how changes the result a change on the volume patches
+	bool constArea = true;	// if the area of each volume patch the same (constant) or not
+	set_radiance_volPatches(radiance_volPatches, radiance_volPatchesN, scene, scene.o[LASER_RAY].s[0].p[1], walN, normArea, constArea);
 
 	// Transient pixel = Impulse response of the scene. alpha_r in Ref08
 	// vector of maps. One map for pixel representing:
@@ -211,14 +227,14 @@ void set_Occlusion_Frame(CalibrationMatrix & cmx, Scene & scene, Frame & frameRe
 
 	// Plot a transient pixel with MATLAB Engine, from TransientImage
 	/*
-	int pix_x = (CAMERA_PIX_X - 1) / 2;	// max = CAMERA_PIX_X-1
-	int pix_y = (CAMERA_PIX_Y - 1) / 2;	// max = CAMERA_PIX_Y-1
+	int pixRow = frameReal.rows / 2;
+	int pixCol = frameReal.cols / 2;
 	// MATLAB Engine takes too much time to start, comment out next line unless you need to debugg
-	plot_transient_pixel(TransientImage, pix_x, pix_y);
+	plot_transientPixel(transientImage[rc2idx(pixRow, pixCol, ps_, pSim_)]);
 	*/
 }
 
-// For set_Occlusion_Frame(...)
+// For set_Occlusion_Simulation_Frame(...)
 // gets the Radiance from each volume patch (radiance from each volume patch). L(x) in the paper. 
 // It deals with patches backing (not facing) the wall (they are considered ALWAYS facing the wall)
 void set_radiance_volPatches(std::vector<float> & radiance_volPatches, std::vector<Point> & radiance_volPatchesN, Scene & scene, Point & walL, Point & walN, bool normArea, bool constArea) {
@@ -247,7 +263,7 @@ void set_radiance_volPatches(std::vector<float> & radiance_volPatches, std::vect
 	}	}
 }
 
-// For set_Occlusion_Frame(...)
+// For set_Occlusion_Simulation_Frame(...)
 // gets the Transient pixel = Impulse response of the scene. alpha_r in Ref08
 // vector of maps. One map for pixel representing:
 //   x axis = key   = path length (r) in m
@@ -275,7 +291,7 @@ void set_TransientImage(std::vector<std::multimap<float, float>> & transientImag
 	}
 }
 
-// For set_Occlusion_Frame(...)
+// For set_Occlusion_Simulation_Frame(...)
 // sets a Simulated Frame for the Occlusion case, from a Transient Image and a Calibration Matrix. This does NOT do any calculations
 void set_FrameSim(std::vector<std::multimap<float, float>> & transientImage, CalibrationMatrix & cmx, Frame & frameSim, int freq_idx, PixStoring ps_, bool pSim_) {
 
@@ -308,24 +324,23 @@ float correlation(float frequency_, float phase_, float r_, float N_) {
 }
 
 // Plot a transient pixel with MATLAB Engine
-void plot_transient_pixel (std::vector<std::multimap<float, float>> & transientImage, int pix_x_, int pix_y_) {
+void plot_transientPixel (std::multimap<float, float> & transientPixel) {
 	
 	// MATLAB variables
 	Engine *ep;
-	mxArray *T = NULL;
+	mxArray *D = NULL;
 	mxArray *V = NULL;
 	// Variables. Array structure needed to deal with MATLAB functions
-	int pos_in_vector = pix_y_*CAMERA_PIX_X + pix_x_;
-	std::multimap<float, float>* transient_pixel = & transientImage[pos_in_vector];	// pos_in_vector = pix_y_*CAMERA_PIX_X + pix_x_;
-	int size = (*transient_pixel).size();
-	double* time_ns = new double[size];
+	int size = transientPixel.size();
+	double* dist_m = new double[size];
 	double* value = new double[size];
 
 	// Fill the arrays with their corresponding values
 	int i = 0;
-	for (std::multimap<float,float>::iterator it=(*transient_pixel).begin(); it!=(*transient_pixel).end(); ++it) {
-		time_ns[i] = (double)(*it).first;
-		value[i] = (double)(*it).second;
+	// Fill with the values of the Transient Pixel
+	for (std::multimap<float, float>::iterator it = transientPixel.begin(); it != transientPixel.end(); ++it) {
+		dist_m[i] = (double)it->first;
+		value[i] = (double)it->second;
 		i++;
 	}
 
@@ -334,19 +349,19 @@ void plot_transient_pixel (std::vector<std::multimap<float, float>> & transientI
 		fprintf(stderr, "\nCan't start MATLAB engine\n");
 
 	// Create MATLAB variables from C++ variables
-	T = mxCreateDoubleMatrix(1, size, mxREAL);
-	memcpy((void *)mxGetPr(T), (void *)time_ns, size*sizeof(time_ns));
+	D = mxCreateDoubleMatrix(1, size, mxREAL);
+	memcpy((void *)mxGetPr(D), (void *)dist_m, size*sizeof(dist_m));
 	V = mxCreateDoubleMatrix(1, size, mxREAL);
 	memcpy((void *)mxGetPr(V), (void *)value, size*sizeof(value));
 	
 	// Place MATLAB variables into the MATLAB workspace
-	engPutVariable(ep, "T", T);
+	engPutVariable(ep, "D", D);
 	engPutVariable(ep, "V", V);
 
 	// Plot the result
-	engEvalString(ep, "stem(T,V);");
+	engEvalString(ep, "stem(D,V);");
 	engEvalString(ep, "title('Impulse Response: value(time)');");
-	engEvalString(ep, "xlabel('time (ns)');");
+	engEvalString(ep, "xlabel('distance (m)');");
 	engEvalString(ep, "ylabel('value');");
 
 	// use std::cin freeze the plot
@@ -355,7 +370,7 @@ void plot_transient_pixel (std::vector<std::multimap<float, float>> & transientI
 	std::cin >> answer;
 
 	// Free memory, close MATLAB figure.
-	mxDestroyArray(T);
+	mxDestroyArray(D);
 	mxDestroyArray(V);
 	engEvalString(ep, "close;");
 	engClose(ep);

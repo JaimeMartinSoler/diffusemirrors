@@ -17,8 +17,8 @@
 // test function for testing
 void test(char* dir_name, char* file_name) {
 
-	test_toPixSim(dir_name, file_name);
-
+	test_CMX_iterator(dir_name, file_name);
+	
 	std::cout << "\n\nTest done...\n\n";
 }
 
@@ -220,24 +220,87 @@ void test_CMX_iterator(char* dir_name, char* file_name) {
 	// pathWallOffset
 	float pathWallOffset_res = 0.2f;
 	float pathWallOffset_min = 0.0f;
-	float pathWallOffset_max = 1.0f + pathWallOffset_res/2.0f;
+	float pathWallOffset_max = 0.4f + pathWallOffset_res/2.0f;
 	//ERROR_ON_PURPOSE_DIST_WALL_OFFSET
 	float ERROR_ON_PURPOSE_DIST_WALL_OFFSET_res = 0.3f;
 	float ERROR_ON_PURPOSE_DIST_WALL_OFFSET_min = 0.0f;
 	float ERROR_ON_PURPOSE_DIST_WALL_OFFSET_max = 0.9f + ERROR_ON_PURPOSE_DIST_WALL_OFFSET_res/2.0f;
 	// pixClearTimes
-	int pixClearTimes = 16;
+	int pixClearTimes = 0;
 
 	// iterator
 	for (float pwo = pathWallOffset_min; pwo < pathWallOffset_max; pwo += pathWallOffset_res) {
 		for (float eop = ERROR_ON_PURPOSE_DIST_WALL_OFFSET_min; eop < ERROR_ON_PURPOSE_DIST_WALL_OFFSET_max; eop += ERROR_ON_PURPOSE_DIST_WALL_OFFSET_res) {
 			Info info(dir_name, file_name); 
-			test_CMX(info, pwo, eop, pixClearTimes);
+			test_distHS(info, pwo, eop, pixClearTimes);
 	}	}
 }
 
-// test_CMX(). approximation considering camPos = lasPos
-void test_CMX(Info & info, float pathWallOffset, float ERROR_ON_PURPOSE_DIST_WALL_OFFSET, int pixClearTimes) {
+// test_distHS(...). approximation considering camPos = lasPos
+void test_distHS(Info & info, float pathWallOffset, float ERROR_ON_PURPOSE_DIST_WALL_OFFSET, int pixClearTimes) {
+
+	// RawData, CalibrationMatrix
+	RawData rawData(info);
+	CalibrationMatrix cmx(info);
+	// Scene
+	PixStoring ps = PIXELS_VALID;
+	bool pSim = false;
+	Scene scene (DIRECT_VISION_SIMULATION_FRAME);
+	scene.setScene_DirectVision(ps, pSim);
+	Point camC = scene.o[CAMERA].s[0].c;
+	Point camN = scene.o[CAMERA].normalQUAD();
+	Object3D screenFoVmeasNs;
+	screenFoVmeasNs.setScreenFoVmeasNs(camC, camN, ps, pSim);
+
+	// Set Frame indices
+	int freq_idx = info.freqV.size()-1;
+	// THIS IS THE VARIABLE (1of2) WE HAVE TO CHANGE FOR LABBOOK PAGE 15 // pathWallDist = info.dist_wall_cam + distWallOffset. 0.0f means we will choose the distance of the Calibration Matrix wall distance
+	int dist_idx = get_dist_idx(*(cmx.info), pathWallOffset);	// returns -1 if no idx correspondance was found
+	if (dist_idx < 0) {
+		std::cout << "\nWarning: Distance Offset = " << pathWallOffset << " is not a dist in .cmx distV = ";
+		print(cmx.info->distV);
+		return;
+	}
+
+	// Creating Simulation
+	int renderTime_ms_lastFrame = 0;
+	// THIS IS THE VARIABLE (2of2) WE HAVE TO CHANGE FOR LABBOOK PAGE 15
+	float dist_wall_cam = info.dist_wall_cam + (pathWallOffset / 2.0f) + ERROR_ON_PURPOSE_DIST_WALL_OFFSET;	// path/2.0f approximation considering camPos = lasPos
+	// Update pixel patches
+	for (int i = 0; i < scene.o[PIXEL_PATCHES].s.size(); i++) {
+		scene.o[PIXEL_PATCHES].s[i].p[0].set(scene.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[0] * dist_wall_cam);	// Useless for meas but for rendering
+		scene.o[PIXEL_PATCHES].s[i].p[1].set(scene.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[1] * dist_wall_cam);	// Useless for meas but for rendering
+		scene.o[PIXEL_PATCHES].s[i].p[2].set(scene.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[2] * dist_wall_cam);	// Useless for meas but for rendering
+		scene.o[PIXEL_PATCHES].s[i].p[3].set(scene.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[3] * dist_wall_cam);	// Useless for meas but for rendering
+		scene.o[PIXEL_PATCHES].s[i].c.set   (scene.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].c    * dist_wall_cam);	// Useful for meas
+	}
+	
+	// Create/get Frames H, S
+	Frame frame_H (rawData, freq_idx, dist_idx, info.shutV.size()-1, 0, ps, pSim);
+	Frame frame_S;
+	set_DirectVision_Simulation_Frame(cmx, scene, frame_S, freq_idx, ps, pSim);
+	float distHS_ = distHS(frame_H, frame_S);
+
+	// print variables
+	std::cout << "\n\n\--------------------------------------------------------------";
+	std::cout << "\nH_WallDist  = " << info.dist_wall_cam + (pathWallOffset / 2.0f);
+	std::cout << "\nS_WallDist  = " << dist_wall_cam;
+	std::cout << std::scientific;
+	std::cout << "\n  (HS)dist  = " << distHS_;
+	std::cout << std::defaultfloat;
+
+	// Plotting Frames
+	int plotTime_ms = 1;
+	bool destroyWindow_ = false;
+	frame_H.plot(plotTime_ms, destroyWindow_, "Frame H");
+	frame_S.plot(plotTime_ms, destroyWindow_, "Frame S");
+
+	char test[128];
+	std::cin >> test;
+}
+
+// test_CMX_var(). approximation considering camPos = lasPos
+void test_CMX_var(Info & info, float pathWallOffset, float ERROR_ON_PURPOSE_DIST_WALL_OFFSET, int pixClearTimes) {
 
 	// RawData, CalibrationMatrix
 	RawData rawData(info);

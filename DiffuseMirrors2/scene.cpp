@@ -1099,8 +1099,10 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	Object3D screenFoVmeasNs;
 	screenFoVmeasNs.setScreenFoVmeasNs(camC, camN, ps_, pSim_);
 	Point walN = scene.o[WALL].normalQUAD();
-	Point refN = scene.o[VOLUME_PATCHES].s[0].normalQUAD();
-	float dRes = dist(scene.o[VOLUME_PATCHES].s[0].p[0], scene.o[VOLUME_PATCHES].s[0].p[1]);
+	Point vopN = scene.o[VOLUME_PATCHES].s[0].normalQUAD();
+	Point _vopN = vopN * (-1.0f);
+	float dRes = 0.05f;;
+	//float dRes = dist(scene.o[VOLUME_PATCHES].s[0].p[0], scene.o[VOLUME_PATCHES].s[0].p[1]);
 
 	// Syncronization
 	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
@@ -1122,7 +1124,7 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 			cv_frame_object.wait(locker_frame_object);
 
 		// Update pixel patches, setting the Best Fit
-		updateVolumePatches_Occlusion_BestFit(cmx, sceneCopy, volPatchesCopy, frameSim, frame00, walN, refN, dRes, ps_, pSim_);
+		updateVolumePatches_Occlusion_BestFit(cmx, sceneCopy, volPatchesCopy, frameSim, frame00, walN, _vopN, dRes, ps_, pSim_);
 		scene.o[VOLUME_PATCHES] = sceneCopy.o[VOLUME_PATCHES];
 		//frameSim.plot(1, false, "Frame Sim Occ");
 
@@ -1266,8 +1268,6 @@ void Object3D::updatePixelPatches_Simulation(Info & info, Scene & scene, Frame &
 	bool first_iter = true;
 	while (loop || first_iter) {
 
-		//const clock_t begin_time = clock();
-
 		if (!PMD_LOOP_ENABLE && !first_iter)
 			break;
 		first_iter = false;
@@ -1276,6 +1276,8 @@ void Object3D::updatePixelPatches_Simulation(Info & info, Scene & scene, Frame &
 		locker_frame_object.lock();		// Lock mutex_frame_object, any thread which used mutex_frame_object can NOT continue until unlock()
 		while (!UPDATED_NEW_FRAME)	//std::cout << "Waiting in Object to finish the UPDATED_NEW_Frame. This is OK!\n";
 			cv_frame_object.wait(locker_frame_object);
+		
+		const clock_t begin_time = clock();
 
 		// Update pixel patches, setting the Best Fit
 		updatePixelPatches_Simulation_BestFit(cmx, sceneCopy, frameSim, frame00, camC, camN, screenFoVmeasNs, ps_, pSim_);
@@ -1289,10 +1291,10 @@ void Object3D::updatePixelPatches_Simulation(Info & info, Scene & scene, Frame &
 		cv_frame_object.notify_all();	// Notify all cv_frame_object. All threads waiting for cv_frame_object will break the wait after waking up
 		locker_frame_object.unlock();	// Unlock mutex_frame_object, now threads which used mutex_frame_object can continue
 
-		//const clock_t end_time = clock();
-		//float ms_time = 1000.0f * float(end_time - begin_time) / (float)CLOCKS_PER_SEC;
-		//float fps_time = 1000.0f / ms_time;
-		//std::cout << "time = " << ms_time << " ms,    fps = " << fps_time <<  " fps\n";
+		const clock_t end_time = clock();
+		float ms_time = 1000.0f * float(end_time - begin_time) / (float)CLOCKS_PER_SEC;
+		float fps_time = 1000.0f / ms_time;
+		std::cout << "time = " << ms_time << " ms,    fps = " << fps_time <<  " fps\n";
 	}
 	// --- END OF LOOP -----------------------------------------------------------------------------------------
 }
