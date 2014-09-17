@@ -1063,7 +1063,7 @@ int PMD_params_to_file (std::vector<float> & freqV, std::vector<float> & distV, 
 	float period_shut_tot = 0.0f;
 	for (size_t si = 0; si < shutV.size(); si++)
 		period_shut_tot +=  shutV_float[si] / (1000000.0f * DUTYCYCLE);
-	time_tot_s = period_shut_tot * freqV.size() * distV.size() * numtakes;
+	time_tot_s = TAKES_PER_CAPTURE * period_shut_tot * freqV.size() * distV.size() * numtakes;
 	if (check_time(time_tot_s, true, true) == 0)
 		return -2;	// if did not want to continue
 	
@@ -1222,7 +1222,7 @@ int PMD_params_to_file (std::vector<float> & freqV, std::vector<float> & distV, 
 
 					end_time_loop = clock();		// end_time_loop for DUTYCYCLE Sleep
 					ms_time_loop = 1000.0f * float(end_time_loop - begin_time_loop) / (float)CLOCKS_PER_SEC;
-					ms_extra_delay = ((float)shut)/(DUTYCYCLE*1000.0f) - ms_time_loop + 1.0f;
+					ms_extra_delay = (TAKES_PER_CAPTURE * ((float)shut)/(DUTYCYCLE*1000.0f)) - ms_time_loop + 1.0f;
 					if (ms_extra_delay > 0)
 						Sleep(ms_extra_delay);	// suspends the execution of the current thread until the time-out interval elapses
 					//std::cout << "ms_time_loop   : " << ms_time_loop << " ms\n";
@@ -1346,7 +1346,7 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_
 
 		end_time_loop = clock();		// end_time_loop for DUTYCYCLE Sleep
 		ms_time_loop = 1000.0f * float(end_time_loop - begin_time_loop) / (float)CLOCKS_PER_SEC;
-		ms_extra_delay = ((float)shut)/(DUTYCYCLE*1000.0f) - ms_time_loop + 1.0f;
+		ms_extra_delay = (TAKES_PER_CAPTURE * ((float)shut)/(DUTYCYCLE*1000.0f)) - ms_time_loop + 1.0f;
 		if (ms_extra_delay > 0)
 			Sleep(ms_extra_delay);	// suspends the execution of the current thread until the time-out interval elapses
 				//std::cout << "ms_time_loop   : " << ms_time_loop << " ms\n";
