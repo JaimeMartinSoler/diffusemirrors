@@ -43,7 +43,9 @@ class Scene;
 //#define SPEEDOFLIGHT	 299792458	// (m/s)
 #define SPEEDOFLIGHT_AIR 299705000	// (m/s)
 #define DUTYCYCLE_INVERSE_OLD 10 // 1 us exposure, 9 us delay
-#define DUTYCYCLE 0.04f // ABSOLUTELY IMPORTANT for thermal stability: add delay to ensure a duty cycle below 4%
+#define DUTYCYCLE 0.04f		// ABSOLUTELY IMPORTANT for thermal stability: add delay to ensure a duty cycle below 4%
+#define TAKES_PER_CAPTURE 4 // The PMD actually captures 4 frames per take, being internally the shutter time 4 times greater. It has to be taken into account for DUTYCYCLE calculations
+
 #define FILENAME_FORMAT "capture_take%02d_f%06.2f_d%05.2f" // Filename prefix: Frequency, delay in m // For temporal files for CV_WHILE_CAPTURING
 #define FILENAME_APPEND "_p%03d.%s"         // Append phase, shutter (=0 for HDR) and suffix to filename // For temporal files for CV_WHILE_CAPTURING
 

@@ -36,9 +36,9 @@ void updatePixelPatches_Simulation_BestFit(CalibrationMatrix & cmx, Scene & scen
 	float dRes = 0.05f;
 	float dMin = 1.0f;
 	float dMax = 5.0f + dRes / 2.0f;
-	float albedoRes = 0.1f;
-	float albedoMin = 0.5f;
-	float albedoMax = 1.5f + albedoRes / 2.0f;
+	float albedoRelRes = 0.1f;
+	float albedoRelMin = 0.5f;
+	float albedoRelMax = 1.5f + albedoRelRes / 2.0f;
 	
 	// For all distance
 	for (float d = dMin; d < dMax; d += dRes) {
@@ -50,11 +50,11 @@ void updatePixelPatches_Simulation_BestFit(CalibrationMatrix & cmx, Scene & scen
 			sceneCopy.o[PIXEL_PATCHES].s[i].p[3].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[3] * d);	// Useless for meas but for rendering
 			sceneCopy.o[PIXEL_PATCHES].s[i].c.   set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].c    * d);	// Useful for meas
 		}
-		// For all albedo
-		for (float albedo = albedoMin; albedo < albedoMax; albedo += albedoRes) {
-			// Update pixel patches albedos 
+		// For all albedoRel
+		for (float albedoRel = albedoRelMin; albedoRel < albedoRelMax; albedoRel += albedoRelRes) {
+			// Update pixel patches albedoRels 
 			for (int i = 0; i < sceneCopy.o[PIXEL_PATCHES].s.size(); i++) {
-				sceneCopy.o[PIXEL_PATCHES].s[i].albedo = albedo;	// Useful for meas
+				sceneCopy.o[PIXEL_PATCHES].s[i].albedo = albedoRel;	// Useful for meas
 			}
 			// get Simulation Frame (S)
 			set_DirectVision_Simulation_Frame(cmx, sceneCopy, frameSim, freq_idx, ps_, pSim_);
@@ -160,42 +160,42 @@ void updateVolumePatches_Occlusion_BestFit(CalibrationMatrix & cmx, Scene & scen
 	}
 	*/
 
-	// Distances Iterator: te set up is discretized by changing the distances of the volume patches (all together) and the albedos. dRes = 0.05f in updateVolumePatches_Occlusion(...)
+	// Distances Iterator: te set up is discretized by changing the distances of the volume patches (all together) and the albedoRels. dRes = 0.05f in updateVolumePatches_Occlusion(...)
 	float dMin = -1.0f;
 	float dMax = 1.0f + dRes / 2.0f;
 	Point traV;
-	float albedoRes = 0.1f;
-	float albedoMin = 0.5f;
-	float albedoMax = 1.5f + albedoRes / 2.0f;
+	float albedoRelRes = 0.1f;
+	float albedoRelMin = 0.5f;
+	float albedoRelMax = 1.5f + albedoRelRes / 2.0f;
 	// For all distance
 	for (float d = dMin; d < dMax; d += dRes) {
-		//Sleep(100);
+		Sleep(100);
+		frameSim.plot(1, false, "Frame Sim Occ");
 		// Update pixel patches distances 
 		traV = _vopN * d;
-		for (int i = 0; i < sceneCopy.o[VOLUME_PATCHES].s.size(); i++) {
-			sceneCopy.o[VOLUME_PATCHES].s[i].p[0] = volPatchesCopy.s[i].p[0] + traV;	// Useless for meas but for rendering
-			sceneCopy.o[VOLUME_PATCHES].s[i].p[1] = volPatchesCopy.s[i].p[1] + traV;	// Useless for meas but for rendering
-			sceneCopy.o[VOLUME_PATCHES].s[i].p[2] = volPatchesCopy.s[i].p[2] + traV;	// Useless for meas but for rendering
-			sceneCopy.o[VOLUME_PATCHES].s[i].p[3] = volPatchesCopy.s[i].p[3] + traV;	// Useless for meas but for rendering
-			sceneCopy.o[VOLUME_PATCHES].s[i].c    = volPatchesCopy.s[i].c    + traV;	// Useful for meas
+		for (int i = 0; i < SCENEMAIN.o[VOLUME_PATCHES].s.size(); i++) {
+			SCENEMAIN.o[VOLUME_PATCHES].s[i].p[0] = volPatchesCopy.s[i].p[0] + traV;	// Useless for meas but for rendering
+			SCENEMAIN.o[VOLUME_PATCHES].s[i].p[1] = volPatchesCopy.s[i].p[1] + traV;	// Useless for meas but for rendering
+			SCENEMAIN.o[VOLUME_PATCHES].s[i].p[2] = volPatchesCopy.s[i].p[2] + traV;	// Useless for meas but for rendering
+			SCENEMAIN.o[VOLUME_PATCHES].s[i].p[3] = volPatchesCopy.s[i].p[3] + traV;	// Useless for meas but for rendering
+			SCENEMAIN.o[VOLUME_PATCHES].s[i].c    = volPatchesCopy.s[i].c    + traV;	// Useful for meas
 		}
-		// For all albedo
-		for (float albedo = albedoMin; albedo < albedoMax; albedo += albedoRes) {
-			// Update pixel patches albedos 
-			for (int i = 0; i < sceneCopy.o[VOLUME_PATCHES].s.size(); i++)
-				sceneCopy.o[VOLUME_PATCHES].s[i].albedo = albedo;	// Useful for meas
+		// For all albedoRel
+		for (float albedoRel = albedoRelMin; albedoRel < albedoRelMax; albedoRel += albedoRelRes) {
+			// Update pixel patches albedoRels 
+			for (int i = 0; i < SCENEMAIN.o[VOLUME_PATCHES].s.size(); i++)
+				SCENEMAIN.o[VOLUME_PATCHES].s[i].albedo = albedoRel;	// Useful for meas
 			// get Simulation Frame (S)
-			set_Occlusion_Simulation_Frame(cmx, sceneCopy, frame00, frameSim, walN, freq_idx, ps_, pSim_);
-			//frameSim.plot(1, false, "Frame Sim Occ");
+			set_Occlusion_Simulation_Frame(cmx, SCENEMAIN, frame00, frameSim, walN, freq_idx, ps_, pSim_);
 			// get Distance(H,S)
 			distHS_ = distHS(frame00, frameSim);
 			// check if Distance(H,S) is better and update the pixPatchesBestFit
 			if (distHS_ < distHSmin) {
 				distHSmin = distHS_;
-				volPatchesBestFit = sceneCopy.o[PIXEL_PATCHES];
+				volPatchesBestFit = SCENEMAIN.o[PIXEL_PATCHES];
 	}	}	}
 
-	sceneCopy.o[VOLUME_PATCHES] = volPatchesBestFit;
+	SCENEMAIN.o[VOLUME_PATCHES] = volPatchesBestFit;
 }
 
 // sets a Simulated Frame for the Occlusion case, from a Transient Image and a Calibration Matrix. This does all the calculations
