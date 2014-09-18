@@ -1334,7 +1334,9 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_
 			Frame_00_cap.set(ushort_img[0], rowsPT, colsPT, freq_, dist_, shut_, phases[0], 0, ps, pSim);
 		if (&Frame_90_cap != NULL)
 			Frame_90_cap.set(ushort_img[0], rowsPT, colsPT, freq_, dist_, shut_, phases[1], 1, ps, pSim);
-		plot_frame(Frame_00_cap, Frame_90_cap, 1, false, "Frame RT");
+		//plot_frame(Frame_00_cap, Frame_90_cap, 1, false, "Frame RT");
+		Frame_00_cap.plot(1, false, "Frame00 RT");
+		Frame_90_cap.plot(1, false, "Frame90 RT");
 		//std::cout << "UPDATED_NEW_FRAME";
 		UPDATED_NEW_FRAME = true;
 		UPDATED_NEW_SCENE = false;
@@ -1366,8 +1368,6 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_
 		cvDestroyWindow(WindowNameCVCAP);
 	cv::destroyAllWindows();
 
-	// Exit program
-	//Sleep(2000);
 	return 0;
 }
 // there's a weird bug when calling directly to PMD_params_to_Frame from thread constructor. With this re-calling functtion the bug is avoided
