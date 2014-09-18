@@ -32,7 +32,7 @@ void test_CMX_iterator(char* dir_name, char* file_name);
 void test_distHS(Info & info, float pathWallOffset, float ERROR_ON_PURPOSE_DIST_WALL_OFFSET, int pixClearTimes);
 // test_CMX()
 void test_CMX(Info & info, float pathWallOffset, float ERROR_ON_PURPOSE_DIST_WALL_OFFSET, int pixClearTimes = 0); // Sets a Simulated Frame from a given dist_wall_cam. Used in test_CMX()
-void test_FrameSimFromWallDist (Frame & frame, Info & info, float dist_wall_cam, int freq_idx, int renderTime_ms = 0, PixStoring ps = PIXELS_STORING_GLOBAL);
+void test_FrameSimFromWallDist (Frame & frame00, Frame & frame90, Info & info, float dist_wall_cam, int freq_idx, int renderTime_ms = 0, PixStoring ps = PIXELS_STORING_GLOBAL);
 // test_calibration_matrix()
 void test_calibration_matrix();
 

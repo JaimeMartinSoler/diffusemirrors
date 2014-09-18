@@ -206,7 +206,7 @@ public:
 	Info* info;		// Pointer to the info object
 
 	// Calibration Matrix Parameters
-	// C ordereing: for(freq){ for(dist){ for(r){ for(c){ // here... }}}} // r,c Matrix-like, 0-idx
+	// C ordereing: for(freq){ for(dist){ for(phas){ for(r){ for(c){ //here...}}}}} // r,c Matrix-like, 0-idx
 	// inside each frame, C stores all cols, then next row and so on, from top to down, like Frame and any Matrix
 	float* C;					// independent of PixStoring, the accessing depends on it
 	int C_size;		
@@ -221,6 +221,7 @@ public:
 	int C_sim_cols;
 	std::vector<float> pathDist0_sim_PT;
 	std::vector<float> pathDist0_sim_PV;
+
 
 	// ----- CONSTRUCTORS ---------------------------- // Note that each Constructor just contains its corresponding Setter
 	
@@ -257,13 +258,13 @@ public:
 
 	// Returns the index in C[], corresponding to the parameter indices.
 	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
-	int CalibrationMatrix::C_idx (int freq_idx, int dist_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
+	int CalibrationMatrix::C_idx (int freq_idx, int dist_idx, int phas_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
 	// Returns C[C.C_idx(...)], the value from the Calibration Matrix C corresponding to the parameters
 	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
-	float CalibrationMatrix::C_at (int freq_idx, int dist_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
+	float CalibrationMatrix::C_at (int freq_idx, int dist_idx, int phas_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
 	// Returns the C[...] interpolating with the closest path distances. Path distances have to be equidistant in vector
 	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
-	float CalibrationMatrix::C_atX (int freq_idx, float pathDist, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
+	float CalibrationMatrix::C_atX (int freq_idx, float pathDist, int phas_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
 	
 	// Returns the index in pathDist0, corresponding to the parameter indices.
 	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
@@ -275,7 +276,7 @@ public:
 	// This is the Simulation term for the direct vision problem: S_{i\;\omega}^{r,c}(\tau^{r,c}) in the Master Thesis document
 	// Returns the value of the Simulation from the Calibration Matrix C at any path distance interpolating with the closest path distances. Path distances have to be equidistant in vector
 	// Uses C_atX(...) for interpolating path distances
-	float CalibrationMatrix::S_DirectVision (int freq_idx, int r, int c, Point & r_src, Point & r_x,  Point & r_cam, float relative_albedo = 1.0f, PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
+	float CalibrationMatrix::S_DirectVision (int freq_idx, int phas_idx, int r, int c, Point & r_src, Point & r_x,  Point & r_cam, float relative_albedo = 1.0f, PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
 };
 
 
@@ -376,13 +377,27 @@ void plot_frame_fov_measurement(Frame & frame_00, Frame & frame_90, bool loop = 
 // sets a vector of floats form a char array from a given delimiter
 void char_array_to_float_vector_from_delimiter (char* char_array, std::vector<float> & float_vector, char delimiter);
 
-// returns the min, max, mean, variance value or index of the vector
+// returns the min, max, sum, mean, variance value or index of the vector
 float min(std::vector<float> & v);
 float max(std::vector<float> & v);
 float min(std::vector<float> & v, int & min_idx);
 float max(std::vector<float> & v, int & max_idx);
+float sum(std::vector<float> & v);
 float mean(std::vector<float> & v);
 float var(std::vector<float> & v);
+
+// operates an element over a vector. Sizes must match, does not resizes
+void sumElemToVector(float x, std::vector<float> & vIn, std::vector<float> & vOut);
+void subElemToVector(float x, std::vector<float> & vIn, std::vector<float> & vOut);
+void subPow2ElemToVector(float x, std::vector<float> & vIn, std::vector<float> & vOut);
+void mulElemToVector(float x, std::vector<float> & vIn, std::vector<float> & vOut);
+void divElemToVector(float x, std::vector<float> & vIn, std::vector<float> & vOut);
+// operates a vector over a vector. Sizes must match, does not resizes
+void sumVectorToVector(std::vector<float> & vIn0, std::vector<float> & vIn1, std::vector<float> & vOut);
+void subVectorToVector(std::vector<float> & vIn0, std::vector<float> & vIn1, std::vector<float> & vOut);
+void subPow2VectorToVector(std::vector<float> & vIn0, std::vector<float> & vIn1, std::vector<float> & vOut);
+void mulVectorToVector(std::vector<float> & vIn0, std::vector<float> & vIn1, std::vector<float> & vOut);
+void divVectorToVector(std::vector<float> & vIn0, std::vector<float> & vIn1, std::vector<float> & vOut);
 
 // these functions returns the corresponding idx/stuff of a vector from r,c considering Matrix-like ordering 0-indexed.
 int rc2idx (int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
@@ -396,20 +411,21 @@ int numPixCor(PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);	// see 
 int numPixPT();
 int numPixPV();
 int numPixPSIM();
-
 int rows(PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
 int cols(PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
 int rowsCor(PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
 int colsCor(PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
-
-bool equalAproxf (float f0, float f1, float RelDiffMax = 0.0001);
-void print(std::vector<float> v, char* prefix = NULL, char* sufix = NULL);
 
 // returns the corresponding index. Return -1 if no correspondance found
 int get_freq_idx (Info & info, float freq, float RelDiffMax = 0.0001);
 int get_dist_idx (Info & info, float dist, float RelDiffMax = 0.0001);
 int get_shut_idx (Info & info, float shut, float RelDiffMax = 0.0001);
 int get_phas_idx (Info & info, float phas, float RelDiffMax = 0.0001);
+
+
+// other auxiliar functions
+bool equalAproxf (float f0, float f1, float RelDiffMax = 0.0001);
+void print(std::vector<float> v, char* prefix = NULL, char* sufix = NULL);
 
 #endif
 

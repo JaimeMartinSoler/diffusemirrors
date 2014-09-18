@@ -16,13 +16,17 @@
 
 // This will include a minimization algorithm, but for now it will run some simulations manually and get the best fit
 // is totally inefficient with this implementation, just to try the system
-void updatePixelPatches_Simulation_BestFit(CalibrationMatrix & cmx, Scene & sceneCopy, Frame & frameSim, Frame & frame00, Point & camC, Point & camN, Object3D & screenFoVmeasNs, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
+void updatePixelPatches_Simulation_BestFit(CalibrationMatrix & cmx, Scene & sceneCopy, Frame & frameSim00, Frame & frameSim90, Frame & frame00, Frame & frame90, Point & camC, Point & camN, Object3D & screenFoVmeasNs, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
+
+// This will include a minimization algorithm, but for now it will run some simulations manually and get the best fit
+// is totally inefficient with this implementation, just to try the system. Includes Tilt
+void updatePixelPatches_Simulation_BestFit_WithTilt(CalibrationMatrix & cmx, Scene & sceneCopy, Object3D & NsMod, std::vector<float> & sinAG, Frame & frameSim00, Frame & frameSim90, Frame & frame00, Frame & frame90, Point & camC, Point & camN, Object3D & screenFoVmeasNs, PixStoring ps_, bool pSim_);
 
 // sets a Simulated Frame for the Direct Vision case, from a Calibration Matrix
-void set_DirectVision_Simulation_Frame(CalibrationMatrix & cmx, Scene & sceneCopy, Frame & frameSim, int freq_idx, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
+void set_DirectVision_Simulation_Frame(CalibrationMatrix & cmx, Scene & sceneCopy, Frame & frameSim00, Frame & frameSim90, int freq_idx, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 
 // Distance (Measurement, Simulation) function
-float distHS(Frame & H, Frame & S);
+float distHS(Frame & H00, Frame & H90, Frame & S00, Frame & S90);
 
 
 
@@ -33,10 +37,10 @@ float distHS(Frame & H, Frame & S);
 
 // This will include a minimization algorithm, but for now it will run some simulations manually and get the best fit
 // is totally inefficient with this implementation, just to try the system
-void updateVolumePatches_Occlusion_BestFit(CalibrationMatrix & cmx, Scene & sceneCopy, Object3D volPatchesCopy, Frame & frameSim, Frame & frame00, Point & walN, Point & _vopN, float dRes, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
+void updateVolumePatches_Occlusion_BestFit(CalibrationMatrix & cmx, Scene & sceneCopy, Object3D volPatchesCopy, Frame & frameSim00, Frame & frameSim90, Frame & frame00, Frame & frame90, Point & walN, Point & _vopN, float dRes, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 
 // sets a Simulated Frame for the Occlusion case, from a Transient Image and a Calibration Matrix. This does all the calculations
-void set_Occlusion_Simulation_Frame(CalibrationMatrix & cmx, Scene & scene, Frame & frameReal, Frame & frameSim, Point & walN, int freq_idx, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
+void set_Occlusion_Simulation_Frame(CalibrationMatrix & cmx, Scene & scene, Frame & frameSim00, Frame & frameSim90, Point & walN, int freq_idx, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 
 // For set_Occlusion_Simulation_Frame(...)
 // gets the Radiance from each volume patch (radiance from each volume patch). L(x) in the paper. 
@@ -52,7 +56,7 @@ void set_TransientImage(std::vector<std::multimap<float, float>> & transientImag
 
 // For set_Occlusion_Simulation_Frame(...)
 // sets a Simulated Frame for the Occlusion case, from a Transient Image and a Calibration Matrix. This does NOT do any calculations
-void set_FrameSim(std::vector<std::multimap<float, float>> & transientImage, CalibrationMatrix & cmx, Frame & frameSim, int freq_idx, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
+void set_FrameSim(std::vector<std::multimap<float, float>> & transientImage, CalibrationMatrix & cmx, Frame & frameSim00, Frame & frameSim90, int freq_idx, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 
 
 

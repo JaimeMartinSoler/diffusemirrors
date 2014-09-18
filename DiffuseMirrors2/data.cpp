@@ -628,15 +628,14 @@ void CalibrationMatrix::set (Info & info_) {
 	bool pSim = false;
 	// cmx_data_value = c * Em * albedo = H * distSrcPixPow2,    distSrcPixPow2 = |r_src - r_x0(r,c)|^2,
 	std::vector<float> distSrcPixPow2V, distSrcPixPow2V_sim_PT, distSrcPixPow2V_sim_PV;	
-	int phase_idx = 0;						// always
-	int shut_idx = info_.shutV.size() - 1;	//always, the calibration matrix is One shutter oriented
+	int si = info_.shutV.size() - 1;	// shutter index. The calibration matrix is One shutter oriented
 
 	// C_size, C
-	C_size = info->freqV.size() * info->distV.size() * info->rows * info->cols;
+	C_size = info->freqV.size() * info->distV.size() * info->phasV.size() * info->rows * info->cols;
 	C = new float[C_size];
 
 	// Simulation Parameters
-	C_sim_size = info->freqV.size() * info->distV.size() * PMD_SIM_ROWS * PMD_SIM_COLS;
+	C_sim_size = info->freqV.size() * info->distV.size() * info->phasV.size() * PMD_SIM_ROWS * PMD_SIM_COLS;
 	C_sim_PT = new float[C_sim_size];
 	C_sim_PV = new float[C_sim_size];
 	C_sim_rows = PMD_SIM_ROWS;
@@ -651,11 +650,12 @@ void CalibrationMatrix::set (Info & info_) {
 	// data ordering: for(freq) { for(dist) { for(rows){ for(cols){ // here...}}}}
 	for (size_t fi = 0; fi < info_.freqV.size(); fi++) {
 		for (size_t di = 0; di < info_.distV.size(); di++) {
-			for (size_t r = 0; r < info_.rows; r++) {
-				for (size_t c = 0; c < info_.cols; c++) {
-					//cmx_data_value = c * Em * albedo = H * distSrcPixPow2,    distSrcPixPow2 = |r_src - r_x0(r,c)|^2,
-					C[C_idx(fi, di, r, c, PIXELS_TOTAL, pSim)] = rawData.atF(fi, di, shut_idx, phase_idx, r, c, PIXELS_TOTAL, pSim) *  distSrcPixPow2V[rc2idx(r, c, PIXELS_TOTAL, pSim)];
-	}	}	}	}
+			for (size_t pi = 0; pi < info_.phasV.size(); pi++) {
+				for (size_t r = 0; r < info_.rows; r++) {
+					for (size_t c = 0; c < info_.cols; c++) {
+						//cmx_data_value = c * Em * albedo = H * distSrcPixPow2,    distSrcPixPow2 = |r_src - r_x0(r,c)|^2,
+						C[C_idx(fi, di, pi, r, c, PIXELS_TOTAL, pSim)] = rawData.atF(fi, di, si, pi, r, c, PIXELS_TOTAL, pSim) *  distSrcPixPow2V[rc2idx(r, c, PIXELS_TOTAL, pSim)];
+	}	}	}	}	}
 	
 	// Filling C_sim_PT, C_sim_PV
 	pSim = true;
@@ -671,16 +671,16 @@ void CalibrationMatrix::set (Info & info_) {
 	scene.setScene_CalibrationMatrix(info_.laser_to_cam_offset_x, info_.laser_to_cam_offset_y, info_.laser_to_cam_offset_z, info_.dist_wall_cam, PIXELS_VALID, pSim);
 	for (size_t i = 0; i < distSrcPixPow2V_sim_PV.size(); i++)	
 		distSrcPixPow2V_sim_PV[i] = (scene.o[LASER].s[0].c - scene.o[WALL_PATCHES].s[i].c).modPow2();
-	// data ordering: for(freq) { for(dist) { for(rows){ for(cols){ // here...}}}}
+	// data ordering: for(freq){ for(dist){ for(phas){ for(r){ for(c){ //here...}}}}}
 	for (size_t fi = 0; fi < info_.freqV.size(); fi++) {
 		for (size_t di = 0; di < info_.distV.size(); di++) {
+			for (size_t pi = 0; pi < info_.phasV.size(); pi++) {
 			for (size_t r = 0; r < C_sim_rows; r++) {
 				for (size_t c = 0; c < C_sim_cols; c++) {
 					//cmx_data_value = c * Em * albedo = H * distSrcPixPow2,    distSrcPixPow2 = |r_src - r_x0(r,c)|^2,
-					// TO-DO
-					C_sim_PT[C_idx(fi, di, r, c, PIXELS_TOTAL, pSim)] = rawData.atF(fi, di, shut_idx, phase_idx, r, c, PIXELS_TOTAL, pSim) *  distSrcPixPow2V_sim_PT[rc2idx(r, c, PIXELS_TOTAL, pSim)];
-					C_sim_PV[C_idx(fi, di, r, c, PIXELS_VALID, pSim)] = rawData.atF(fi, di, shut_idx, phase_idx, r, c, PIXELS_VALID, pSim) *  distSrcPixPow2V_sim_PV[rc2idx(r, c, PIXELS_VALID, pSim)];
-	}	}	}	}
+					C_sim_PT[C_idx(fi, di, pi, r, c, PIXELS_TOTAL, pSim)] = rawData.atF(fi, di, si, pi, r, c, PIXELS_TOTAL, pSim) *  distSrcPixPow2V_sim_PT[rc2idx(r, c, PIXELS_TOTAL, pSim)];
+					C_sim_PV[C_idx(fi, di, pi, r, c, PIXELS_VALID, pSim)] = rawData.atF(fi, di, si, pi, r, c, PIXELS_VALID, pSim) *  distSrcPixPow2V_sim_PV[rc2idx(r, c, PIXELS_VALID, pSim)];
+	}	}	}	}	}
 	
 	// Filling pathDist0
 	pSim = false;
@@ -754,40 +754,43 @@ void CalibrationMatrix::set (Info & info_) {
 
 // Returns the index in C[], corresponding to the parameter indices. 
 // input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
-int CalibrationMatrix::C_idx (int freq_idx, int dist_idx, int r, int c, PixStoring ps, bool pSim) { // default: ps = PIXELS_STORING_GLOBAL
+int CalibrationMatrix::C_idx (int freq_idx, int dist_idx, int phas_idx, int r, int c, PixStoring ps, bool pSim) { // default: ps = PIXELS_STORING_GLOBAL
 
 	if (pSim) {
-		return info->distV.size() * C_sim_rows * C_sim_cols * freq_idx +
-	                                C_sim_rows * C_sim_cols * dist_idx +
-	                                             C_sim_cols * r	       + c;
+		return info->distV.size() * info->phasV.size() * C_sim_rows * C_sim_cols * freq_idx +
+	                                info->phasV.size() * C_sim_rows * C_sim_cols * dist_idx +
+														 C_sim_rows * C_sim_cols * phas_idx +
+																      C_sim_cols * r + c;
 	} else if (ps == PIXELS_VALID) {
-		return info->distV.size() * info->rows * info->cols * freq_idx +
-	                                info->rows * info->cols * dist_idx +
-	                                             info->cols * (r + CAMERA_PIX_Y_BAD_TOP) +
-													          (c + CAMERA_PIX_X_BAD_LEFT);
+		return info->distV.size() * info->phasV.size() * info->rows * info->cols * freq_idx +
+	                                info->phasV.size() * info->rows * info->cols * dist_idx +
+														 info->rows * info->cols * phas_idx +
+																	  info->cols * (r + CAMERA_PIX_Y_BAD_TOP) +
+																				   (c + CAMERA_PIX_X_BAD_LEFT);
 	} else if (ps == PIXELS_TOTAL) {
-		return info->distV.size() * info->rows * info->cols * freq_idx +
-	                                info->rows * info->cols * dist_idx +
-	                                             info->cols * r        + c;
+		return info->distV.size() * info->phasV.size() * info->rows * info->cols * freq_idx +
+	                                info->phasV.size() * info->rows * info->cols * dist_idx +
+														 info->rows * info->cols * phas_idx +
+																	  info->cols * r        + c;
 	}
 }
 // Returns C[C.C_idx(...)], the value from the Calibration Matrix C corresponding to the parameters
 // input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
-float CalibrationMatrix::C_at (int freq_idx, int dist_idx, int r, int c, PixStoring ps, bool pSim) {
+float CalibrationMatrix::C_at (int freq_idx, int dist_idx, int phas_idx, int r, int c, PixStoring ps, bool pSim) {
 	
 	if (pSim) {
 		if (ps == PIXELS_TOTAL)
-			return C_sim_PT[C_idx(freq_idx, dist_idx, r, c, ps, pSim)];
+			return C_sim_PT[C_idx(freq_idx, dist_idx, phas_idx, r, c, ps, pSim)];
 		else if (ps == PIXELS_VALID)
-			return C_sim_PV[C_idx(freq_idx, dist_idx, r, c, ps, pSim)];
+			return C_sim_PV[C_idx(freq_idx, dist_idx, phas_idx, r, c, ps, pSim)];
 	}
 	else {
-		return C[C_idx(freq_idx, dist_idx, r, c, ps ,pSim)];
+		return C[C_idx(freq_idx, dist_idx, phas_idx, r, c, ps ,pSim)];
 	}
 }
 // Returns the C[...] interpolating with the closest path distances
 // input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
-float CalibrationMatrix::C_atX (int freq_idx, float pathDist, int r, int c, PixStoring ps, bool pSim)  { // default: ps = PIXELS_STORING_GLOBAL
+float CalibrationMatrix::C_atX (int freq_idx, float pathDist, int phas_idx, int r, int c, PixStoring ps, bool pSim)  { // default: ps = PIXELS_STORING_GLOBAL
 	
 	float pathDist_offset = pathDist - pathDist0_at(r, c, ps, pSim);
 	float pathDist_res = (info->distV[1] - info->distV[0]);	// dist of info store actually path distances as well
@@ -798,10 +801,10 @@ float CalibrationMatrix::C_atX (int freq_idx, float pathDist, int r, int c, PixS
 	// checking if out of bounds
 	if (pathDist_idx_floor < 0) {
 		std::cout << "\nWarning: path_dist(" << r << "," << c << ") = " << pathDist << " out of .cmx min bound = " << info->distV[0] << " ---> pathDist\n";
-		return C_at(freq_idx, 0, r, c, ps, pSim);
+		return C_at(freq_idx, 0, phas_idx, r, c, ps, pSim);
 	} else if (pathDist_idx_floor >= info->distV.size() - 1) {
 		std::cout << "\nWarning: path_dist(" << r << "," << c << ") = " << pathDist << " out of .cmx max bound = " << info->distV[info->distV.size()-1] << " ---> pathDist\n";
-		return C_at(freq_idx, info->distV.size()-1, r, c, ps, pSim);
+		return C_at(freq_idx, info->distV.size()-1, phas_idx, r, c, ps, pSim);
 	}
 
 	// pathDist Scales
@@ -823,7 +826,7 @@ float CalibrationMatrix::C_atX (int freq_idx, float pathDist, int r, int c, PixS
 	std::cout << "\nat(fi_max, di=" << dist_idx_floor << ", cen) = " << at(info->freqV.size()-1, dist_idx_floor, w, h);
 	std::cout << "\nat(fi_max, di=" << dist_idx_ceil << ", cen) = " << at(info->freqV.size()-1, dist_idx_ceil, w, h);
 	*/
-	return (pathDist_scale_floor * C_at(freq_idx, pathDist_idx_floor, r, c, ps, pSim)) + (pathDist_scale_ceil * C_at(freq_idx, pathDist_idx_ceil, r, c, ps, pSim));
+	return (pathDist_scale_floor * C_at(freq_idx, pathDist_idx_floor, phas_idx, r, c, ps, pSim)) + (pathDist_scale_ceil * C_at(freq_idx, pathDist_idx_ceil, phas_idx, r, c, ps, pSim));
 }
 
 // Returns the index in pathDist0, corresponding to the parameter indices.
@@ -856,13 +859,13 @@ float CalibrationMatrix::pathDist0_at (int r, int c, PixStoring ps, bool pSim) {
 // This is the Simulation term for the direct vision problem: S_{i\;\omega}^{r,c}(\tau^{r,c}) in the Master Thesis document
 // Returns the value of the Simulation from the Calibration Matrix C at any path distance interpolating with the closest path distances. Path distances have to be equidistant in vector
 // Uses C_atX(...) for interpolating path distances
-float CalibrationMatrix::S_DirectVision (int freq_idx, int r, int c, Point & r_src, Point & r_x,  Point & r_cam, float relative_albedo, PixStoring ps, bool pSim) { // by default: relative_albedo = 1.0f, ps = PIXELS_STORING_GLOBAL
+float CalibrationMatrix::S_DirectVision (int freq_idx, int phas_idx, int r, int c, Point & r_src, Point & r_x,  Point & r_cam, float relative_albedo, PixStoring ps, bool pSim) { // by default: relative_albedo = 1.0f, ps = PIXELS_STORING_GLOBAL
 
 	float dist_src_x = dist(r_src, r_x);
 	float dist_cam_x = dist(r_cam, r_x);
 	float pathDist = dist_src_x + dist_cam_x;
 	
-	return C_atX (freq_idx, pathDist, r, c, ps, pSim) * relative_albedo / (dist_src_x * dist_src_x);
+	return C_atX (freq_idx, pathDist, phas_idx, r, c, ps, pSim) * relative_albedo / (dist_src_x * dist_src_x);
 }
 
 
@@ -1426,11 +1429,14 @@ float max(std::vector<float> & v, int & max_idx) {
 	}	}
 	return maxf;
 }
-float mean(std::vector<float> & v) {
-	float meanf = v[0];
+float sum(std::vector<float> & v) {
+	float sumf = v[0];
 	for (size_t i = 1; i < v.size(); i++)
-		meanf += v[i];
-	return meanf /= v.size();
+		sumf += v[i];
+	return sumf;
+}
+float mean(std::vector<float> & v) {
+	return sum(v) / v.size();
 }
 float var(std::vector<float> & v) {
 	float meanf = mean(v);
@@ -1441,6 +1447,53 @@ float var(std::vector<float> & v) {
 		var += diff * diff;
 	}
 	return var /= v.size();
+}
+
+// operates an element over a vector. Sizes must match, does not resizes
+void sumElemToVector(float x, std::vector<float> & vIn, std::vector<float> & vOut) {
+	for (size_t i = 1; i < vOut.size(); i++)
+		vOut[i] = vIn[i] + x;
+}
+void subElemToVector(float x, std::vector<float> & vIn, std::vector<float> & vOut) {
+	for (size_t i = 1; i < vOut.size(); i++)
+		vOut[i] = vIn[i] - x;
+}
+void subPow2ElemToVector(float x, std::vector<float> & vIn, std::vector<float> & vOut) {
+	for (size_t i = 1; i < vOut.size(); i++) {
+		vOut[i] = vIn[i] - x;
+		vOut[i] *= vOut[i];
+	}
+}
+void mulElemToVector(float x, std::vector<float> & vIn, std::vector<float> & vOut) {
+	for (size_t i = 1; i < vOut.size(); i++)
+		vOut[i] = vIn[i] * x;
+}
+void divElemToVector(float x, std::vector<float> & vIn, std::vector<float> & vOut) {
+	for (size_t i = 1; i < vOut.size(); i++)
+		vOut[i] = vIn[i] / x;
+}
+// operates a vector over a vector. Sizes must match, does not resizes
+void sumVectorToVector(std::vector<float> & vIn0, std::vector<float> & vIn1, std::vector<float> & vOut) {
+	for (size_t i = 1; i < vOut.size(); i++)
+		vOut[i] = vIn0[i] + vIn1[i];
+}
+void subVectorToVector(std::vector<float> & vIn0, std::vector<float> & vIn1, std::vector<float> & vOut) {
+	for (size_t i = 1; i < vOut.size(); i++)
+		vOut[i] = vIn0[i] - vIn1[i];
+}
+void subPow2VectorToVector(std::vector<float> & vIn0, std::vector<float> & vIn1, std::vector<float> & vOut) {
+	for (size_t i = 1; i < vOut.size(); i++) {
+		vOut[i] = vIn0[i] - vIn1[i];
+		vOut[i] *= vOut[i];
+	}
+}
+void mulVectorToVector(std::vector<float> & vIn0, std::vector<float> & vIn1, std::vector<float> & vOut) {
+	for (size_t i = 1; i < vOut.size(); i++)
+		vOut[i] = vIn0[i] * vIn1[i];
+}
+void divVectorToVector(std::vector<float> & vIn0, std::vector<float> & vIn1, std::vector<float> & vOut) {
+	for (size_t i = 1; i < vOut.size(); i++)
+		vOut[i] = vIn0[i] / vIn1[i];
 }
 
 // these functions returns the corresponding idx/stuff of a vector from r,c considering Matrix-like ordering 0-indexed.
@@ -1505,7 +1558,6 @@ int numPixPV() {
 int numPixPSIM() {
 	return PMD_SIM_COLS * PMD_SIM_ROWS;
 }
-
 int rows(PixStoring ps, bool pSim) { // default: ps = PIXELS_STORING_GLOBAL, pSim = false
 	if (pSim)
 		return PMD_SIM_ROWS;
@@ -1543,28 +1595,6 @@ int colsCor(PixStoring ps, bool pSim) { // default: ps = PIXELS_STORING_GLOBAL, 
 	return -1;
 }
 
-bool equalAproxf (float f0, float f1, float RelDiffMax) {
-	float diff = f1 - f0;
-	float diffMax = abs(f0 * RelDiffMax);
-	if (diffMax < 0.000001)	// this may happen if f0 is 0.0f or close to 0.0f
-		diffMax = 0.000001;
-	return ((diff < diffMax) && (diff > -diffMax));
-}
-void print(std::vector<float> v, char* prefix, char* sufix) {
-	if (prefix)
-		std::cout << prefix;
-	if (v.size() <= 0) {
-		std::cout << "[empty]";
-	} else {
-		std::cout << "[" << v[0];
-		for (size_t i = 1; i < v.size(); i++)
-			std::cout << ", " << v[i];
-		std::cout  << "]";
-	}
-	if (sufix)
-		std::cout << sufix;
-}
-
 // returns the corresponding index. Return -1 if no correspondance found
 int get_freq_idx (Info & info, float freq, float RelDiffMax) {
 	for (size_t i = 0; i < info.freqV.size(); i++) {
@@ -1593,5 +1623,28 @@ int get_phas_idx (Info & info, float phas, float RelDiffMax) {
 			return i;
 	}
 	return -1;
+}
+
+// other auxiliar functions
+bool equalAproxf (float f0, float f1, float RelDiffMax) {
+	float diff = f1 - f0;
+	float diffMax = abs(f0 * RelDiffMax);
+	if (diffMax < 0.000001)	// this may happen if f0 is 0.0f or close to 0.0f
+		diffMax = 0.000001;
+	return ((diff < diffMax) && (diff > -diffMax));
+}
+void print(std::vector<float> v, char* prefix, char* sufix) {
+	if (prefix)
+		std::cout << prefix;
+	if (v.size() <= 0) {
+		std::cout << "[empty]";
+	} else {
+		std::cout << "[" << v[0];
+		for (size_t i = 1; i < v.size(); i++)
+			std::cout << ", " << v[i];
+		std::cout  << "]";
+	}
+	if (sufix)
+		std::cout << sufix;
 }
 

@@ -55,21 +55,21 @@ void test_toPixSim(char* dir_name, char* file_name) {
 	for(int r = 0; r < frameRealPVcmx.rows; r++) { 
 		for(int c = 0; c < frameRealPVcmx.cols; c++) {
 			idx = rc2idx(r,c,PIXELS_VALID, pSim);
-			frameRealPVcmx.data[idx] = cmx.C_at(freqIdx, distIdx, r, c, PIXELS_VALID, pSim);
+			frameRealPVcmx.data[idx] = cmx.C_at(freqIdx, distIdx, 0, r, c, PIXELS_VALID, pSim);
 			frameRealPV_div_cmx.data[idx] = frameRealPVcmx.data[idx] / frameRealPV.data[idx];
 	}	}
 	pSim = true;
 	for(int r = 0; r < frameSimPTcmx.rows; r++) { 
 		for(int c = 0; c < frameSimPTcmx.cols; c++) {
 			idx = rc2idx(r,c,PIXELS_VALID, pSim);
-			frameSimPTcmx.data[idx] = cmx.C_at(freqIdx, distIdx, r, c, PIXELS_TOTAL, pSim);
+			frameSimPTcmx.data[idx] = cmx.C_at(freqIdx, distIdx, 0, r, c, PIXELS_TOTAL, pSim);
 			frameSimPT_div_cmx.data[idx] = frameSimPTcmx.data[idx] / frameSimPT.data[idx];
 	}	}
 	pSim = true;
 	for(int r = 0; r < frameSimPVcmx.rows; r++) { 
 		for(int c = 0; c < frameSimPVcmx.cols; c++) {
 			idx = rc2idx(r,c,PIXELS_VALID, pSim);
-			frameSimPVcmx.data[idx] = cmx.C_at(freqIdx, distIdx, r, c, PIXELS_VALID, pSim);
+			frameSimPVcmx.data[idx] = cmx.C_at(freqIdx, distIdx, 0, r, c, PIXELS_VALID, pSim);
 			frameSimPV_div_cmx.data[idx] = frameSimPVcmx.data[idx] / frameSimPV.data[idx];
 	}	}
 
@@ -276,10 +276,11 @@ void test_distHS(Info & info, float pathWallOffset, float ERROR_ON_PURPOSE_DIST_
 	}
 	
 	// Create/get Frames H, S
-	Frame frame_H (rawData, freq_idx, dist_idx, info.shutV.size()-1, 0, ps, pSim);
-	Frame frame_S;
-	set_DirectVision_Simulation_Frame(cmx, scene, frame_S, freq_idx, ps, pSim);
-	float distHS_ = distHS(frame_H, frame_S);
+	Frame frame_H00 (rawData, freq_idx, dist_idx, info.shutV.size()-1, 0, ps, pSim);
+	Frame frame_H90 (rawData, freq_idx, dist_idx, info.shutV.size()-1, 1, ps, pSim);
+	Frame frame_S00, frame_S90;
+	set_DirectVision_Simulation_Frame(cmx, scene, frame_S00, frame_S90, freq_idx, ps, pSim);
+	float distHS_ = distHS(frame_H00, frame_H90, frame_S00, frame_S90);
 
 	// print variables
 	std::cout << "\n\n\--------------------------------------------------------------";
@@ -292,8 +293,10 @@ void test_distHS(Info & info, float pathWallOffset, float ERROR_ON_PURPOSE_DIST_
 	// Plotting Frames
 	int plotTime_ms = 1;
 	bool destroyWindow_ = false;
-	frame_H.plot(plotTime_ms, destroyWindow_, "Frame H");
-	frame_S.plot(plotTime_ms, destroyWindow_, "Frame S");
+	frame_H00.plot(plotTime_ms, destroyWindow_, "Frame H00");
+	frame_H90.plot(plotTime_ms, destroyWindow_, "Frame H90");
+	frame_S00.plot(plotTime_ms, destroyWindow_, "Frame S00");
+	frame_S90.plot(plotTime_ms, destroyWindow_, "Frame S90");
 
 	char test[128];
 	std::cin >> test;
@@ -329,7 +332,7 @@ void test_CMX_var(Info & info, float pathWallOffset, float ERROR_ON_PURPOSE_DIST
 	// THIS IS THE VARIABLE (2of2) WE HAVE TO CHANGE FOR LABBOOK PAGE 15
 	//float ERROR_ON_PURPOSE_DIST_WALL_OFFSET = 0.0f;
 	float dist_wall_cam = info.dist_wall_cam + (pathWallOffset / 2.0f) + ERROR_ON_PURPOSE_DIST_WALL_OFFSET;	// path/2.0f approximation considering camPos = lasPos
-	Frame frame_S;
+	Frame frame_S00, frame_S90;
 	/*
 	Frame frame_sim_21;
 	Frame frame_sim_2375;
@@ -338,7 +341,7 @@ void test_CMX_var(Info & info, float pathWallOffset, float ERROR_ON_PURPOSE_DIST
 	Frame frame_sim_35;
 	Frame frame_sim_50;
 	*/
-	test_FrameSimFromWallDist (frame_S, info, dist_wall_cam, freq_idx, 0, ps);
+	test_FrameSimFromWallDist (frame_S00, frame_S90, info, dist_wall_cam, freq_idx, 0, ps);
 	/*
 	test_FrameSimFromWallDist (frame_sim_21, info, 2.1f, freq_idx, 0, ps);
 	test_FrameSimFromWallDist (frame_sim_2375, info, 2.375f, freq_idx, 0, ps);
@@ -353,8 +356,8 @@ void test_CMX_var(Info & info, float pathWallOffset, float ERROR_ON_PURPOSE_DIST
 		for(int c = 0; c < frame_cmx.cols; c++) {
 			frame_cmx.data[rc2idx(r,c,ps)] = cmx.C_at(freq_idx, dist_idx, r, c, ps);
 			frame_cmx_div_H.data[rc2idx(r,c,ps)] = frame_cmx.data[rc2idx(r,c,ps)] / frame_H.data[rc2idx(r,c,ps)];
-			frame_H_dif_S.data[rc2idx(r,c,ps)] = frame_H.data[rc2idx(r,c,ps)] - frame_S.data[rc2idx(r,c,ps)];
-			frame_H_div_S.data[rc2idx(r,c,ps)] = frame_H.data[rc2idx(r,c,ps)] / frame_S.data[rc2idx(r,c,ps)];
+			frame_H_dif_S.data[rc2idx(r,c,ps)] = frame_H.data[rc2idx(r,c,ps)] - frame_S00.data[rc2idx(r,c,ps)];
+			frame_H_div_S.data[rc2idx(r,c,ps)] = frame_H.data[rc2idx(r,c,ps)] / frame_S00.data[rc2idx(r,c,ps)];
 	}	}
 	float min_H_div_S  = min(frame_H_div_S.data);
 	float max_H_div_S  = max(frame_H_div_S.data);
@@ -405,7 +408,7 @@ void test_CMX_var(Info & info, float pathWallOffset, float ERROR_ON_PURPOSE_DIST
 	frame_H_90.plot(plotTime_ms, destroyWindow_, "Frame H_90");
 	frame_cmx.plot(plotTime_ms, destroyWindow_, "Frame cmx");
 	frame_cmx_div_H.plot(plotTime_ms, destroyWindow_, "Frame cmx/H");
-	frame_S.plot(plotTime_ms, destroyWindow_, "Frame S");
+	frame_S00.plot(plotTime_ms, destroyWindow_, "Frame S00");
 	frame_H_dif_S.plot(plotTime_ms, destroyWindow_, "Frame H-S");
 	frame_H_div_S.plot(plotTime_ms, destroyWindow_, "Frame H/S");
 	/*
@@ -419,7 +422,7 @@ void test_CMX_var(Info & info, float pathWallOffset, float ERROR_ON_PURPOSE_DIST
 }
 
 // Sets a Simulated Frame from a given dist_wall_cam. Used in test_CMX()
-void test_FrameSimFromWallDist (Frame & frame, Info & info, float dist_wall_cam, int freq_idx, int renderTime_ms, PixStoring ps) {
+void test_FrameSimFromWallDist (Frame & frame00, Frame & frame90, Info & info, float dist_wall_cam, int freq_idx, int renderTime_ms, PixStoring ps) {
 	
 	CalibrationMatrix cmx(info);
 	// set Scene
@@ -443,7 +446,7 @@ void test_FrameSimFromWallDist (Frame & frame, Info & info, float dist_wall_cam,
 	}	}	}
 	scene.o[WALL_PATCHES].clear();
 	// set Frame
-	set_DirectVision_Simulation_Frame(cmx, scene, frame, freq_idx, ps);
+	set_DirectVision_Simulation_Frame(cmx, scene, frame00, frame90, freq_idx, ps);
 	// render the scene (if so)
 	if (renderTime_ms > 0) {
 		int argcStub = 0;
@@ -496,7 +499,7 @@ void test_calibration_matrix() {
 	int di_floor = 8;
 	float path_dist = info.distV[di_floor] + 0.6f * (info.distV[di_floor+1] - info.distV[di_floor]);
 	std::cout << "\npath_dist = " << path_dist;
-	std::cout << "\nc(fi_max, " << path_dist << ", cen) = " << cm.C_atX(info.freqV.size()-1, info.rows/2, info.cols/2, path_dist);
+	std::cout << "\nc(fi_max, " << path_dist << ", cen) = " << cm.C_atX(info.freqV.size()-1, path_dist, 0, info.rows/2, info.cols/2);
 
 }
 

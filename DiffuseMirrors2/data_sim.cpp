@@ -17,7 +17,7 @@
 
 // This will include a minimization algorithm, but for now it will run some simulations manually and get the best fit
 // is totally inefficient with this implementation, just to try the system
-void updatePixelPatches_Simulation_BestFit(CalibrationMatrix & cmx, Scene & sceneCopy, Frame & frameSim, Frame & frame00, Point & camC, Point & camN, Object3D & screenFoVmeasNs, PixStoring ps_, bool pSim_) {
+void updatePixelPatches_Simulation_BestFit(CalibrationMatrix & cmx, Scene & sceneCopy, Frame & frameSim00, Frame & frameSim90, Frame & frame00, Frame & frame90, Point & camC, Point & camN, Object3D & screenFoVmeasNs, PixStoring ps_, bool pSim_) {
 
 	// pixPatchesBestFit
 	Object3D pixPatchesBestFit;
@@ -57,45 +57,153 @@ void updatePixelPatches_Simulation_BestFit(CalibrationMatrix & cmx, Scene & scen
 				sceneCopy.o[PIXEL_PATCHES].s[i].albedo = albedoRel;	// Useful for meas
 			}
 			// get Simulation Frame (S)
-			set_DirectVision_Simulation_Frame(cmx, sceneCopy, frameSim, freq_idx, ps_, pSim_);
+			set_DirectVision_Simulation_Frame(cmx, sceneCopy, frameSim00, frameSim90, freq_idx, ps_, pSim_);
 			// get Distance(H,S)
-			distHS_ = distHS(frame00, frameSim);
+				distHS_ = distHS(frame00, frame90, frameSim00, frameSim90);
 			// check if Distance(H,S) is better and update the pixPatchesBestFit
 			if (distHS_ < distHSmin) {
 				distHSmin = distHS_;
-				pixPatchesBestFit = sceneCopy.o[PIXEL_PATCHES];
+				pixPatchesBestFit.set(sceneCopy.o[PIXEL_PATCHES]);
 	}	}	}
-	sceneCopy.o[PIXEL_PATCHES] = pixPatchesBestFit;
+	sceneCopy.o[PIXEL_PATCHES].set(pixPatchesBestFit);
+}
+
+// This will include a minimization algorithm, but for now it will run some simulations manually and get the best fit
+// is totally inefficient with this implementation, just to try the system. Includes Tilt
+void updatePixelPatches_Simulation_BestFit_WithTilt(CalibrationMatrix & cmx, Scene & sceneCopy, Object3D & NsMod, std::vector<float> & sinAG, Frame & frameSim00, Frame & frameSim90, Frame & frame00, Frame & frame90, Point & camC, Point & camN, Object3D & screenFoVmeasNs, PixStoring ps_, bool pSim_) {
+
+	// pixPatchesBestFit
+	Object3D pixPatchesBestFit;
+	float distHSmin = FLT_MAX;
+	float distHS_;
+	Point xCC, xP01C, xP23C;
+	std::vector<float> xCen(cols(ps_, pSim_));
+	std::vector<float> xP03(cols(ps_, pSim_));
+	std::vector<float> xP12(cols(ps_, pSim_));
+	int idx;
+
+	// get freq_idx
+	int freq_idx = get_freq_idx(*(cmx.info), frame00.freq);	// returns -1 if no idx correspondance was found
+	if (freq_idx < 0) {
+		std::cout << "\nWarning: Frame freq = " << frame00.freq << " is not a freq in .cmx freqV = ";
+		print(cmx.info->freqV);
+		return;
+	}
+
+	// we will discretize the simulation just by the distances to the camera (constant for all pixel patches as screenFoVmeasNs[i]*dist)
+	float dRes = 0.05f;
+	float dMin = 1.0f;
+	float dMax = 5.0f + dRes / 2.0f;
+	float albedoRelRes = 0.1f;
+	float albedoRelMin = 0.5f;
+	float albedoRelMax = 1.5f + albedoRelRes / 2.0f;
+	// for all distance
+	for (float d = dMin; d < dMax; d += dRes) {
+		// update pixel patches distances 
+		for (int i = 0; i < sceneCopy.o[PIXEL_PATCHES].s.size(); i++) {
+			sceneCopy.o[PIXEL_PATCHES].s[i].p[0].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[0] * d);	// Useless for meas but for rendering
+			sceneCopy.o[PIXEL_PATCHES].s[i].p[1].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[1] * d);	// Useless for meas but for rendering
+			sceneCopy.o[PIXEL_PATCHES].s[i].p[2].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[2] * d);	// Useless for meas but for rendering
+			sceneCopy.o[PIXEL_PATCHES].s[i].p[3].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[3] * d);	// Useless for meas but for rendering
+			sceneCopy.o[PIXEL_PATCHES].s[i].c.   set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].c    * d);	// Useful for meas
+		}
+		// update x
+		xCC = (sceneCopy.o[PIXEL_PATCHES].s[rc2idx(0, 0, ps_, pSim_)].c + sceneCopy.o[PIXEL_PATCHES].s[rc2idx(0, cols(ps_, pSim_)-1, ps_, pSim_)].c) / 2.0f;
+		xP01C = (sceneCopy.o[PIXEL_PATCHES].s[rc2idx(0, 0, ps_, pSim_)].p[0] + sceneCopy.o[PIXEL_PATCHES].s[rc2idx(0, cols(ps_, pSim_)-1, ps_, pSim_)].p[1]) / 2.0f;
+		xP23C = (sceneCopy.o[PIXEL_PATCHES].s[rc2idx(0, 0, ps_, pSim_)].p[3] + sceneCopy.o[PIXEL_PATCHES].s[rc2idx(0, cols(ps_, pSim_)-1, ps_, pSim_)].p[2]) / 2.0f;
+		for (int c = 0; c < xCen.size() / 2; c++) {
+			xCen[c] = dist(xCC, sceneCopy.o[PIXEL_PATCHES].s[rc2idx(0, c, ps_, pSim_)].c);
+			xP03[c] = dist(xP01C, sceneCopy.o[PIXEL_PATCHES].s[rc2idx(0, c, ps_, pSim_)].p[0]);
+			xP12[c] = dist(xP23C, sceneCopy.o[PIXEL_PATCHES].s[rc2idx(0, c, ps_, pSim_)].p[2]);
+		}
+		for (int c = xCen.size() / 2; c < xCen.size(); c++) {
+			xCen[c] = - dist(xCC, sceneCopy.o[PIXEL_PATCHES].s[rc2idx(0, c, ps_, pSim_)].c);
+			xP03[c] = - dist(xP01C, sceneCopy.o[PIXEL_PATCHES].s[rc2idx(0, c, ps_, pSim_)].p[0]);
+			xP12[c] = - dist(xP23C, sceneCopy.o[PIXEL_PATCHES].s[rc2idx(0, c, ps_, pSim_)].p[2]);
+		}
+		// for all distance tilted
+		for (size_t a = 0; a < sinAG.size(); a++) {
+			// for all row 
+			for (int r = 0; r < rows(ps_,pSim_); r++) {
+				// for all column 
+				for (int c = 0; c < cols(ps_,pSim_); c++) {
+					idx = rc2idx(r, c, ps_, pSim_);
+					sceneCopy.o[PIXEL_PATCHES].s[idx].p[0].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[idx].p[0] * (d + xP03[c] * sinAG[a] * NsMod.s[idx].p[0].x));	// Useless for meas but for rendering
+					sceneCopy.o[PIXEL_PATCHES].s[idx].p[1].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[idx].p[1] * (d + xP12[c] * sinAG[a] * NsMod.s[idx].p[1].x));	// Useless for meas but for rendering
+					sceneCopy.o[PIXEL_PATCHES].s[idx].p[2].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[idx].p[2] * (d + xP12[c] * sinAG[a] * NsMod.s[idx].p[2].x));	// Useless for meas but for rendering
+					sceneCopy.o[PIXEL_PATCHES].s[idx].p[3].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[idx].p[3] * (d + xP03[c] * sinAG[a] * NsMod.s[idx].p[3].x));	// Useless for meas but for rendering
+					sceneCopy.o[PIXEL_PATCHES].s[idx].c.   set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[idx].c    * (d + xCen[c] * sinAG[a] * NsMod.s[idx].c.   x));	// Useful for meas
+				}
+			}
+			// get Simulation Frame (S)
+			set_DirectVision_Simulation_Frame(cmx, sceneCopy, frameSim00, frameSim90, freq_idx, ps_, pSim_);
+			//Sleep(100);
+			//frameSim.plot(1, false, "Frame Sim Tilt");
+			// For all albedoRel. (For efficiency we avoid looping the FrameSim through the albedo while the FrameSim is proportional to the albedo)
+			for (float albedoRel = albedoRelMin; albedoRel < albedoRelMax; albedoRel += albedoRelRes) {
+				// update Frame from albedo
+				mulElemToVector(albedoRel, frameSim00.data, frameSim00.data);
+				mulElemToVector(albedoRel, frameSim90.data, frameSim90.data);
+				// get Distance(H,S)
+				distHS_ = distHS(frame00, frame90, frameSim00, frameSim90);
+				// check if Distance(H,S) is better and update the pixPatchesBestFit
+				if (distHS_ < distHSmin) {
+					distHSmin = distHS_;
+					pixPatchesBestFit.set(sceneCopy.o[PIXEL_PATCHES]);
+				}
+	}	}	}
+	sceneCopy.o[PIXEL_PATCHES].set(pixPatchesBestFit);
 }
 
 
 // sets a Simulated Frame for the Direct Vision case, from a Calibration Matrix
-void set_DirectVision_Simulation_Frame(CalibrationMatrix & cmx, Scene & sceneCopy, Frame & frameSim, int freq_idx, PixStoring ps_, bool pSim_) {
+void set_DirectVision_Simulation_Frame(CalibrationMatrix & cmx, Scene & sceneCopy, Frame & frameSim00, Frame & frameSim90, int freq_idx, PixStoring ps_, bool pSim_) {
 
 	// Simulated Image Vector
-	float relativeAlbedo = 1.0f;
-	std::vector<float> DirectVision_Simulation(numPix(ps_, pSim_));
+	std::vector<float> DirectVision_Simulation00(numPix(ps_, pSim_));
+	std::vector<float> DirectVision_Simulation90(numPix(ps_, pSim_));
+	int sIdx;
 	for (int r = 0; r < rows(ps_, pSim_); r++) {
 		for (int c = 0; c < cols(ps_, pSim_); c++) {
-			DirectVision_Simulation[rc2idx(r, c, ps_, pSim_)] = cmx.S_DirectVision(freq_idx, r, c,
-				sceneCopy.o[LASER].s[0].c, sceneCopy.o[PIXEL_PATCHES].s[rc2idx(r, c, ps_, pSim_)].c, sceneCopy.o[CAMERA].s[0].c, relativeAlbedo, ps_, pSim_);
+			sIdx = rc2idx(r, c, ps_, pSim_);
+			DirectVision_Simulation00[sIdx] = cmx.S_DirectVision(freq_idx, 0, r, c, sceneCopy.o[LASER].s[0].c, sceneCopy.o[PIXEL_PATCHES].s[sIdx].c, sceneCopy.o[CAMERA].s[0].c, sceneCopy.o[PIXEL_PATCHES].s[sIdx].albedo, ps_, pSim_);
+			DirectVision_Simulation90[sIdx] = cmx.S_DirectVision(freq_idx, 1, r, c, sceneCopy.o[LASER].s[0].c, sceneCopy.o[PIXEL_PATCHES].s[sIdx].c, sceneCopy.o[CAMERA].s[0].c, sceneCopy.o[PIXEL_PATCHES].s[sIdx].albedo, ps_, pSim_);
 	}	}
-	frameSim.set(DirectVision_Simulation, rows(ps_, pSim_), cols(ps_, pSim_), cmx.info->freqV[freq_idx], 0.0f, cmx.info->shutV[cmx.info->shutV.size() - 1], 0.0f, ps_, pSim_);
+	frameSim00.set(DirectVision_Simulation00, rows(ps_, pSim_), cols(ps_, pSim_), cmx.info->freqV[freq_idx], 0.0f, cmx.info->shutV[cmx.info->shutV.size() - 1], cmx.info->phasV[0], ps_, pSim_);
+	frameSim90.set(DirectVision_Simulation90, rows(ps_, pSim_), cols(ps_, pSim_), cmx.info->freqV[freq_idx], 0.0f, cmx.info->shutV[cmx.info->shutV.size() - 1], cmx.info->phasV[cmx.info->phasV.size() - 1], ps_, pSim_);
 }
 
 
 // dist(H,S) = Sum{(Hi-Si)^2}. Distance (Measurement, Simulation) function. Actually, sed for both Direct Vision and Occlusion problems
-float distHS(Frame & H, Frame & S) {
-
+float distHS(Frame & H00, Frame & H90, Frame & S00, Frame & S90) {
+	
 	// dist(H,S) = Sum{(Hi-Si)^2}
 	float distResult = 0.0f;
-	float H_S_diffPow2;
-	for (size_t i = 0; i < H.data.size(); i++) {
-		H_S_diffPow2 = H.data[i] - S.data[i];
-		distResult += (H_S_diffPow2 * H_S_diffPow2);
+	float H00_S00_diffPow2;
+	float H90_S90_diffPow2;
+	for (size_t i = 0; i < H00.data.size(); i++) {
+		H00_S00_diffPow2 = H00.data[i] - S00.data[i];
+		H90_S90_diffPow2 = H90.data[i] - S90.data[i];
+		distResult += ((H00_S00_diffPow2 * H00_S00_diffPow2) + (H90_S90_diffPow2 * H90_S90_diffPow2));
 	}
 	return distResult;
 	//return distResult * H.data.size();	// to normalize the result to the number of pixels
+	
+	/*
+	// dist(H,S) = Sum{(Hi-Si)^2}
+	std::vector<float> H_S(H.data.size());
+	subPow2VectorToVector(H.data, S.data, H_S);
+
+	// erase some maximums (possible outliers)
+	int eraseMaxNum = H.data.size() / 10; 
+	int eraseIdx;
+	for (int i = 0; i < eraseMaxNum; i++) {
+		max(H_S, eraseIdx);
+		H_S.erase(H_S.begin() + eraseIdx);
+	}
+
+	return sum(H_S);
+	*/
 }
 
 
@@ -107,7 +215,7 @@ float distHS(Frame & H, Frame & S) {
 
 // This will include a minimization algorithm, but for now it will run some simulations manually and get the best fit
 // is totally inefficient with this implementation, just to try the system
-void updateVolumePatches_Occlusion_BestFit(CalibrationMatrix & cmx, Scene & sceneCopy, Object3D volPatchesCopy, Frame & frameSim, Frame & frame00, Point & walN, Point & _vopN, float dRes, PixStoring ps_, bool pSim_) {
+void updateVolumePatches_Occlusion_BestFit(CalibrationMatrix & cmx, Scene & sceneCopy, Object3D volPatchesCopy, Frame & frameSim00, Frame & frameSim90, Frame & frame00, Frame & frame90, Point & walN, Point & _vopN, float dRes, PixStoring ps_, bool pSim_) {
 
 	// pixPatchesBestFit
 	Object3D volPatchesBestFit;
@@ -169,37 +277,38 @@ void updateVolumePatches_Occlusion_BestFit(CalibrationMatrix & cmx, Scene & scen
 	float albedoRelMax = 1.5f + albedoRelRes / 2.0f;
 	// For all distance
 	for (float d = dMin; d < dMax; d += dRes) {
-		Sleep(100);
-		frameSim.plot(1, false, "Frame Sim Occ");
+		//Sleep(100);
+		//frameSim00.plot(1, false, "Frame Sim00 Occ");
+		//frameSim90.plot(1, false, "Frame Sim90 Occ");
 		// Update pixel patches distances 
 		traV = _vopN * d;
-		for (int i = 0; i < SCENEMAIN.o[VOLUME_PATCHES].s.size(); i++) {
-			SCENEMAIN.o[VOLUME_PATCHES].s[i].p[0] = volPatchesCopy.s[i].p[0] + traV;	// Useless for meas but for rendering
-			SCENEMAIN.o[VOLUME_PATCHES].s[i].p[1] = volPatchesCopy.s[i].p[1] + traV;	// Useless for meas but for rendering
-			SCENEMAIN.o[VOLUME_PATCHES].s[i].p[2] = volPatchesCopy.s[i].p[2] + traV;	// Useless for meas but for rendering
-			SCENEMAIN.o[VOLUME_PATCHES].s[i].p[3] = volPatchesCopy.s[i].p[3] + traV;	// Useless for meas but for rendering
-			SCENEMAIN.o[VOLUME_PATCHES].s[i].c    = volPatchesCopy.s[i].c    + traV;	// Useful for meas
+		for (int i = 0; i < sceneCopy.o[VOLUME_PATCHES].s.size(); i++) {
+			sceneCopy.o[VOLUME_PATCHES].s[i].p[0] = volPatchesCopy.s[i].p[0] + traV;	// Useless for meas but for rendering
+			sceneCopy.o[VOLUME_PATCHES].s[i].p[1] = volPatchesCopy.s[i].p[1] + traV;	// Useless for meas but for rendering
+			sceneCopy.o[VOLUME_PATCHES].s[i].p[2] = volPatchesCopy.s[i].p[2] + traV;	// Useless for meas but for rendering
+			sceneCopy.o[VOLUME_PATCHES].s[i].p[3] = volPatchesCopy.s[i].p[3] + traV;	// Useless for meas but for rendering
+			sceneCopy.o[VOLUME_PATCHES].s[i].c    = volPatchesCopy.s[i].c    + traV;	// Useful for meas
 		}
 		// For all albedoRel
 		for (float albedoRel = albedoRelMin; albedoRel < albedoRelMax; albedoRel += albedoRelRes) {
 			// Update pixel patches albedoRels 
-			for (int i = 0; i < SCENEMAIN.o[VOLUME_PATCHES].s.size(); i++)
-				SCENEMAIN.o[VOLUME_PATCHES].s[i].albedo = albedoRel;	// Useful for meas
+			for (int i = 0; i < sceneCopy.o[VOLUME_PATCHES].s.size(); i++)
+				sceneCopy.o[VOLUME_PATCHES].s[i].albedo = albedoRel;	// Useful for meas
 			// get Simulation Frame (S)
-			set_Occlusion_Simulation_Frame(cmx, SCENEMAIN, frame00, frameSim, walN, freq_idx, ps_, pSim_);
+			set_Occlusion_Simulation_Frame(cmx, sceneCopy, frameSim00, frameSim90, walN, freq_idx, ps_, pSim_);
 			// get Distance(H,S)
-			distHS_ = distHS(frame00, frameSim);
+			distHS_ = distHS(frame00, frame90, frameSim00, frameSim90);
 			// check if Distance(H,S) is better and update the pixPatchesBestFit
 			if (distHS_ < distHSmin) {
 				distHSmin = distHS_;
-				volPatchesBestFit = SCENEMAIN.o[PIXEL_PATCHES];
+				volPatchesBestFit.set(sceneCopy.o[VOLUME_PATCHES]);
 	}	}	}
 
-	SCENEMAIN.o[VOLUME_PATCHES] = volPatchesBestFit;
+	sceneCopy.o[VOLUME_PATCHES].set(volPatchesBestFit);
 }
 
 // sets a Simulated Frame for the Occlusion case, from a Transient Image and a Calibration Matrix. This does all the calculations
-void set_Occlusion_Simulation_Frame(CalibrationMatrix & cmx, Scene & scene, Frame & frameReal, Frame & frameSim, Point & walN, int freq_idx, PixStoring ps_, bool pSim_) {
+void set_Occlusion_Simulation_Frame(CalibrationMatrix & cmx, Scene & scene, Frame & frameSim00, Frame & frameSim90, Point & walN, int freq_idx, PixStoring ps_, bool pSim_) {
 	
 	// L_E;		// Le(l) in the paper. Radiance from the light point in the wall from the laser
 
@@ -222,7 +331,7 @@ void set_Occlusion_Simulation_Frame(CalibrationMatrix & cmx, Scene & scene, Fram
 	set_TransientImage(transientImage, radiance_volPatches, radiance_volPatchesN, scene, scene.o[LASER_RAY].s[0].p[1], walN);
 
 	// Pixels value. H(w,phi) in the paper
-	set_FrameSim(transientImage, cmx, frameSim, freq_idx, ps_, pSim_);
+	set_FrameSim(transientImage, cmx, frameSim00, frameSim90, freq_idx, ps_, pSim_);
 
 
 	// Plot a transient pixel with MATLAB Engine, from TransientImage
@@ -293,21 +402,25 @@ void set_TransientImage(std::vector<std::multimap<float, float>> & transientImag
 
 // For set_Occlusion_Simulation_Frame(...)
 // sets a Simulated Frame for the Occlusion case, from a Transient Image and a Calibration Matrix. This does NOT do any calculations
-void set_FrameSim(std::vector<std::multimap<float, float>> & transientImage, CalibrationMatrix & cmx, Frame & frameSim, int freq_idx, PixStoring ps_, bool pSim_) {
+void set_FrameSim(std::vector<std::multimap<float, float>> & transientImage, CalibrationMatrix & cmx, Frame & frameSim00, Frame & frameSim90, int freq_idx, PixStoring ps_, bool pSim_) {
 
 	// Simulated Image Vector
 	int idx;
-	std::vector<float> vectorSim(numPix(ps_, pSim_), 0.0f);
+	std::vector<float> vectorSim00(numPix(ps_, pSim_), 0.0f);
+	std::vector<float> vectorSim90(numPix(ps_, pSim_), 0.0f);
 	// Go pixel by pixel
 	for (int r = 0; r < rows(ps_, pSim_); r++) {
 		for (int c = 0; c < cols(ps_, pSim_); c++) {
 			idx = rc2idx(r, c, ps_, pSim_);
 			// Fill with the values of the Transient Pixel
-			for (std::multimap<float, float>::iterator it = transientImage[idx].begin(); it != transientImage[idx].end(); ++it)
-				vectorSim[idx] += (*it).second * cmx.C_atX(freq_idx, (*it).first, r, c, ps_, pSim_);
+			for (std::multimap<float, float>::iterator it = transientImage[idx].begin(); it != transientImage[idx].end(); ++it) {
+				vectorSim00[idx] += (*it).second * cmx.C_atX(freq_idx, (*it).first, 0, r, c, ps_, pSim_);
+				vectorSim90[idx] += (*it).second * cmx.C_atX(freq_idx, (*it).first, 1, r, c, ps_, pSim_);
+			}
 	}	}
 	// set the new Frame Simulated
-	frameSim.set(vectorSim, rows(ps_, pSim_), cols(ps_, pSim_), cmx.info->freqV[freq_idx], 0.0f, cmx.info->shutV[cmx.info->shutV.size() - 1], 0.0f, ps_, pSim_);
+	frameSim00.set(vectorSim00, rows(ps_, pSim_), cols(ps_, pSim_), cmx.info->freqV[freq_idx], 0.0f, cmx.info->shutV[cmx.info->shutV.size() - 1], cmx.info->phasV[0], ps_, pSim_);
+	frameSim90.set(vectorSim90, rows(ps_, pSim_), cols(ps_, pSim_), cmx.info->freqV[freq_idx], 0.0f, cmx.info->shutV[cmx.info->shutV.size() - 1], cmx.info->phasV[cmx.info->phasV.size() - 1], ps_, pSim_);
 }
 
 

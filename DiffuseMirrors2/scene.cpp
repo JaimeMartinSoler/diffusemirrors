@@ -179,7 +179,6 @@ void Point::rotOpt(	float const & r11, float const & r12, float const & r13,
 					float const & r31, float const & r32, float const & r33) {
 	// Rodrigues' Rotation Formula:
 	// http://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula
-	//(*this) = (*this) * cosT + axisN.cross(*this) * sinT + axisN * (axisN.dot(*this)) * (1 - cosT);
 	float xc = x;
 	float yc = y;
 	x = r11*xc + r12*yc + r13*z;
@@ -1087,13 +1086,13 @@ void Object3D::setVolumePatches() {
 	rotyFromP(radN(originN, refN), originC);
 	tra(refC);
 }
-void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame & frame00, bool loop, PixStoring ps_, bool pSim_) {
+void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_, bool pSim_) {
 
 	// Setting constant elements
 	CalibrationMatrix cmx(info);
 	Scene sceneCopy(scene);
 	Object3D volPatchesCopy(scene.o[VOLUME_PATCHES]);
-	Frame frameSim;
+	Frame frameSim00, frameSim90;
 	Point camC = scene.o[CAMERA].s[0].c;
 	Point camN = scene.o[CAMERA].normalQUAD();
 	Object3D screenFoVmeasNs;
@@ -1112,21 +1111,20 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	bool first_iter = true;
 	while (loop || first_iter) {
 
-		//const clock_t begin_time = clock();
-
+		const clock_t begin_time = clock();
+		
 		if (!PMD_LOOP_ENABLE && !first_iter)
 			break;
 		first_iter = false;
-
+		
 		// Syncronization
 		locker_frame_object.lock();		// Lock mutex_frame_object, any thread which used mutex_frame_object can NOT continue until unlock()
 		while (!UPDATED_NEW_FRAME)	//std::cout << "Waiting in Object to finish the UPDATED_NEW_Frame. This is OK!\n";
 			cv_frame_object.wait(locker_frame_object);
 
 		// Update pixel patches, setting the Best Fit
-		updateVolumePatches_Occlusion_BestFit(cmx, sceneCopy, volPatchesCopy, frameSim, frame00, walN, _vopN, dRes, ps_, pSim_);
+		updateVolumePatches_Occlusion_BestFit(cmx, sceneCopy, volPatchesCopy, frameSim00, frameSim90, frame00, frame90, walN, _vopN, dRes, ps_, pSim_);
 		scene.o[VOLUME_PATCHES] = sceneCopy.o[VOLUME_PATCHES];
-		//frameSim.plot(1, false, "Frame Sim Occ");
 
 		// Syncronization
 		//std::cout << ",    UPDATED_NEW_SCENE\n";
@@ -1135,15 +1133,15 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 		cv_frame_object.notify_all();	// Notify all cv_frame_object. All threads waiting for cv_frame_object will break the wait after waking up
 		locker_frame_object.unlock();	// Unlock mutex_frame_object, now threads which used mutex_frame_object can continue
 
-		//const clock_t end_time = clock();
-		//float ms_time = 1000.0f * float(end_time - begin_time) / (float)CLOCKS_PER_SEC;
-		//float fps_time = 1000.0f / ms_time;
-		//std::cout << "time = " << ms_time << " ms,    fps = " << fps_time <<  " fps\n";
+		const clock_t end_time = clock();
+		float ms_time = 1000.0f * float(end_time - begin_time) / (float)CLOCKS_PER_SEC;
+		float fps_time = 1000.0f / ms_time;
+		std::cout << "\ntime = " << ms_time << " ms,    fps = " << fps_time <<  " fps";
 	}
 	// --- END OF LOOP -----------------------------------------------------------------------------------------
 }
-void updateVolumePatches_Occlusion_antiBugThread(Info & info, Scene & scene, Frame & frame00, bool loop, PixStoring ps_, bool pSim_) {
-	scene.o[VOLUME_PATCHES].updateVolumePatches_Occlusion(info, scene, frame00, loop, ps_, pSim_);
+void updateVolumePatches_Occlusion_antiBugThread(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_, bool pSim_) {
+	scene.o[VOLUME_PATCHES].updateVolumePatches_Occlusion(info, scene, frame00, frame90, loop, ps_, pSim_);
 }
 // Setter, Updater Pixel Patches (10)
 void Object3D::setPixelPatches(Scene & scene, float distDefault, PixStoring ps_, bool pSim_) {
@@ -1254,11 +1252,31 @@ void Object3D::updatePixelPatches_Simulation(Info & info, Scene & scene, Frame &
 	// Setting constant elements
 	CalibrationMatrix cmx(info);
 	Scene sceneCopy(scene);
-	Frame frameSim;
+	Frame frameSim00, frameSim90;
 	Point camC = scene.o[CAMERA].s[0].c;
 	Point camN = scene.o[CAMERA].normalQUAD();
 	Object3D screenFoVmeasNs;
 	screenFoVmeasNs.setScreenFoVmeasNs(camC, camN, ps_, pSim_);
+	// With Tilt Parameters
+	float alphaRadRes = 3.0f * PI / 180.0f;							// 3.0f * PI / 180.0f
+	float alphaRadMin = -45.0f * PI / 180.0f;							// -45.0f * PI / 180.0f
+	float alphaRadMax = 45.0f * PI / 180.0f + alphaRadRes / 2.0f;	// 45.0f * PI / 180.0f
+	int alphaNum = (int)((alphaRadMax - alphaRadMin) / alphaRadRes) + 1;
+	float alphaRad = alphaRadMin;
+	float angleFoVRad = atan(CAMERA_FOV_X_METERS / (2.0f * CAMERA_DIST_FOV_MEAS));
+	std::vector<float> sinAG(alphaNum);
+	for (size_t i = 0; i < sinAG.size(); i++) {
+		sinAG[i] = sin(alphaRad) / sin((PI/2.0f)+angleFoVRad-alphaRad);
+		alphaRad += alphaRadRes;
+	}
+	Object3D NsMod(screenFoVmeasNs);	// this is a artificial object, it stores in each x the corresponding module of screenFoVmeasNs
+	for (size_t i = 0; i < NsMod.s.size(); i++) {
+		NsMod.s[i].p[0].x = NsMod.s[i].p[0].mod();
+		NsMod.s[i].p[1].x = NsMod.s[i].p[1].mod();
+		NsMod.s[i].p[2].x = NsMod.s[i].p[2].mod();
+		NsMod.s[i].p[3].x = NsMod.s[i].p[3].mod();
+		NsMod.s[i].c.   x = NsMod.s[i].c.mod();
+	}
 
 	// Syncronization
 	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
@@ -1280,7 +1298,8 @@ void Object3D::updatePixelPatches_Simulation(Info & info, Scene & scene, Frame &
 		const clock_t begin_time = clock();
 
 		// Update pixel patches, setting the Best Fit
-		updatePixelPatches_Simulation_BestFit(cmx, sceneCopy, frameSim, frame00, camC, camN, screenFoVmeasNs, ps_, pSim_);
+		//updatePixelPatches_Simulation_BestFit(cmx, sceneCopy, frameSim, frame00, frame90, camC, camN, screenFoVmeasNs, ps_, pSim_);
+		updatePixelPatches_Simulation_BestFit_WithTilt(cmx, sceneCopy, NsMod, sinAG, frameSim00, frameSim90, frame00, frame90, camC, camN, screenFoVmeasNs, ps_, pSim_);
 		scene.o[PIXEL_PATCHES] = sceneCopy.o[PIXEL_PATCHES];
 		//frameSim.plot(1, false, "Frame Sim Dir");
 
@@ -1294,7 +1313,8 @@ void Object3D::updatePixelPatches_Simulation(Info & info, Scene & scene, Frame &
 		const clock_t end_time = clock();
 		float ms_time = 1000.0f * float(end_time - begin_time) / (float)CLOCKS_PER_SEC;
 		float fps_time = 1000.0f / ms_time;
-		std::cout << "time = " << ms_time << " ms,    fps = " << fps_time <<  " fps\n";
+		std::cout << "\ntime = " << ms_time << " ms,    fps = " << fps_time <<  " fps";
+		std::cout << "\ndist(cam,wall) = " << dist(camC, (scene.o[PIXEL_PATCHES].s[0].c + scene.o[PIXEL_PATCHES].s[rc2idx(0, cols(ps_, pSim_)-1, ps_, pSim_)].c + scene.o[PIXEL_PATCHES].s[rc2idx(rows(ps_, pSim_)-1, 0, ps_, pSim_)].c + scene.o[PIXEL_PATCHES].s[numPix(ps_, pSim_)-1].c) / 4.0f);
 	}
 	// --- END OF LOOP -----------------------------------------------------------------------------------------
 }

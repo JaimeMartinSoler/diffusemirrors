@@ -174,7 +174,7 @@ int main_Occlusion(char* dir_name_, char* file_name_) {
 
 	// Set all the corresponding scene and start updating
 	SCENEMAIN.setScene_Occlusion(ps, pSim);
-	std::thread thread_updateVolumePatches_Occlusion(updateVolumePatches_Occlusion_antiBugThread, std::ref(info), std::ref(SCENEMAIN), std::ref(FRAME_00_CAPTURE), loop, ps, pSim);
+	std::thread thread_updateVolumePatches_Occlusion(updateVolumePatches_Occlusion_antiBugThread, std::ref(info), std::ref(SCENEMAIN), std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), loop, ps, pSim);
 
 	// Render all the object3D of the scene
 	int argcStub = 0;
@@ -218,7 +218,7 @@ int main_Occlusion_Frame(char* dir_name_, char* file_name_) {
 	// Set all the corresponding scene and start updating
 	bool loop = false;
 	SCENEMAIN.setScene_Occlusion(ps, pSim);
-	std::thread thread_updateVolumePatches_Occlusion(updateVolumePatches_Occlusion_antiBugThread, std::ref(info), std::ref(SCENEMAIN), std::ref(frame00), loop, ps, pSim);
+	std::thread thread_updateVolumePatches_Occlusion(updateVolumePatches_Occlusion_antiBugThread, std::ref(info), std::ref(SCENEMAIN), std::ref(frame00), std::ref(frame90), loop, ps, pSim);
 
 	// Render all the object3D of the scene
 	int argcStub = 0;
