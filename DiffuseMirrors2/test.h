@@ -11,6 +11,8 @@ void test(char* dir_name, char* file_name);
 
 
 
+// test_optimization(...)
+void test_optimization();
 
 // test_toPixSim(...)
 void test_toPixSim(char* dir_name, char* file_name);

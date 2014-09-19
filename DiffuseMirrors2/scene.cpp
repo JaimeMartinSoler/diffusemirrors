@@ -1257,7 +1257,7 @@ void Object3D::updatePixelPatches_Simulation(Info & info, Scene & scene, Frame &
 	Point camN = scene.o[CAMERA].normalQUAD();
 	Object3D screenFoVmeasNs;
 	screenFoVmeasNs.setScreenFoVmeasNs(camC, camN, ps_, pSim_);
-	// With Tilt Parameters
+	// Parameters for the WithTilt function
 	float alphaRadRes = 3.0f * PI / 180.0f;							// 3.0f * PI / 180.0f
 	float alphaRadMin = -45.0f * PI / 180.0f;							// -45.0f * PI / 180.0f
 	float alphaRadMax = 45.0f * PI / 180.0f + alphaRadRes / 2.0f;	// 45.0f * PI / 180.0f
@@ -1298,8 +1298,9 @@ void Object3D::updatePixelPatches_Simulation(Info & info, Scene & scene, Frame &
 		const clock_t begin_time = clock();
 
 		// Update pixel patches, setting the Best Fit
-		//updatePixelPatches_Simulation_BestFit(cmx, sceneCopy, frameSim, frame00, frame90, camC, camN, screenFoVmeasNs, ps_, pSim_);
-		updatePixelPatches_Simulation_BestFit_WithTilt(cmx, sceneCopy, NsMod, sinAG, frameSim00, frameSim90, frame00, frame90, camC, camN, screenFoVmeasNs, ps_, pSim_);
+		//updatePixelPatches_Simulation_BestFit(cmx, sceneCopy, frameSim00, frameSim90, frame00, frame90, camC, camN, screenFoVmeasNs, ps_, pSim_);
+		//updatePixelPatches_Simulation_BestFit_WithTilt(cmx, sceneCopy, NsMod, sinAG, frameSim00, frameSim90, frame00, frame90, camC, camN, screenFoVmeasNs, ps_, pSim_);
+		updatePixelPatches_Simulation_BestFit_Optim(cmx, sceneCopy, frameSim00, frameSim90, frame00, frame90, camC, camN, screenFoVmeasNs, ps_, pSim_);
 		scene.o[PIXEL_PATCHES] = sceneCopy.o[PIXEL_PATCHES];
 		//frameSim.plot(1, false, "Frame Sim Dir");
 

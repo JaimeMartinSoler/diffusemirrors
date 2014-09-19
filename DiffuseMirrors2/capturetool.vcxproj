@@ -174,7 +174,7 @@ copy OpenCV\opencv_*.dll "$(OutDir)"</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Program Files\MATLAB\R2012b\extern\include;freeglut/include;./include;OpenCV/include;OpenCV/include/opencv;C:\Users\transient\Documents\Visual Studio 2012\Projects\DiffuseMirrors2\Purple0\Purple</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\transient\Documents\Visual Studio 2012\Projects\DiffuseMirrors2\levmar-2.6;C:\Program Files\MATLAB\R2012b\extern\include;freeglut/include;./include;OpenCV/include;OpenCV/include/opencv;C:\Users\transient\Documents\Visual Studio 2012\Projects\DiffuseMirrors2\Purple0\Purple</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_VARIADIC_MAX=10;NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeader>
@@ -183,8 +183,8 @@ copy OpenCV\opencv_*.dll "$(OutDir)"</Command>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>./lib64/pmdaccess2.lib;opencv_core231.lib;opencv_highgui231.lib;opencv_ml231.lib;opencv_legacy231.lib;opencv_imgproc231.lib;%(AdditionalDependencies);libmx.lib;libeng.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>freeglut/lib/x64;C:\Program Files\MATLAB\R2012b\extern\lib\win64\microsoft;./../bin;.\OpenCV\x64\vc10\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>blas.lib;lapack.lib;levmar.lib;libf2c.lib;tmglib.lib;./lib64/pmdaccess2.lib;opencv_core231.lib;opencv_highgui231.lib;opencv_ml231.lib;opencv_legacy231.lib;opencv_imgproc231.lib;%(AdditionalDependencies);libmx.lib;libeng.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Users\transient\Documents\Visual Studio 2012\Projects\DiffuseMirrors2\levmar-lib;freeglut/lib/x64;C:\Program Files\MATLAB\R2012b\extern\lib\win64\microsoft;./../bin;.\OpenCV\x64\vc10\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
