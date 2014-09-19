@@ -9,11 +9,125 @@
 // MATLAB
 #include "engine.h"
 
+#include <levmar.h>
 
 
 // ----------------------------------------------------------------------------------------------------------------------------------------
 // ----- DIRECT VISION --------------------------------------------------------------------------------------------------------------------
 // ----------------------------------------------------------------------------------------------------------------------------------------
+
+// structure for passing user-supplied data to the objective function (and its Jacobian). Parameters of set_DirectVision_Simulation_Frame(...)
+struct set_DirectVision_Simulation_Frame_STRUCT_DATA {
+	// Parameters for the Scene modification
+	Object3D* screenFoVmeasNs;
+	// Parameters of set_DirectVision_Simulation_Frame(...)
+	CalibrationMatrix * cmx;
+	Scene* sceneCopy;
+	Frame* frameSim00;
+	Frame* frameSim90;
+	int freq_idx;
+	PixStoring ps_;
+	bool pSim_;
+};
+
+// model to be fitted to measurements
+//     p: Input parameters to be fitted. p_size: number of parameters (only distance in this first approach)
+//         p[0] = dist(camC,wall)
+//     x: Output values to be fitted.    x_size: number of values (pixels in this case)
+//         x[i]: value of simulated pixel i
+//     adata: additional data
+void set_DirectVision_Simulation_Frame_Optim (float* p, float* x, int p_size, int x_size, void* adata) {
+	
+	// Set the data structure
+	struct set_DirectVision_Simulation_Frame_STRUCT_DATA* ad = (struct set_DirectVision_Simulation_Frame_STRUCT_DATA *) adata;
+	
+	// Update pixel patches distances 
+	for (int i = 0; i < ad->sceneCopy->o[PIXEL_PATCHES].s.size(); i++) {
+		ad->sceneCopy->o[PIXEL_PATCHES].s[i].p[0].set(ad->sceneCopy->o[CAMERA].s[0].c + ad->screenFoVmeasNs->s[i].p[0] * p[0]);	// Useless for meas but for rendering
+		ad->sceneCopy->o[PIXEL_PATCHES].s[i].p[1].set(ad->sceneCopy->o[CAMERA].s[0].c + ad->screenFoVmeasNs->s[i].p[1] * p[0]);	// Useless for meas but for rendering
+		ad->sceneCopy->o[PIXEL_PATCHES].s[i].p[2].set(ad->sceneCopy->o[CAMERA].s[0].c + ad->screenFoVmeasNs->s[i].p[2] * p[0]);	// Useless for meas but for rendering
+		ad->sceneCopy->o[PIXEL_PATCHES].s[i].p[3].set(ad->sceneCopy->o[CAMERA].s[0].c + ad->screenFoVmeasNs->s[i].p[3] * p[0]);	// Useless for meas but for rendering
+		ad->sceneCopy->o[PIXEL_PATCHES].s[i].c.   set(ad->sceneCopy->o[CAMERA].s[0].c + ad->screenFoVmeasNs->s[i].c    * p[0]);	// Useful for meas
+	}
+
+	// get Simulation Frame (S)
+	set_DirectVision_Simulation_Frame(*(ad->cmx), *(ad->sceneCopy), *(ad->frameSim00), *(ad->frameSim90), ad->freq_idx, ad->ps_, ad->pSim_);
+
+	// store the Simulation Frame (S) into the output array x
+	const int sizeofDataFrame = numPix(ad->ps_, ad->pSim_) * sizeof(float);
+	memcpy(x, ad->frameSim00->data.data(), sizeofDataFrame);
+	memcpy(x + sizeofDataFrame, ad->frameSim90->data.data(), sizeofDataFrame);
+}
+
+// This is the implementation of the BestFit using the Levenberg-Marquardt nonlinear least squares algorithms (slevmar_dif()): http://users.ics.forth.gr/~lourakis/levmar/
+void updatePixelPatches_Simulation_BestFit_Optim (CalibrationMatrix & cmx, Scene & sceneCopy, Frame & frameSim00, Frame & frameSim90, Frame & frame00, Frame & frame90, Point & camC, Point & camN, Object3D & screenFoVmeasNs, PixStoring ps_, bool pSim_) {
+
+	// get freq_idx
+	int freq_idx = get_freq_idx(*(cmx.info), frame00.freq);	// returns -1 if no idx correspondance was found
+	if (freq_idx < 0) {
+		std::cout << "\nWarning: Frame freq = " << frame00.freq << " is not a freq in .cmx freqV = ";
+		print(cmx.info->freqV);
+		return;
+	}
+
+	// set the initial parameters (p) and values (x)
+	const int p_size = 1;					
+	const int x_size = numPix(ps_, pSim_); 
+	const int sizeofDataFrame = x_size * sizeof(float);
+	float* p = new float[p_size];										// p[0] = dist(camC,wall)
+	float* x = new float[x_size];										// x[i]: value of simulated pixel i
+	p[0] = 2.0f;														// initial parameters estimate
+	memcpy(x, frame00.data.data(), sizeofDataFrame);					// actual measurement values to be fitted with the model
+	memcpy(x + sizeofDataFrame, frame90.data.data(), sizeofDataFrame);
+	
+	// additional data
+	struct set_DirectVision_Simulation_Frame_STRUCT_DATA adata;
+	adata.screenFoVmeasNs = &screenFoVmeasNs;
+	// Parameters of set_DirectVision_Simulation_Frame(...)
+	adata.cmx = &cmx;
+	adata.sceneCopy = &sceneCopy;
+	adata.frameSim00 = &frameSim00;
+	adata.frameSim90 = &frameSim90;
+	adata.freq_idx = freq_idx;
+	adata.ps_ = ps_;
+	adata.pSim_ = pSim_;
+
+	// optimization control parameters; passing to levmar NULL instead of opts reverts to defaults
+	float opts[LM_OPTS_SZ];
+	opts[0] = LM_INIT_MU;
+	opts[1] = 1E-15;
+	opts[2] = 1E-15;
+	opts[3] = 1E-20;
+	opts[4] = LM_DIFF_DELTA; // relevant only if the finite difference Jacobian version is used (not this case)
+
+	// info parameters. Output of the optimization function about internal parameters such as number of iterations (info[5]) etc
+	float info[LM_INFO_SZ];
+	
+	// other unused parameters (work, covar)
+	float* work = NULL;
+	float* covar = NULL;
+
+	// invoke the optimization function (returns the number of iterations, -1 if failed)
+	int maxIters = 8000;
+	int numIters = slevmar_dif (set_DirectVision_Simulation_Frame_Optim, p, x, p_size, x_size, maxIters, opts, info, work, covar, (void *)&adata); // withOUT analytic Jacobian
+	
+	// Update Optimal pixel patches distances 
+	for (int i = 0; i < sceneCopy.o[PIXEL_PATCHES].s.size(); i++) {
+		sceneCopy.o[PIXEL_PATCHES].s[i].p[0].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[0] * p[0]);	// Useless for meas but for rendering
+		sceneCopy.o[PIXEL_PATCHES].s[i].p[1].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[1] * p[0]);	// Useless for meas but for rendering
+		sceneCopy.o[PIXEL_PATCHES].s[i].p[2].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[2] * p[0]);	// Useless for meas but for rendering
+		sceneCopy.o[PIXEL_PATCHES].s[i].p[3].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[3] * p[0]);	// Useless for meas but for rendering
+		sceneCopy.o[PIXEL_PATCHES].s[i].c.   set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].c    * p[0]);	// Useful for meas
+	}
+
+	// clear dynamic memory
+	delete[] p;
+	delete[] x;
+
+	// print results (if so)
+	std::cout << "\ndist = " << p[0] << ". numIters = " << numIters;
+}
+
 
 // This will include a minimization algorithm, but for now it will run some simulations manually and get the best fit
 // is totally inefficient with this implementation, just to try the system
