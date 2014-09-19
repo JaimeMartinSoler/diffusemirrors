@@ -109,8 +109,10 @@ void updatePixelPatches_Simulation_BestFit_Optim (CalibrationMatrix & cmx, Scene
 
 	// invoke the optimization function (returns the number of iterations, -1 if failed)
 	int maxIters = 8000;
+	std::cout << "\nHere 000";
 	int numIters = slevmar_dif (set_DirectVision_Simulation_Frame_Optim, p, x, p_size, x_size, maxIters, opts, info, work, covar, (void *)&adata); // withOUT analytic Jacobian
 	
+	std::cout << "\nHere 001";
 	// Update Optimal pixel patches distances 
 	for (int i = 0; i < sceneCopy.o[PIXEL_PATCHES].s.size(); i++) {
 		sceneCopy.o[PIXEL_PATCHES].s[i].p[0].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[0] * p[0]);	// Useless for meas but for rendering
@@ -119,7 +121,8 @@ void updatePixelPatches_Simulation_BestFit_Optim (CalibrationMatrix & cmx, Scene
 		sceneCopy.o[PIXEL_PATCHES].s[i].p[3].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[3] * p[0]);	// Useless for meas but for rendering
 		sceneCopy.o[PIXEL_PATCHES].s[i].c.   set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].c    * p[0]);	// Useful for meas
 	}
-
+	
+	std::cout << "\nHere 002";
 	// clear dynamic memory
 	delete[] p;
 	delete[] x;
