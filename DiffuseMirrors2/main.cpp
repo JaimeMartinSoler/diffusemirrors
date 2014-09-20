@@ -125,7 +125,7 @@ int main_DirectVision_Simulation_Frame(char* dir_name_, char* file_name_) {
 
 	// get a Frame from the RawData
 	RawData rawData(info);
-	float pathWallOffset = -0.5f;
+	float pathWallOffset = 1.0f;
 	PixStoring ps = PIXELS_VALID;
 	bool pSim = true;
 	int dist_idx = get_dist_idx(info, pathWallOffset);	// returns -1 if no idx correspondance was found
@@ -142,7 +142,7 @@ int main_DirectVision_Simulation_Frame(char* dir_name_, char* file_name_) {
 	// Set all the corresponding scene and start updating
 	bool loop = false;
 	SCENEMAIN.setScene_DirectVision(ps, pSim);
-	updatePixelPatches_Simulation_antiBugThread(info, SCENEMAIN, frame00, frame90, loop, ps, pSim);	// the second Fame is frame90 but it's not used
+	updatePixelPatches_Simulation_antiBugThread(std::ref(info), std::ref(SCENEMAIN), std::ref(frame00), std::ref(frame90), loop, ps, pSim);	// the second Fame is frame90 but it's not used
 
 	// Render all the object3D of the scene
 	int argcStub = 0;
@@ -365,8 +365,8 @@ int main(int argc, char** argv) {
 	// Set RAW_DATA
 	SceneType sceneType = DIRECT_VISION_SIMULATION;
 	SCENEMAIN.set(sceneType);
-	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\cmx_01";
 	//char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\cmx_01";
+	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\cmx_01";
 	char file_name[1024] = "PMD";
 	
 	// Main Switcher

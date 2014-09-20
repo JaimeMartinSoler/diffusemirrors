@@ -36,11 +36,11 @@ struct set_DirectVision_Simulation_Frame_STRUCT_DATA {
 //     x: Output values to be fitted.    x_size: number of values (pixels in this case)
 //         x[i]: value of simulated pixel i
 //     adata: additional data
-void set_DirectVision_Simulation_Frame_Optim (float* p, float* x, int p_size, int x_size, void* adata) {
+void set_DirectVision_Simulation_Frame_Optim(float* p, float* x, int p_size, int x_size, void* adata) {
 	
 	// Set the data structure
 	struct set_DirectVision_Simulation_Frame_STRUCT_DATA* ad = (struct set_DirectVision_Simulation_Frame_STRUCT_DATA *) adata;
-	
+
 	// Update pixel patches distances 
 	for (int i = 0; i < ad->sceneCopy->o[PIXEL_PATCHES].s.size(); i++) {
 		ad->sceneCopy->o[PIXEL_PATCHES].s[i].p[0].set(ad->sceneCopy->o[CAMERA].s[0].c + ad->screenFoVmeasNs->s[i].p[0] * p[0]);	// Useless for meas but for rendering
@@ -54,9 +54,10 @@ void set_DirectVision_Simulation_Frame_Optim (float* p, float* x, int p_size, in
 	set_DirectVision_Simulation_Frame(*(ad->cmx), *(ad->sceneCopy), *(ad->frameSim00), *(ad->frameSim90), ad->freq_idx, ad->ps_, ad->pSim_);
 
 	// store the Simulation Frame (S) into the output array x
-	const int sizeofDataFrame = numPix(ad->ps_, ad->pSim_) * sizeof(float);
-	memcpy(x, ad->frameSim00->data.data(), sizeofDataFrame);
-	memcpy(x + sizeofDataFrame, ad->frameSim90->data.data(), sizeofDataFrame);
+	const int numFramePix = numPix(ad->ps_, ad->pSim_);			// rows*cols
+	const int sizeofFrameData = numFramePix * sizeof(float);	// rows*cols*sizeof(float) = rows*cols*4
+	memcpy(x, ad->frameSim00->data.data(), sizeofFrameData);
+	memcpy(x + numFramePix, ad->frameSim90->data.data(), sizeofFrameData);
 }
 
 // This is the implementation of the BestFit using the Levenberg-Marquardt nonlinear least squares algorithms (slevmar_dif()): http://users.ics.forth.gr/~lourakis/levmar/
@@ -71,14 +72,15 @@ void updatePixelPatches_Simulation_BestFit_Optim (CalibrationMatrix & cmx, Scene
 	}
 
 	// set the initial parameters (p) and values (x)
-	const int p_size = 1;					
-	const int x_size = numPix(ps_, pSim_); 
-	const int sizeofDataFrame = x_size * sizeof(float);
+	const int p_size = 1;
+	const int numFramePix = numPix(ps_, pSim_);					// rows*cols
+	const int x_size = numFramePix * cmx.info->phasV.size();	// rows*cols*phases = rows*cols*2
+	const int sizeofFrameData = numFramePix * sizeof(float);	// rows*cols*sizeof(float) = rows*cols*4
 	float* p = new float[p_size];										// p[0] = dist(camC,wall)
 	float* x = new float[x_size];										// x[i]: value of simulated pixel i
 	p[0] = 2.0f;														// initial parameters estimate
-	memcpy(x, frame00.data.data(), sizeofDataFrame);					// actual measurement values to be fitted with the model
-	memcpy(x + sizeofDataFrame, frame90.data.data(), sizeofDataFrame);
+	memcpy(x, frame00.data.data(), sizeofFrameData);					// actual measurement values to be fitted with the model
+	memcpy(x + numFramePix, frame90.data.data(), sizeofFrameData);
 	
 	// additional data
 	struct set_DirectVision_Simulation_Frame_STRUCT_DATA adata;
@@ -95,9 +97,9 @@ void updatePixelPatches_Simulation_BestFit_Optim (CalibrationMatrix & cmx, Scene
 	// optimization control parameters; passing to levmar NULL instead of opts reverts to defaults
 	float opts[LM_OPTS_SZ];
 	opts[0] = LM_INIT_MU;
-	opts[1] = 1E-15;
-	opts[2] = 1E-15;
-	opts[3] = 1E-20;
+	opts[1] = 1E-15;  // 1E-15
+	opts[2] = 1E-15;  // 1E-15
+	opts[3] = 1E-20;  // 1E-20
 	opts[4] = LM_DIFF_DELTA; // relevant only if the finite difference Jacobian version is used (not this case)
 
 	// info parameters. Output of the optimization function about internal parameters such as number of iterations (info[5]) etc
@@ -108,11 +110,9 @@ void updatePixelPatches_Simulation_BestFit_Optim (CalibrationMatrix & cmx, Scene
 	float* covar = NULL;
 
 	// invoke the optimization function (returns the number of iterations, -1 if failed)
-	int maxIters = 8000;
-	std::cout << "\nHere 000";
-	int numIters = slevmar_dif (set_DirectVision_Simulation_Frame_Optim, p, x, p_size, x_size, maxIters, opts, info, work, covar, (void *)&adata); // withOUT analytic Jacobian
+	int maxIters = 1000;
+	int numIters = slevmar_dif (set_DirectVision_Simulation_Frame_Optim, p, x, p_size, x_size, maxIters, opts, info, work, covar, (void*)&adata); // withOUT analytic Jacobian
 	
-	std::cout << "\nHere 001";
 	// Update Optimal pixel patches distances 
 	for (int i = 0; i < sceneCopy.o[PIXEL_PATCHES].s.size(); i++) {
 		sceneCopy.o[PIXEL_PATCHES].s[i].p[0].set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].p[0] * p[0]);	// Useless for meas but for rendering
@@ -122,7 +122,6 @@ void updatePixelPatches_Simulation_BestFit_Optim (CalibrationMatrix & cmx, Scene
 		sceneCopy.o[PIXEL_PATCHES].s[i].c.   set(sceneCopy.o[CAMERA].s[0].c + screenFoVmeasNs.s[i].c    * p[0]);	// Useful for meas
 	}
 	
-	std::cout << "\nHere 002";
 	// clear dynamic memory
 	delete[] p;
 	delete[] x;
