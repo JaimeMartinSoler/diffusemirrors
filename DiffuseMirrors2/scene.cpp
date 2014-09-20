@@ -1315,7 +1315,7 @@ void Object3D::updatePixelPatches_Simulation(Info & info, Scene & scene, Frame &
 		float ms_time = 1000.0f * float(end_time - begin_time) / (float)CLOCKS_PER_SEC;
 		float fps_time = 1000.0f / ms_time;
 		std::cout << "\ntime = " << ms_time << " ms,    fps = " << fps_time <<  " fps";
-		std::cout << "\ndist(cam,wall) = " << dist(camC, (scene.o[PIXEL_PATCHES].s[0].c + scene.o[PIXEL_PATCHES].s[rc2idx(0, cols(ps_, pSim_)-1, ps_, pSim_)].c + scene.o[PIXEL_PATCHES].s[rc2idx(rows(ps_, pSim_)-1, 0, ps_, pSim_)].c + scene.o[PIXEL_PATCHES].s[numPix(ps_, pSim_)-1].c) / 4.0f);
+		//std::cout << "\ndist(cam,wall) = " << dist(camC, (scene.o[PIXEL_PATCHES].s[0].c + scene.o[PIXEL_PATCHES].s[rc2idx(0, cols(ps_, pSim_)-1, ps_, pSim_)].c + scene.o[PIXEL_PATCHES].s[rc2idx(rows(ps_, pSim_)-1, 0, ps_, pSim_)].c + scene.o[PIXEL_PATCHES].s[numPix(ps_, pSim_)-1].c) / 4.0f);
 	}
 	// --- END OF LOOP -----------------------------------------------------------------------------------------
 }
