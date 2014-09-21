@@ -1048,7 +1048,88 @@ void Object3D::setLaserRay(Scene & scene, float R_, float G_, float B_, float A_
 	s[0].set(scene.o[LASER].s[0].c, p1, s[0].c);	s[0].set(1.0f, R_, G_, B_, A_, LINE);
 }
 // Setter, Updater Volume Patches (9)
-void Object3D::setVolumePatches() {
+void Object3D::setVolumePatchesBox(Point & boxS, std::vector<int> & rowsPerFaceV, std::vector<int> & colsPerFaceV,
+	std::vector<std::vector<float>> & albedoVV, std::vector<std::vector<float>> & RVV, std::vector<std::vector<float>> & GVV, std::vector<std::vector<float>> & BVV, std::vector<std::vector<float>> & AVV) {
+
+	// Set the Object3D
+	int numFaces = (int)rowsPerFaceV.size();
+	int numShapes = 0;
+	for (size_t i = FRONT; i < numFaces; ++i)
+		numShapes += rowsPerFaceV[i] * colsPerFaceV[i];
+	s.resize(numShapes);
+	ot = VOLUME_PATCHES;
+	ps = UNKNOWN_PIS;
+
+	// Create convex box
+	Object3D convexHullBox;
+	Point boxPC(3.0f, 0.0f, 0.0f);
+	Point boxRaxisN(1.0f, 0.0f, 0.0f);
+	float deg = 0.0f;
+	Point boxC_relToP0 = boxS / 2.0f;
+	convexHullBox.setBox(boxPC, boxRaxisN, deg, boxS, boxC_relToP0);
+
+	// Place the patches from the convexHullBox
+	Point p0, p1, p2, p3, c;
+	Point rVec, cVec;
+	int ri, ci, rowsPerFacei, colsPerFacei;
+	float rf, cf, rowsPerFacef, colsPerFacef;
+	int sIdx = 0;
+	int oIdx = 0;
+	for (int f = FRONT; f < numFaces; ++f) {
+		oIdx = 0;
+		rowsPerFacei = rowsPerFaceV[f];
+		colsPerFacei = colsPerFaceV[f];
+		rowsPerFacef = (float)rowsPerFacei - 0.5f;
+		colsPerFacef = (float)colsPerFacei - 0.5f;
+		rVec = convexHullBox.s[f].p[0] - convexHullBox.s[f].p[3];
+		cVec = convexHullBox.s[f].p[1] - convexHullBox.s[f].p[0];
+		for (ri = 0; ri < rowsPerFacei; ++ri) {
+			rf = (float)ri;
+			for (ci = 0; ci < colsPerFacei; ++ci) {
+				cf = (float)ci;
+				p0 = convexHullBox.s[f].p[3] + rVec * ((rf+1.0f)/rowsPerFacef) + cVec * ( cf      /colsPerFacef);
+				p1 = convexHullBox.s[f].p[3] + rVec * ((rf+1.0f)/rowsPerFacef) + cVec * ((cf+1.0f)/colsPerFacef);
+				p2 = convexHullBox.s[f].p[3] + rVec * ( rf      /rowsPerFacef) + cVec * ((cf+1.0f)/colsPerFacef);
+				p3 = convexHullBox.s[f].p[3] + rVec * ( rf      /rowsPerFacef) + cVec * ( cf      /colsPerFacef);
+				c  = convexHullBox.s[f].p[3] + rVec * ((rf+0.5f)/rowsPerFacef) + cVec * ((cf+0.5f)/colsPerFacef);
+				s[sIdx].set(p0, p1, p2, p3, c);
+				s[sIdx++].set(albedoVV[f][oIdx], RVV[f][oIdx], GVV[f][oIdx], BVV[f][oIdx], AVV[f][oIdx++], QUAD);
+	}	}	}
+
+
+
+	// Set reference from which the Volume Patches are made (at the end the corresponded transformation will be applied)
+	Point refC(3.0f, 0.0f, 0.0f);
+	Point refN(0.0f, 0.0f, -1.0f);
+	Point originC(0.0f, 0.0f, 0.0f);
+	Point originN(0.0f, 0.0f, 1.0f);
+
+	// Set variables
+	float minX = 0.0f;	float maxX = 1.0f;	float stepX = (maxX - minX) / (float)VOLUME_GRID_SIZE_X;
+	float minY = 0.25f;	float maxY = 1.25f;	float stepY = (maxY - minY) / (float)VOLUME_GRID_SIZE_Y;
+	float minZ = 0.0f;	float maxZ = 1.0f;	float stepZ = (maxZ - minZ) / (float)VOLUME_GRID_SIZE_Z;
+	Shape sX;
+
+	// Loop filling the Object3D
+	float z = 0.0f;
+	for (float x = minX; x < maxX - stepX / 2.0f; x += stepX) {
+		for (float y = minY; y < maxY - stepY / 2.0f; y += stepY) {
+			sX.clear();
+			sX.p.resize(QUAD);
+			sX.set(1.0f, 1.0f, 1.0f, 1.0f, 1.0f, QUAD);
+			sX.p[0].set(x, y, z);
+			sX.p[1].set(x + stepX, y, z);
+			sX.p[2].set(x + stepX, y + stepY, z);
+			sX.p[3].set(x, y + stepY, z);
+			sX.c.set   (x + stepX / 2.0f, y + stepY / 2.0f, z);
+			s.push_back(sX);
+	}	}
+
+	// Apply transformations
+	rotyFromP(radN(originN, refN), originC);
+	tra(refC);
+}
+void Object3D::setVolumePatches_OLD() {
 
 	// Set the Object3D
 	s.resize(0);
@@ -1086,7 +1167,7 @@ void Object3D::setVolumePatches() {
 	rotyFromP(radN(originN, refN), originC);
 	tra(refC);
 }
-void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_, bool pSim_) {
+void Object3D::updateVolumePatches_Occlusion_OLD(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_, bool pSim_) {
 
 	// Setting constant elements
 	CalibrationMatrix cmx(info);
@@ -1123,7 +1204,7 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 			cv_frame_object.wait(locker_frame_object);
 
 		// Update pixel patches, setting the Best Fit
-		updateVolumePatches_Occlusion_BestFit(cmx, sceneCopy, volPatchesCopy, frameSim00, frameSim90, frame00, frame90, walN, _vopN, dRes, ps_, pSim_);
+		updateVolumePatches_Occlusion_OLD_BestFit(cmx, sceneCopy, volPatchesCopy, frameSim00, frameSim90, frame00, frame90, walN, _vopN, dRes, ps_, pSim_);
 		scene.o[VOLUME_PATCHES] = sceneCopy.o[VOLUME_PATCHES];
 
 		// Syncronization
@@ -1140,8 +1221,8 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	}
 	// --- END OF LOOP -----------------------------------------------------------------------------------------
 }
-void updateVolumePatches_Occlusion_antiBugThread(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_, bool pSim_) {
-	scene.o[VOLUME_PATCHES].updateVolumePatches_Occlusion(info, scene, frame00, frame90, loop, ps_, pSim_);
+void updateVolumePatches_Occlusion_OLD_antiBugThread(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_, bool pSim_) {
+	scene.o[VOLUME_PATCHES].updateVolumePatches_Occlusion_OLD(info, scene, frame00, frame90, loop, ps_, pSim_);
 }
 // Setter, Updater Pixel Patches (10)
 void Object3D::setPixelPatches(Scene & scene, float distDefault, PixStoring ps_, bool pSim_) {
@@ -1891,7 +1972,7 @@ void Scene::setScene_Occlusion(PixStoring ps, bool pSim_) {
 	o[LASER_RAY].setLaserRay(*this, larR, larG, larB, larA, ps);
 
 	// VOLUME_PATCHES (9)
-	o[VOLUME_PATCHES].setVolumePatches();
+	o[VOLUME_PATCHES].setVolumePatches_OLD();
 }
 // Setter Scene Calibration Matrix
 void Scene::setScene_CalibrationMatrix(float laser_to_cam_offset_x, float laser_to_cam_offset_y, float laser_to_cam_offset_z, float dist_wall_cam,
