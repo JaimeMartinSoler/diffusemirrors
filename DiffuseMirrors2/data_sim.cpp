@@ -329,12 +329,41 @@ float distHS(Frame & H00, Frame & H90, Frame & S00, Frame & S90) {
 // ----- OCCLUSION ------------------------------------------------------------------------------------------------------------------------
 // ----------------------------------------------------------------------------------------------------------------------------------------
 
+// sets a Simulated Frame for the Occlusion case, from a Transient Image and a Calibration Matrix. This does all the calculations
+void set_Occlusion_Simulation_Frame_Optim(float* p, float* x, int p_size, int x_size, void* adata) {
 
-// This is the implementation of the BestFit for the Occlusion problem using the Levenberg-Marquardt nonlinear least squares algorithms (slevmar_dif()): http://users.ics.forth.gr/~lourakis/levmar/
-void updateVolumePatches_Occlusion_BestFit(CalibrationMatrix & cmx, Scene & sceneCopy, Object3D volPatchesCopy, Frame & frameSim00, Frame & frameSim90, Frame & frame00, Frame & frame90, Point & walN, Point & _vopN, float dRes, PixStoring ps_, bool pSim_) {
+	// get struct with the additional data
+	struct OCCLUSION_ADATA* ad = (struct OCCLUSION_ADATA *) adata;
 
+	// L_E;		// Le(l) in the paper. Radiance from the light point in the wall from the laser
 
+	// Radiance from each volume patch. L(x) in the paper.
+	set_radiance_volPatches(*(ad->volPatches_Radiance), *(ad->shapeN), *(ad->sceneCopy), ad->sceneCopy->o[LASER_RAY].s[0].p[1], *(ad->walN));
+
+	// Transient pixel = Impulse response of the ad->sceneCopy-> alpha_r in Ref08
+	// vector of maps. One map for pixel representing:
+	//   x axis = key   = path length (r) in m
+	//   y axis = value = amplitude of the impulse response
+	std::vector<std::vector<float>> transientImageDist(numPix(ps_, pSim_));
+	std::vector<std::vector<float>> transientImageAmpl(numPix(ps_, pSim_));
+	set_TransientImage(transientImageDist, transientImageAmpl, radiance_volPatches, radiance_volPatchesN, *(ad->sceneCopy), ad->sceneCopy->o[LASER_RAY].s[0].p[1], walN);
+
+	// Pixels value. H(w,phi) in the paper
+	set_FrameSim(transientImageDist, transientImageAmpl, cmx, frameSim00, frameSim90, freq_idx, ps_, pSim_);
+
+	// Plot a transient pixel with MATLAB Engine, from TransientImage
+	/*
+	int pixRow = frameSim00.rows / 2;
+	int pixCol = frameSim00.cols / 2;
+	int pixIdx = rc2idx(pixRow, pixCol, ps_, pSim_);
+	// MATLAB Engine takes too much time to start, comment out next line unless you need to debugg
+	plot_transientPixel(transientImageDist[pixIdx], transientImageAmpl[pixIdx]);
+	*/
 }
+
+
+
+
 
 
 // This will include a minimization algorithm, but for now it will run some simulations manually and get the best fit
@@ -437,7 +466,7 @@ void set_Occlusion_Simulation_Frame(CalibrationMatrix & cmx, Scene & scene, Fram
 	// L_E;		// Le(l) in the paper. Radiance from the light point in the wall from the laser
 
 	// Radiance from each volume patch. L(x) in the paper. 
-	int radiance_volPatches_size = SCENEMAIN.o[VOLUME_PATCHES].s.size();
+	int radiance_volPatches_size = scene.o[VOLUME_PATCHES].s.size();
 	// set volPatches Normals
 	std::vector<Point> radiance_volPatchesN(radiance_volPatches_size);
 	for (std::size_t i = 0; i < scene.o[VOLUME_PATCHES].s.size(); i++)

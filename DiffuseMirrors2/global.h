@@ -15,6 +15,25 @@ enum Object3DType { CAMERA, LASER, WALL, OCCLUDER, FLOOR, VOLUME, WALL_PATCHES, 
 enum BoxSides { FRONT = 0, RIGHT = 1, BACK = 2, LEFT = 3, BOTTOM = 4, TOP = 5 };
 //enum Source {DATA_FILE, DATA_REAL_TIME, SIMULATION, UNKNOWN_SRC};
 
+// structure for passing user-supplied additional data to the objective function.
+struct OCCLUSION_ADATA {
+	// Input Parameters
+	Info* info;
+	CalibrationMatrix* cmx;
+	Scene* sceneCopy;
+	Object3D* volPatchesCopy;
+	Frame* frameSim00;
+	Frame* frameSim90;
+	std::vector<Point>* faceN;
+	std::vector<Point*>* shapeN;
+	std::vector<float>* area;
+	Point* walN;
+	int freq_idx;
+	PixStoring ps_;
+	bool pSim_;
+	// Output / Intermediate parameters
+	std::vector<float>* volPatches_Radiance;
+};
 
 
 

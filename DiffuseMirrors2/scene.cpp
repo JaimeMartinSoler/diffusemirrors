@@ -1,13 +1,14 @@
 
 
-#include <iostream>
-#include <vector>
 
 #include "global.h"
 #include "data.h"
 #include "data_sim.h"
 #include "scene.h"
 
+#include <iostream>
+#include <vector>
+#include <levmar.h>
 
 
 
@@ -1048,7 +1049,7 @@ void Object3D::setLaserRay(Scene & scene, float R_, float G_, float B_, float A_
 	s[0].set(scene.o[LASER].s[0].c, p1, s[0].c);	s[0].set(1.0f, R_, G_, B_, A_, LINE);
 }
 // Setter, Updater Volume Patches (9)
-void Object3D::setVolumePatchesBox(Point & boxS, std::vector<int> & rowsPerFaceV, std::vector<int> & colsPerFaceV,
+void Object3D::setVolumePatchesBox(Point & boxPC, Point & boxRaxisN, float deg, Point & boxS, std::vector<int> & rowsPerFaceV, std::vector<int> & colsPerFaceV,
 	std::vector<std::vector<float>> & albedoVV, std::vector<std::vector<float>> & RVV, std::vector<std::vector<float>> & GVV, std::vector<std::vector<float>> & BVV, std::vector<std::vector<float>> & AVV) {
 
 	// Set the Object3D
@@ -1060,12 +1061,9 @@ void Object3D::setVolumePatchesBox(Point & boxS, std::vector<int> & rowsPerFaceV
 	ot = VOLUME_PATCHES;
 	ps = UNKNOWN_PIS;
 
-	// Create convex box
+	// Create the convex hull box
+	Point boxC_relToP0 = boxS / 2.0f;	// Point(0.0f, 0.0f, 0.0f);
 	Object3D convexHullBox;
-	Point boxPC(3.0f, 0.0f, 0.0f);
-	Point boxRaxisN(1.0f, 0.0f, 0.0f);
-	float deg = 0.0f;
-	Point boxC_relToP0 = boxS / 2.0f;
 	convexHullBox.setBox(boxPC, boxRaxisN, deg, boxS, boxC_relToP0);
 
 	// Place the patches from the convexHullBox
@@ -1079,8 +1077,8 @@ void Object3D::setVolumePatchesBox(Point & boxS, std::vector<int> & rowsPerFaceV
 		oIdx = 0;
 		rowsPerFacei = rowsPerFaceV[f];
 		colsPerFacei = colsPerFaceV[f];
-		rowsPerFacef = (float)rowsPerFacei - 0.5f;
-		colsPerFacef = (float)colsPerFacei - 0.5f;
+		rowsPerFacef = (float)rowsPerFacei;
+		colsPerFacef = (float)colsPerFacei;
 		rVec = convexHullBox.s[f].p[0] - convexHullBox.s[f].p[3];
 		cVec = convexHullBox.s[f].p[1] - convexHullBox.s[f].p[0];
 		for (ri = 0; ri < rowsPerFacei; ++ri) {
@@ -1095,39 +1093,125 @@ void Object3D::setVolumePatchesBox(Point & boxS, std::vector<int> & rowsPerFaceV
 				s[sIdx].set(p0, p1, p2, p3, c);
 				s[sIdx++].set(albedoVV[f][oIdx], RVV[f][oIdx], GVV[f][oIdx], BVV[f][oIdx], AVV[f][oIdx++], QUAD);
 	}	}	}
+}
+void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame & frame00, Frame & frame90, std::vector<int> & rowsPerFaceV, std::vector<int> & colsPerFaceV, bool loop, PixStoring ps_, bool pSim_) {
 
+	// Setting constant elements
+	CalibrationMatrix cmx(info);
+	Scene sceneCopy(scene);
+	Object3D volPatchesCopy(scene.o[VOLUME_PATCHES]);
+	Frame frameSim00, frameSim90;
+	Point walN = scene.o[WALL].normalQUAD();
 
+	// LEVMAR function parameters
 
-	// Set reference from which the Volume Patches are made (at the end the corresponded transformation will be applied)
-	Point refC(3.0f, 0.0f, 0.0f);
-	Point refN(0.0f, 0.0f, -1.0f);
-	Point originC(0.0f, 0.0f, 0.0f);
-	Point originN(0.0f, 0.0f, 1.0f);
-
-	// Set variables
-	float minX = 0.0f;	float maxX = 1.0f;	float stepX = (maxX - minX) / (float)VOLUME_GRID_SIZE_X;
-	float minY = 0.25f;	float maxY = 1.25f;	float stepY = (maxY - minY) / (float)VOLUME_GRID_SIZE_Y;
-	float minZ = 0.0f;	float maxZ = 1.0f;	float stepZ = (maxZ - minZ) / (float)VOLUME_GRID_SIZE_Z;
-	Shape sX;
-
-	// Loop filling the Object3D
-	float z = 0.0f;
-	for (float x = minX; x < maxX - stepX / 2.0f; x += stepX) {
-		for (float y = minY; y < maxY - stepY / 2.0f; y += stepY) {
-			sX.clear();
-			sX.p.resize(QUAD);
-			sX.set(1.0f, 1.0f, 1.0f, 1.0f, 1.0f, QUAD);
-			sX.p[0].set(x, y, z);
-			sX.p[1].set(x + stepX, y, z);
-			sX.p[2].set(x + stepX, y + stepY, z);
-			sX.p[3].set(x, y + stepY, z);
-			sX.c.set   (x + stepX / 2.0f, y + stepY / 2.0f, z);
-			s.push_back(sX);
+	// set the initial parameters (p) and values (x)
+	const int p_size = 6;										// x, y, z, rx, ry, rz
+	const int numFramePix = numPix(ps_, pSim_);					// rows*cols
+	const int x_size = numFramePix * cmx.info->phasV.size();	// rows*cols*phases = rows*cols*2
+	const int sizeofFrameData = numFramePix * sizeof(float);	// rows*cols*sizeof(float) = rows*cols*4
+	float* p = new float[p_size];										// p[0],p[1],p[2],p[3],p[4],p[5] = x,y,z,rx,ry,rz
+	float* x = new float[x_size];										// x[i]: value of simulated pixel i
+	p[0] = 3.0f; p[1] = 1.0f; p[2] = 0.0f;								// initial parameters estimate (x,y,z)
+	p[3] = 0.0f; p[4] = 0.0f; p[5] = 0.0f;								// initial parameters estimate (rx,ry,rz)
+	memcpy(x, frame00.data.data(), sizeofFrameData);					// actual measurement values to be fitted with the model
+	memcpy(x + numFramePix, frame90.data.data(), sizeofFrameData);
+	// Getting normal vectors
+	int numFaces = (int)rowsPerFaceV.size();
+	int numShapes = scene.o[VOLUME_PATCHES].s.size();
+	int shapesPerFace = 0, shapesPerFaceCount = 0;
+	std::vector<Point> faceN(numFaces);	// this will store all the different normals (one per face, many shapes with the same normal)
+	std::vector<Point*> shapeN(numShapes);	// this will store the pointers of each shape to the corresponding normals
+	std::vector<float> area(numShapes);
+	for (int f = FRONT; f < numFaces; ++f) {
+		shapesPerFaceCount += shapesPerFace;
+		shapesPerFace = rowsPerFaceV[f] * colsPerFaceV[f];
+		faceN[f] = scene.o[VOLUME_PATCHES].s[shapesPerFaceCount].normalQUAD();
+		for (int s = 0; s < shapesPerFace; ++s) {
+			shapeN[shapesPerFaceCount + s] = &faceN[f];
+			area[shapesPerFaceCount + s] = scene.o[VOLUME_PATCHES].s[shapesPerFaceCount + s].areaRECTANGLE();
 	}	}
+	// get freq_idx
+	int freq_idx = get_freq_idx(info, frame00.freq);	// returns -1 if no idx correspondance was found
+	if (freq_idx < 0) {
+		std::cout << "\nWarning: Frame freq = " << frame00.freq << " is not a freq in .cmx freqV = ";
+		print(info.freqV);
+		return;
+	}
+	// optimization control parameters; passing to levmar NULL instead of opts reverts to defaults
+	float opts[LM_OPTS_SZ];
+	opts[0] = LM_INIT_MU;
+	opts[1] = 1E-15;  // 1E-15
+	opts[2] = 1E-15;  // 1E-15
+	opts[3] = 1E-20;  // 1E-20
+	opts[4] = LM_DIFF_DELTA; // relevant only if the finite difference Jacobian version is used (not this case)
+	// information parameters. Output of the optimization function about internal parameters such as number of iterations (inf[5]) etc
+	float inf[LM_INFO_SZ];
+	// other unused parameters (work, covar)
+	float* work = NULL;
+	float* covar = NULL;
+	// invoke the optimization function (returns the number of iterations, -1 if failed)
+	int maxIters = 1000;
+	int numIters = 0;
+	// Output / Intermediate parameters
+	std::vector<float> volPatches_Radiance(numShapes);
 
-	// Apply transformations
-	rotyFromP(radN(originN, refN), originC);
-	tra(refC);
+	// Storing additional data in struct
+	struct OCCLUSION_ADATA adata;
+	adata.info = &info;
+	adata.cmx = &cmx;
+	adata.sceneCopy = &sceneCopy;
+	adata.volPatchesCopy = &volPatchesCopy;
+	adata.frameSim00 = &frameSim00;
+	adata.frameSim90 = &frameSim90;
+	adata.faceN = &faceN;
+	adata.shapeN = &shapeN;
+	adata.area = &area;
+	adata.walN = &walN;
+	adata.freq_idx = freq_idx;
+	adata.ps_ = ps_;
+	adata.pSim_ = pSim_;
+	adata.volPatches_Radiance = &volPatches_Radiance;
+
+	// Syncronization
+	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
+	locker_frame_object = std::unique_lock<std::mutex>(mutex_frame_object, std::defer_lock);
+
+	// --- LOOP ------------------------------------------------------------------------------------------------
+	bool first_iter = true;
+	while (loop || first_iter) {
+
+		const clock_t begin_time = clock();
+
+		if (!PMD_LOOP_ENABLE && !first_iter)
+			break;
+		first_iter = false;
+
+		// Syncronization
+		locker_frame_object.lock();		// Lock mutex_frame_object, any thread which used mutex_frame_object can NOT continue until unlock()
+		while (!UPDATED_NEW_FRAME)	//std::cout << "Waiting in Object to finish the UPDATED_NEW_Frame. This is OK!\n";
+			cv_frame_object.wait(locker_frame_object);
+
+		// Update pixel patches, setting the Best Fit
+		numIters = slevmar_dif(set_Occlusion_Simulation_Frame_Optim, p, x, p_size, x_size, maxIters, opts, inf, work, covar, (void*)&adata); // withOUT analytic Jacobian
+		scene.o[VOLUME_PATCHES].set(sceneCopy.o[VOLUME_PATCHES]);
+
+		// Syncronization
+		//std::cout << ",    UPDATED_NEW_SCENE\n";
+		UPDATED_NEW_FRAME = false;
+		UPDATED_NEW_SCENE = true;
+		cv_frame_object.notify_all();	// Notify all cv_frame_object. All threads waiting for cv_frame_object will break the wait after waking up
+		locker_frame_object.unlock();	// Unlock mutex_frame_object, now threads which used mutex_frame_object can continue
+
+		const clock_t end_time = clock();
+		float ms_time = 1000.0f * float(end_time - begin_time) / (float)CLOCKS_PER_SEC;
+		float fps_time = 1000.0f / ms_time;
+		std::cout << "\ntime = " << ms_time << " ms,    fps = " << fps_time << " fps";
+	}
+	// --- END OF LOOP -----------------------------------------------------------------------------------------
+
+	delete[] p;
+	delete[] x;
 }
 void Object3D::setVolumePatches_OLD() {
 
@@ -1193,11 +1277,11 @@ void Object3D::updateVolumePatches_Occlusion_OLD(Info & info, Scene & scene, Fra
 	while (loop || first_iter) {
 
 		const clock_t begin_time = clock();
-		
+
 		if (!PMD_LOOP_ENABLE && !first_iter)
 			break;
 		first_iter = false;
-		
+
 		// Syncronization
 		locker_frame_object.lock();		// Lock mutex_frame_object, any thread which used mutex_frame_object can NOT continue until unlock()
 		while (!UPDATED_NEW_FRAME)	//std::cout << "Waiting in Object to finish the UPDATED_NEW_Frame. This is OK!\n";
@@ -1217,7 +1301,7 @@ void Object3D::updateVolumePatches_Occlusion_OLD(Info & info, Scene & scene, Fra
 		const clock_t end_time = clock();
 		float ms_time = 1000.0f * float(end_time - begin_time) / (float)CLOCKS_PER_SEC;
 		float fps_time = 1000.0f / ms_time;
-		std::cout << "\ntime = " << ms_time << " ms,    fps = " << fps_time <<  " fps";
+		std::cout << "\ntime = " << ms_time << " ms,    fps = " << fps_time << " fps";
 	}
 	// --- END OF LOOP -----------------------------------------------------------------------------------------
 }
@@ -1839,7 +1923,7 @@ void Scene::setScene_DirectVision(PixStoring ps, bool pSim_) {
 	*/
 }
 // Setter Scene Occlusion
-void Scene::setScene_Occlusion(PixStoring ps, bool pSim_) {
+void Scene::setScene_Occlusion(std::vector<int> & rowsPerFaceV, std::vector<int> & colsPerFaceV, PixStoring ps, bool pSim_) {
 
 	// CAMERA (0)
 	Point camPosC(0.0f, 0.75f, 0.0f);	// pos of the center of the camera
@@ -1972,7 +2056,33 @@ void Scene::setScene_Occlusion(PixStoring ps, bool pSim_) {
 	o[LASER_RAY].setLaserRay(*this, larR, larG, larB, larA, ps);
 
 	// VOLUME_PATCHES (9)
-	o[VOLUME_PATCHES].setVolumePatches_OLD();
+	Point vopPosC(3.0f, 1.0f, 0.0f);
+	Point vopAxisN(0.0f, 1.0f, 0.0f);
+	float vopDeg = 0.0f;
+	Point vopS(0.5f, 0.5f, 0.5f);
+	// albedo, R, G, B, A
+	int const vop_faces = rowsPerFaceV.size();
+	std::vector<std::vector<float>> vopAlbedoVV(vop_faces);
+	std::vector<std::vector<float>> vopRVV(vop_faces);
+	std::vector<std::vector<float>> vopGVV(vop_faces);
+	std::vector<std::vector<float>> vopBVV(vop_faces);
+	std::vector<std::vector<float>> vopAVV(vop_faces);
+	int shapesPerFace;
+	for (int f = FRONT; f < vop_faces; ++f) {
+		shapesPerFace = rowsPerFaceV[f] * colsPerFaceV[f];
+		vopAlbedoVV[f].resize(shapesPerFace);
+		vopRVV[f].resize(shapesPerFace);
+		vopGVV[f].resize(shapesPerFace);
+		vopBVV[f].resize(shapesPerFace);
+		vopAVV[f].resize(shapesPerFace);
+		for (int i = 0; i < shapesPerFace; ++i) {
+			vopAlbedoVV[f][i] = 1.0f;
+			vopRVV[f][i] = 1.0f;
+			vopGVV[f][i] = 1.0f;
+			vopBVV[f][i] = 1.0f;
+			vopAVV[f][i] = 1.0f;
+	}	}
+	o[VOLUME_PATCHES].setVolumePatchesBox(vopPosC, vopAxisN, vopDeg, vopS, rowsPerFaceV, colsPerFaceV, vopAlbedoVV, vopRVV, vopGVV, vopBVV, vopAVV);
 }
 // Setter Scene Calibration Matrix
 void Scene::setScene_CalibrationMatrix(float laser_to_cam_offset_x, float laser_to_cam_offset_y, float laser_to_cam_offset_z, float dist_wall_cam,
