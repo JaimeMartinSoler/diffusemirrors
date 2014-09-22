@@ -15,27 +15,6 @@ enum Object3DType { CAMERA, LASER, WALL, OCCLUDER, FLOOR, VOLUME, WALL_PATCHES, 
 enum BoxSides { FRONT = 0, RIGHT = 1, BACK = 2, LEFT = 3, BOTTOM = 4, TOP = 5 };
 //enum Source {DATA_FILE, DATA_REAL_TIME, SIMULATION, UNKNOWN_SRC};
 
-// structure for passing user-supplied additional data to the objective function.
-struct OCCLUSION_ADATA {
-	// Input Parameters
-	Info* info;
-	CalibrationMatrix* cmx;
-	Scene* sceneCopy;
-	Object3D* volPatchesCopy;
-	Frame* frameSim00;
-	Frame* frameSim90;
-	std::vector<Point>* faceN;
-	std::vector<Point*>* shapeN;
-	std::vector<float>* area;
-	Point* walN;
-	int freq_idx;
-	PixStoring ps_;
-	bool pSim_;
-	// Output / Intermediate parameters
-	std::vector<float>* volPatches_Radiance;
-};
-
-
 
 // classes data.h
 class Info;
@@ -47,6 +26,48 @@ class Point;
 class Shape;
 class Object3D;
 class Scene;
+
+
+// structure for passing user-supplied additional data to the objective function.
+struct OCCLUSION_ADATA {
+	// constant parameters
+	Info* info;
+	CalibrationMatrix* cmx;
+	Object3D* volPatchesRef;
+	int numFaces;
+	int numShapes;
+	std::vector<int>* shapesPerFace;
+	std::vector<int>* firstShapeIdx_of_face;
+	std::vector<Point>* faceNRef;
+	std::vector<Point*>* shapeN;	// unnused
+	std::vector<float>* area;
+	Point* walN;
+	Point* walL;
+	int freq_idx;
+	PixStoring ps_;
+	bool pSim_;
+	int numPix;				// rows*cols
+	int sizeofFrameData;	// rows*cols*sizeof(float) = rows*cols*4
+	// variable parameters
+	Scene* sceneCopy;			// semi-constant: sceneCopy.o[VOLUME_PATHCES] is modified in each iteration of levmar
+	Frame* frameSim00;
+	Frame* frameSim90;
+	std::vector<Point>* faceN;
+	// variable intermediate parameters
+	int facesFacing_size;
+	std::vector<int>* facesFacingIdx;
+	std::vector<int>* firstShapeIdx_in_volPatchesRadiance_of_facesFacingIdx;
+	int volPatchesRadiance_size;
+	std::vector<int>* volPatchesRadianceIdx;
+	std::vector<float>* volPatchesRadiance;
+	std::vector<int>* transientImage_size;
+	std::vector<std::vector<float>>* transientImageDist;
+	std::vector<std::vector<float>>* transientImageAmpl;
+	Point* traV;
+	Point* axisN;
+	float rad;
+};
+
 
 #define PIXELS_STORING_GLOBAL PIXELS_VALID		// PIXELS_TOTAL,    PIXELS_VALID,    UNKNOWN_PIS
 #define PIXELS_SIMULATION false		// determines if we will Simulate patches and pixels (when possible) with less resolution than the PMD 

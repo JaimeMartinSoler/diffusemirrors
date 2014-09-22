@@ -182,7 +182,8 @@ int main_Occlusion(char* dir_name_, char* file_name_) {
 		colsPerFaceV[f] = 3;
 	}
 	SCENEMAIN.setScene_Occlusion(rowsPerFaceV, colsPerFaceV, ps, pSim);
-	std::thread thread_updateVolumePatches_Occlusion_OLD(updateVolumePatches_Occlusion_OLD_antiBugThread, std::ref(info), std::ref(SCENEMAIN), std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), loop, ps, pSim);
+	std::thread thread_updateVolumePatches_Occlusion(updateVolumePatches_Occlusion_antiBugThread, std::ref(info), std::ref(SCENEMAIN), std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), std::ref(rowsPerFaceV), std::ref(colsPerFaceV), loop, ps, pSim);
+	//std::thread thread_updateVolumePatches_Occlusion(updateVolumePatches_Occlusion_OLD_antiBugThread, std::ref(info), std::ref(SCENEMAIN), std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), loop, ps, pSim);
 
 	// Render all the object3D of the scene
 	int argcStub = 0;
@@ -195,7 +196,7 @@ int main_Occlusion(char* dir_name_, char* file_name_) {
 
 	// joins
 	thread_PMD_params_to_Frame.join();
-	thread_updateVolumePatches_Occlusion_OLD.join();
+	thread_updateVolumePatches_Occlusion.join();
 	thread_render.join();
 
 	return 0;
@@ -234,7 +235,8 @@ int main_Occlusion_Frame(char* dir_name_, char* file_name_) {
 		colsPerFaceV[f] = 3;
 	}
 	SCENEMAIN.setScene_Occlusion(rowsPerFaceV, colsPerFaceV, ps, pSim);
-	//updateVolumePatches_Occlusion_OLD_antiBugThread(std::ref(info), std::ref(SCENEMAIN), std::ref(frame00), std::ref(frame90), loop, ps, pSim);
+	std::thread thread_updateVolumePatches_Occlusion(updateVolumePatches_Occlusion_antiBugThread, std::ref(info), std::ref(SCENEMAIN), std::ref(frame00), std::ref(frame90), std::ref(rowsPerFaceV), std::ref(colsPerFaceV), loop, ps, pSim);
+	//std::thread thread_updateVolumePatches_Occlusion(updateVolumePatches_Occlusion_OLD_antiBugThread, std::ref(info), std::ref(SCENEMAIN), std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), loop, ps, pSim);
 
 	// Render all the object3D of the scene
 	int argcStub = 0;
@@ -246,6 +248,7 @@ int main_Occlusion_Frame(char* dir_name_, char* file_name_) {
 	control_loop_pause();
 
 	// joins
+	thread_updateVolumePatches_Occlusion.join();
 	thread_render.join();
 
 	return 0;
@@ -384,8 +387,8 @@ int main(int argc, char** argv) {
 	// Set RAW_DATA
 	SceneType sceneType = OCCLUSION_FRAME;
 	SCENEMAIN.set(sceneType);
-	char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\cmx_01";
-	//char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\cmx_01";
+	//char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\cmx_01";
+	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\cmx_01";
 	char file_name[1024] = "PMD";
 	
 	// Main Switcher

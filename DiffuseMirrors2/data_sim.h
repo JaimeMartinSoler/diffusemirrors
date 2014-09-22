@@ -52,7 +52,7 @@ void set_Occlusion_Simulation_Frame_Optim(float* p, float* x, int p_size, int x_
 
 // This will include a minimization algorithm, but for now it will run some simulations manually and get the best fit
 // is totally inefficient with this implementation, just to try the system
-void updateVolumePatches_Occlusion_OLD_BestFit(CalibrationMatrix & cmx, Scene & sceneCopy, Object3D volPatchesCopy, Frame & frameSim00, Frame & frameSim90, Frame & frame00, Frame & frame90, Point & walN, Point & _vopN, float dRes, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
+void updateVolumePatches_Occlusion_OLD_BestFit(CalibrationMatrix & cmx, Scene & sceneCopy, Object3D volPatchesRef, Frame & frameSim00, Frame & frameSim90, Frame & frame00, Frame & frame90, Point & walN, Point & _vopN, float dRes, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 
 // sets a Simulated Frame for the Occlusion case, from a Transient Image and a Calibration Matrix. This does all the calculations
 void set_Occlusion_Simulation_Frame(CalibrationMatrix & cmx, Scene & scene, Frame & frameSim00, Frame & frameSim90, Point & walN, int freq_idx, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
@@ -60,18 +60,18 @@ void set_Occlusion_Simulation_Frame(CalibrationMatrix & cmx, Scene & scene, Fram
 // For set_Occlusion_Simulation_Frame(...)
 // gets the Radiance from each volume patch (radiance from each volume patch). L(x) in the paper. 
 // It deals with patches backing (not facing) the wall (they are considered ALWAYS facing the wall)
-void set_radiance_volPatches(std::vector<float> & radiance_volPatches, std::vector<Point> & radiance_volPatchesN, Scene & scene, Point & walL, Point & walN, bool normArea, bool constArea);
+void set_volPatchesRadiance(struct OCCLUSION_ADATA* ad);
 
 // For set_Occlusion_Simulation_Frame(...)
 // gets the Transient pixel = Impulse response of the scene. alpha_r in Ref08
 // vector of maps. One map for pixel representing:
 //   x axis = key   = path length (r) in m
 //   y axis = value = amplitude of the impulse response
-void set_TransientImage(std::vector<std::vector<float>> & transientImageDist, std::vector<std::vector<float>> & transientImageAmpl, std::vector<float> & radiance_volPatches_, std::vector<Point> & radiance_volPatchesN, Scene & scene, Point & walL, Point & walN);
+void set_TransientImage(struct OCCLUSION_ADATA* ad);
 
 // For set_Occlusion_Simulation_Frame(...)
 // sets a Simulated Frame for the Occlusion case, from a Transient Image and a Calibration Matrix. This does NOT do any calculations
-void set_FrameSim(std::vector<std::vector<float>> & transientImageDist, std::vector<std::vector<float>> & transientImageAmpl, CalibrationMatrix & cmx, Frame & frameSim00, Frame & frameSim90, int freq_idx, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
+void set_FrameSim(struct OCCLUSION_ADATA* ad);
 
 
 

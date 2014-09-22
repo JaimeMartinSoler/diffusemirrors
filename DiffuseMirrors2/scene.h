@@ -80,10 +80,14 @@ public:
 	Point Point::cross(Point const & pr);
 	// translation (setter)
 	void Point::tra(Point const & pr);
+	void Point::tra(Point const & pr, Point & src);
 	// rotation optimal (cosT and sinT already calculated) absolute (from (0,0,0)), radians (setters). All rot functions (from any class) call this 4 functions internally
 	void Point::rotOpt(	float const & r11, float const & r12, float const & r13,
 						float const & r21, float const & r22, float const & r23,
 						float const & r31, float const & r32, float const & r33);
+	void Point::rotOpt(	float const & r11, float const & r12, float const & r13, 
+					float const & r21, float const & r22, float const & r23, 
+					float const & r31, float const & r32, float const & r33, Point & src);
 	void Point::rotxOpt(float cosT, float sinT);
 	void Point::rotyOpt(float cosT, float sinT);
 	void Point::rotzOpt(float cosT, float sinT);
@@ -361,6 +365,7 @@ public:
 };
 // ----- NON-MEMBER FUNCITONS ------------------------
 
+void updateVolumePatches_Occlusion_antiBugThread(Info & info, Scene & scene, Frame & frame00, Frame & frame90, std::vector<int> & rowsPerFaceV, std::vector<int> & colsPerFaceV, bool loop, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 void updateVolumePatches_Occlusion_OLD_antiBugThread(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 void updatePixelPatches_Sinusoid_antiBugThread(Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 void updatePixelPatches_Simulation_antiBugThread(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
