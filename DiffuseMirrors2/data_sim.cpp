@@ -335,21 +335,42 @@ void set_Occlusion_Simulation_Frame_Optim(float* p, float* x, int p_size, int x_
 	// get struct with the additional data
 	struct OCCLUSION_ADATA* ad = (struct OCCLUSION_ADATA *) adata;
 
-	// L_E;		// Le(l) in the paper. Radiance from the light point in the wall from the laser
+	// Update Scene 
+	ad->traV->set(p[0], p[1], p[2]);
+	ad->axisN->set(p[3], p[4], p[5]);
+	ad->axisN->normalize();
+	ad->rad = p[3]*p[3] + p[4]*p[4] + p[5]*p[5];	// rad is defined as the modPow2 of (p[3], p[4], p[5])
+	float r11, r12, r13, r21, r22, r23, r31, r32, r33;
+	setRotationMatrix(r11, r12, r13, r21, r22, r23, r31, r32, r33, ad->axisN->x, ad->axisN->y, ad->axisN->z, ad->rad);
+	for (int si = 0; si < ad->numShapes; ++si) {
+		ad->sceneCopy->o[VOLUME_PATCHES].s[si].c.rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33, ad->volPatchesRef->s[si].c);	// useful for meas
+		ad->sceneCopy->o[VOLUME_PATCHES].s[si].c.tra(*ad->traV);																	// useful for meas
+		// useless for meas, just for rendering:
+		for (size_t pi = 0; pi < ad->volPatchesRef->s[si].p.size(); ++pi) {
+			ad->sceneCopy->o[VOLUME_PATCHES].s[si].p[pi].rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33, ad->volPatchesRef->s[si].p[pi]);	// useless for meas, just for rendering
+			ad->sceneCopy->o[VOLUME_PATCHES].s[si].p[pi].tra(*ad->traV);																		// useless for meas, just for rendering
+		}
+	}
+	for (int fi = 0; fi < ad->numFaces; ++fi)
+		(*ad->faceN)[fi].rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33, (*ad->faceNRef)[fi]);	// useful for meas
 
+	// L_E;		// Le(l) in the paper. Radiance from the light point in the wall from the laser
+	
 	// Radiance from each volume patch. L(x) in the paper.
-	set_radiance_volPatches(*(ad->volPatches_Radiance), *(ad->shapeN), *(ad->sceneCopy), ad->sceneCopy->o[LASER_RAY].s[0].p[1], *(ad->walN));
+	set_volPatchesRadiance(ad);
 
 	// Transient pixel = Impulse response of the ad->sceneCopy-> alpha_r in Ref08
 	// vector of maps. One map for pixel representing:
 	//   x axis = key   = path length (r) in m
 	//   y axis = value = amplitude of the impulse response
-	std::vector<std::vector<float>> transientImageDist(numPix(ps_, pSim_));
-	std::vector<std::vector<float>> transientImageAmpl(numPix(ps_, pSim_));
-	set_TransientImage(transientImageDist, transientImageAmpl, radiance_volPatches, radiance_volPatchesN, *(ad->sceneCopy), ad->sceneCopy->o[LASER_RAY].s[0].p[1], walN);
+	set_TransientImage(ad);
 
 	// Pixels value. H(w,phi) in the paper
-	set_FrameSim(transientImageDist, transientImageAmpl, cmx, frameSim00, frameSim90, freq_idx, ps_, pSim_);
+	set_FrameSim(ad);
+	
+	// store the Simulation Frame (S) into the output array x
+	memcpy(x, ad->frameSim00->data.data(), ad->sizeofFrameData);
+	memcpy(x + ad->numPix, ad->frameSim90->data.data(), ad->sizeofFrameData);
 
 	// Plot a transient pixel with MATLAB Engine, from TransientImage
 	/*
@@ -362,13 +383,81 @@ void set_Occlusion_Simulation_Frame_Optim(float* p, float* x, int p_size, int x_
 }
 
 
+// For set_Occlusion_Simulation_Frame(...)
+// gets the Radiance from each volume patch (radiance from each volume patch). L(x) in the paper. 
+// It deals with patches backing (not facing) the wall (they are considered ALWAYS facing the wall)
+void set_volPatchesRadiance(struct OCCLUSION_ADATA* ad) {
 
+	// gets all (facing) volume patches radiances
+	int shapesPerFaceAcum = 0;
+	ad->facesFacing_size = 0;
+	ad->volPatchesRadiance_size = 0;
+	for (int fi = 0; fi < ad->numFaces; ++fi) {
+		// first shape of a face. If it's not facing the wall, no shapes of this face are facing the wall
+		if ((ad->sceneCopy->o[VOLUME_PATCHES].s[(*ad->firstShapeIdx_of_face)[fi]].c - *ad->walL).dot((*ad->faceN)[fi]) >= 0) // this is: vopN is "backing" walN, instead of facing
+			continue;
+		// secondary (and first again) shapes of a face
+		for (int si = (*ad->firstShapeIdx_of_face)[fi]; si < (*ad->firstShapeIdx_of_face)[fi] + (*ad->shapesPerFace)[fi]; ++si) {
+			(*ad->volPatchesRadianceIdx)[ad->volPatchesRadiance_size] = si;
+			(*ad->volPatchesRadiance)[ad->volPatchesRadiance_size] = L_E * ad->sceneCopy->o[VOLUME_PATCHES].s[si].albedo *
+				geometryTerm(*ad->walL, *ad->walN, ad->sceneCopy->o[VOLUME_PATCHES].s[si].c, (*ad->faceN)[fi]) * (*ad->area)[si]; // normalize with the Area of the volume patch (if so)
+			ad->volPatchesRadiance_size++;
+		}
+		(*ad->facesFacingIdx)[ad->facesFacing_size] = fi;
+		(*ad->firstShapeIdx_in_volPatchesRadiance_of_facesFacingIdx)[ad->facesFacing_size] = shapesPerFaceAcum;
+		ad->facesFacing_size++;
+		shapesPerFaceAcum += (*ad->shapesPerFace)[fi];
+	}
+}
+
+
+// For set_Occlusion_Simulation_Frame(...)
+// gets the Transient pixel = Impulse response of the scene. alpha_r in Ref08
+// vector of maps. One map for pixel representing:
+//   x axis = key   = path length (r) in m
+//   y axis = value = amplitude of the impulse response
+void set_TransientImage(struct OCCLUSION_ADATA* ad) {
+	
+	// gets Transient Image
+	for (int pix = 0; pix < ad->numPix; pix++) {
+		(*ad->transientImage_size)[pix] = 0;
+		for (int fii = 0; fii < ad->facesFacing_size; ++fii) {
+			// first shape of a face. If it's not facing the wall patch, no shapes of this face are facing the wall patch
+			if ((ad->sceneCopy->o[VOLUME_PATCHES].s[(*ad->firstShapeIdx_of_face)[(*ad->facesFacingIdx)[fii]]].c - ad->sceneCopy->o[WALL_PATCHES].s[pix].c).dot((*ad->faceN)[(*ad->facesFacingIdx)[fii]]) >= 0) // this is: vopN is "backing" walN, instead of facing
+				continue;
+			// secondary (and first again) shapes of a face
+			for (int vopi = (*ad->firstShapeIdx_in_volPatchesRadiance_of_facesFacingIdx)[fii]; vopi < (*ad->firstShapeIdx_in_volPatchesRadiance_of_facesFacingIdx)[fii] + (*ad->shapesPerFace)[(*ad->facesFacingIdx)[fii]]; ++vopi) {
+				(*ad->transientImageAmpl)[pix][(*ad->transientImage_size)[pix]] = ad->sceneCopy->o[WALL_PATCHES].s[pix].albedo * (*ad->volPatchesRadiance)[vopi] *
+					geometryTerm(ad->sceneCopy->o[VOLUME_PATCHES].s[(*ad->volPatchesRadianceIdx)[vopi]].c, (*ad->faceN)[(*ad->facesFacingIdx)[fii]], ad->sceneCopy->o[WALL_PATCHES].s[pix].c, *ad->walN);
+				(*ad->transientImageDist)[pix][(*ad->transientImage_size)[pix]] = distPath5(ad->sceneCopy->o[LASER].s[0].c, *ad->walL, ad->sceneCopy->o[VOLUME_PATCHES].s[(*ad->volPatchesRadianceIdx)[vopi]].c, ad->sceneCopy->o[WALL_PATCHES].s[pix].c, ad->sceneCopy->o[CAMERA].s[0].c);
+				(*ad->transientImage_size)[pix]++;
+	}	}	}
+}
+
+
+// For set_Occlusion_Simulation_Frame(...)
+// sets a Simulated Frame for the Occlusion case, from a Transient Image and a Calibration Matrix. This does NOT do any calculations
+void set_FrameSim(struct OCCLUSION_ADATA* ad) {
+
+	// Go pixel by pixel
+	int pix = -1;
+	for (int r = 0; r < ad->frameSim00->rows; r++) {
+		for (int c = 0; c < ad->frameSim00->cols; c++) {
+			// Fill with the values of the Transient Pixel
+			pix++;
+			ad->frameSim00->data[pix] = 0.0f;
+			ad->frameSim90->data[pix] = 0.0f;
+			for (int i = 0; i < (*ad->transientImage_size)[pix]; i++) {
+				ad->frameSim00->data[pix] += (*ad->transientImageAmpl)[pix][i] * ad->cmx->C_atX(ad->freq_idx, (*ad->transientImageDist)[pix][i], 0, r, c, ad->ps_, ad->pSim_);
+				ad->frameSim90->data[pix] += (*ad->transientImageAmpl)[pix][i] * ad->cmx->C_atX(ad->freq_idx, (*ad->transientImageDist)[pix][i], 1, r, c, ad->ps_, ad->pSim_);
+	}	}	}
+}
 
 
 
 // This will include a minimization algorithm, but for now it will run some simulations manually and get the best fit
 // is totally inefficient with this implementation, just to try the system
-void updateVolumePatches_Occlusion_OLD_BestFit(CalibrationMatrix & cmx, Scene & sceneCopy, Object3D volPatchesCopy, Frame & frameSim00, Frame & frameSim90, Frame & frame00, Frame & frame90, Point & walN, Point & _vopN, float dRes, PixStoring ps_, bool pSim_) {
+void updateVolumePatches_Occlusion_OLD_BestFit(CalibrationMatrix & cmx, Scene & sceneCopy, Object3D volPatchesRef, Frame & frameSim00, Frame & frameSim90, Frame & frame00, Frame & frame90, Point & walN, Point & _vopN, float dRes, PixStoring ps_, bool pSim_) {
 
 	// pixPatchesBestFit
 	Object3D volPatchesBestFit;
@@ -414,7 +503,7 @@ void updateVolumePatches_Occlusion_OLD_BestFit(CalibrationMatrix & cmx, Scene & 
 				break;
 			}
 			pixPatchDist[pos] = dMin;
-			sceneCopy.o[VOLUME_PATCHES].s[pos] = volPatchesCopy.s[pos];
+			sceneCopy.o[VOLUME_PATCHES].s[pos] = volPatchesRef.s[pos];
 			pixPatchDist[++pos] += dRes;
 			sceneCopy.o[VOLUME_PATCHES].s[pos].tra(_vopN * pixPatchDist[pos]);
 		}
@@ -436,11 +525,11 @@ void updateVolumePatches_Occlusion_OLD_BestFit(CalibrationMatrix & cmx, Scene & 
 		// Update pixel patches distances 
 		traV = _vopN * d;
 		for (int i = 0; i < sceneCopy.o[VOLUME_PATCHES].s.size(); i++) {
-			sceneCopy.o[VOLUME_PATCHES].s[i].p[0] = volPatchesCopy.s[i].p[0] + traV;	// Useless for meas but for rendering
-			sceneCopy.o[VOLUME_PATCHES].s[i].p[1] = volPatchesCopy.s[i].p[1] + traV;	// Useless for meas but for rendering
-			sceneCopy.o[VOLUME_PATCHES].s[i].p[2] = volPatchesCopy.s[i].p[2] + traV;	// Useless for meas but for rendering
-			sceneCopy.o[VOLUME_PATCHES].s[i].p[3] = volPatchesCopy.s[i].p[3] + traV;	// Useless for meas but for rendering
-			sceneCopy.o[VOLUME_PATCHES].s[i].c    = volPatchesCopy.s[i].c    + traV;	// Useful for meas
+			sceneCopy.o[VOLUME_PATCHES].s[i].p[0] = volPatchesRef.s[i].p[0] + traV;	// Useless for meas but for rendering
+			sceneCopy.o[VOLUME_PATCHES].s[i].p[1] = volPatchesRef.s[i].p[1] + traV;	// Useless for meas but for rendering
+			sceneCopy.o[VOLUME_PATCHES].s[i].p[2] = volPatchesRef.s[i].p[2] + traV;	// Useless for meas but for rendering
+			sceneCopy.o[VOLUME_PATCHES].s[i].p[3] = volPatchesRef.s[i].p[3] + traV;	// Useless for meas but for rendering
+			sceneCopy.o[VOLUME_PATCHES].s[i].c    = volPatchesRef.s[i].c    + traV;	// Useful for meas
 		}
 		// For all albedoRel
 		for (float albedoRel = albedoRelMin; albedoRel < albedoRelMax; albedoRel += albedoRelRes) {
@@ -474,7 +563,7 @@ void set_Occlusion_Simulation_Frame(CalibrationMatrix & cmx, Scene & scene, Fram
 	std::vector<float> radiance_volPatches(radiance_volPatches_size);
 	bool normArea = true;	// normalize rediance to the volume path area. Useful to check how changes the result a change on the volume patches
 	bool constArea = true;	// if the area of each volume patch the same (constant) or not
-	set_radiance_volPatches(radiance_volPatches, radiance_volPatchesN, scene, scene.o[LASER_RAY].s[0].p[1], walN, normArea, constArea);
+	//set_volPatchesRadiance(radiance_volPatches, radiance_volPatchesN, scene, scene.o[LASER_RAY].s[0].p[1], walN, normArea, constArea);
 
 	// Transient pixel = Impulse response of the scene. alpha_r in Ref08
 	// vector of maps. One map for pixel representing:
@@ -482,10 +571,10 @@ void set_Occlusion_Simulation_Frame(CalibrationMatrix & cmx, Scene & scene, Fram
 	//   y axis = value = amplitude of the impulse response
 	std::vector<std::vector<float>> transientImageDist(numPix(ps_, pSim_));
 	std::vector<std::vector<float>> transientImageAmpl(numPix(ps_, pSim_));
-	set_TransientImage(transientImageDist, transientImageAmpl, radiance_volPatches, radiance_volPatchesN, scene, scene.o[LASER_RAY].s[0].p[1], walN);
+	//set_TransientImage(transientImageDist, transientImageAmpl, radiance_volPatches, radiance_volPatchesN, scene, scene.o[LASER_RAY].s[0].p[1], walN);
 
 	// Pixels value. H(w,phi) in the paper
-	set_FrameSim(transientImageDist, transientImageAmpl, cmx, frameSim00, frameSim90, freq_idx, ps_, pSim_);
+	///set_FrameSim(transientImageDist, transientImageAmpl, cmx, frameSim00, frameSim90, freq_idx, ps_, pSim_);
 
 	// Plot a transient pixel with MATLAB Engine, from TransientImage
 	/*
@@ -495,85 +584,6 @@ void set_Occlusion_Simulation_Frame(CalibrationMatrix & cmx, Scene & scene, Fram
 	// MATLAB Engine takes too much time to start, comment out next line unless you need to debugg
 	plot_transientPixel(transientImageDist[pixIdx], transientImageAmpl[pixIdx]);
 	*/
-}
-
-// For set_Occlusion_Simulation_Frame(...)
-// gets the Radiance from each volume patch (radiance from each volume patch). L(x) in the paper. 
-// It deals with patches backing (not facing) the wall (they are considered ALWAYS facing the wall)
-void set_radiance_volPatches(std::vector<float> & radiance_volPatches, std::vector<Point> & radiance_volPatchesN, Scene & scene, Point & walL, Point & walN, bool normArea, bool constArea) {
-
-	// geometry term
-	float geometryTerm_;
-
-	// gets all (facing) rad_volPatches_
-	for (std::size_t i = 0; i < scene.o[VOLUME_PATCHES].s.size(); i++) {
-		geometryTerm_ = geometryTerm(walL, walN, scene.o[VOLUME_PATCHES].s[i].c, radiance_volPatchesN[i]);
-		if (geometryTerm_ > 0.0f)
-			radiance_volPatches[i] = L_E * scene.o[VOLUME_PATCHES].s[i].albedo * geometryTerm_;
-		else
-			radiance_volPatches[i] = -L_E * scene.o[VOLUME_PATCHES].s[i].albedo * geometryTerm_;
-	}
-
-	// normalize with the Area of the pixel patch (if so)
-	if (normArea) {
-		if (constArea) {
-			float area = scene.o[VOLUME_PATCHES].s[0].areaRECTANGLE();
-			for (std::size_t i = 0; i < scene.o[VOLUME_PATCHES].s.size(); i++)
-				radiance_volPatches[i] *= area;
-		} else {
-			for (std::size_t i = 0; i < scene.o[VOLUME_PATCHES].s.size(); i++)
-				radiance_volPatches[i] *= scene.o[VOLUME_PATCHES].s[i].areaRECTANGLE();
-	}	}
-}
-
-// For set_Occlusion_Simulation_Frame(...)
-// gets the Transient pixel = Impulse response of the scene. alpha_r in Ref08
-// vector of maps. One map for pixel representing:
-//   x axis = key   = path length (r) in m
-//   y axis = value = amplitude of the impulse response
-void set_TransientImage(std::vector<std::vector<float>> & transientImageDist, std::vector<std::vector<float>> & transientImageAmpl, std::vector<float> & radiance_volPatches_, std::vector<Point> & radiance_volPatchesN, Scene & scene, Point & walL, Point & walN) {
-
-	// geometry_term_xw, alpha_r, r
-	float geometryTerm_xw;
-	float alpha_r;	// alpha_r =    L_E * albedo_w * alpha_x =    L_E * albedo_w * g(x) * v(x) =    albedo_w * L(x) * geometryTerm_xw
-	float r;		// path length (r) in m, when the value alpha_r arrives to the pixel
-
-	// gets Transient Image
-	for (std::size_t wi = 0; wi < transientImageDist.size(); wi++) {
-		transientImageDist[wi].reserve(radiance_volPatches_.size());
-		transientImageAmpl[wi].reserve(radiance_volPatches_.size());
-		for (std::size_t vi = 0; vi < radiance_volPatches_.size(); vi++) {
-			geometryTerm_xw = geometryTerm(scene.o[VOLUME_PATCHES].s[vi].c, radiance_volPatchesN[vi], scene.o[WALL_PATCHES].s[wi].c, walN);
-			if (geometryTerm_xw > 0.0f)
-				alpha_r = scene.o[WALL_PATCHES].s[wi].albedo * radiance_volPatches_[vi] * geometryTerm_xw;
-			else
-				alpha_r = -scene.o[WALL_PATCHES].s[wi].albedo * radiance_volPatches_[vi] * geometryTerm_xw;
-			r = distPath5(scene.o[LASER].s[0].c, walL, scene.o[VOLUME_PATCHES].s[vi].c, scene.o[WALL_PATCHES].s[wi].c, scene.o[CAMERA].s[0].c);
-			transientImageDist[wi].push_back(r);
-			transientImageAmpl[wi].push_back(alpha_r);
-	}	}
-}
-
-// For set_Occlusion_Simulation_Frame(...)
-// sets a Simulated Frame for the Occlusion case, from a Transient Image and a Calibration Matrix. This does NOT do any calculations
-void set_FrameSim(std::vector<std::vector<float>> & transientImageDist, std::vector<std::vector<float>> & transientImageAmpl, CalibrationMatrix & cmx, Frame & frameSim00, Frame & frameSim90, int freq_idx, PixStoring ps_, bool pSim_) {
-
-	// Simulated Image Vector
-	int idx;
-	std::vector<float> vectorSim00(numPix(ps_, pSim_), 0.0f);
-	std::vector<float> vectorSim90(numPix(ps_, pSim_), 0.0f);
-	// Go pixel by pixel
-	for (int r = 0; r < rows(ps_, pSim_); r++) {
-		for (int c = 0; c < cols(ps_, pSim_); c++) {
-			idx = rc2idx(r, c, ps_, pSim_);
-			// Fill with the values of the Transient Pixel
-			for (std::size_t vi = 0; vi < transientImageDist[idx].size(); vi++) {
-				vectorSim00[idx] += transientImageAmpl[idx][vi] * cmx.C_atX(freq_idx, transientImageDist[idx][vi], 0, r, c, ps_, pSim_);
-				vectorSim90[idx] += transientImageAmpl[idx][vi] * cmx.C_atX(freq_idx, transientImageDist[idx][vi], 1, r, c, ps_, pSim_);
-	}	}	}
-	// set the new Frame Simulated
-	frameSim00.set(vectorSim00, rows(ps_, pSim_), cols(ps_, pSim_), cmx.info->freqV[freq_idx], 0.0f, cmx.info->shutV[cmx.info->shutV.size() - 1], cmx.info->phasV[0], ps_, pSim_);
-	frameSim90.set(vectorSim90, rows(ps_, pSim_), cols(ps_, pSim_), cmx.info->freqV[freq_idx], 0.0f, cmx.info->shutV[cmx.info->shutV.size() - 1], cmx.info->phasV[cmx.info->phasV.size() - 1], ps_, pSim_);
 }
 
 

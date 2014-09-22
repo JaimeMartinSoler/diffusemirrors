@@ -172,7 +172,14 @@ Point Point::cross(Point const & pr) {
 }
 // translation (setter)
 void Point::tra(Point const & pr) {
-	x += pr.x; y += pr.y; z += pr.z;
+	x += pr.x;
+	y += pr.y;
+	z += pr.z;
+}
+void Point::tra(Point const & pr, Point & src) {
+	x = src.x + pr.x;
+	y = src.y + pr.y;
+	z = src.z + pr.z;
 }
 // rotation optimal (cosT and sinT already calculated) absolute (from (0,0,0)), radians (setters). All rot functions call this functions internally
 void Point::rotOpt(	float const & r11, float const & r12, float const & r13, 
@@ -185,6 +192,15 @@ void Point::rotOpt(	float const & r11, float const & r12, float const & r13,
 	x = r11*xc + r12*yc + r13*z;
 	y = r21*xc + r22*yc + r23*z;
 	z = r31*xc + r32*yc + r33*z;
+}
+void Point::rotOpt(	float const & r11, float const & r12, float const & r13, 
+					float const & r21, float const & r22, float const & r23, 
+					float const & r31, float const & r32, float const & r33, Point & src) {
+	// Rodrigues' Rotation Formula:
+	// http://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula
+	x = r11*src.x + r12*src.y + r13*src.z;
+	y = r21*src.x + r22*src.y + r23*src.z;
+	z = r31*src.x + r32*src.y + r33*src.z;
 }
 void Point::rotxOpt(float cosT, float sinT) {
 	float y_copy = y;
@@ -1066,7 +1082,7 @@ void Object3D::setVolumePatchesBox(Point & boxPC, Point & boxRaxisN, float deg, 
 	Object3D convexHullBox;
 	convexHullBox.setBox(boxPC, boxRaxisN, deg, boxS, boxC_relToP0);
 
-	// Place the patches from the convexHullBox
+	// Place the patches from the convexHullBox and the box center
 	Point p0, p1, p2, p3, c;
 	Point rVec, cVec;
 	int ri, ci, rowsPerFacei, colsPerFacei;
@@ -1095,49 +1111,118 @@ void Object3D::setVolumePatchesBox(Point & boxPC, Point & boxRaxisN, float deg, 
 	}	}	}
 }
 void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame & frame00, Frame & frame90, std::vector<int> & rowsPerFaceV, std::vector<int> & colsPerFaceV, bool loop, PixStoring ps_, bool pSim_) {
-
-	// Setting constant elements
+	
+	// OCCLUSION_ADATA constant parameters
 	CalibrationMatrix cmx(info);
-	Scene sceneCopy(scene);
-	Object3D volPatchesCopy(scene.o[VOLUME_PATCHES]);
-	Frame frameSim00, frameSim90;
+	Object3D volPatchesRef(scene.o[VOLUME_PATCHES]);
+	int numFaces = (int)rowsPerFaceV.size();
+	int numShapes = scene.o[VOLUME_PATCHES].s.size();
+		Point vopC(0.0f, 0.0f, 0.0f);
+		for (int si = 0; si < numShapes; ++si)
+			vopC += scene.o[VOLUME_PATCHES].s[si].c;
+		vopC /= numShapes;
+		volPatchesRef.tra(vopC * (-1.0f));	// set the reference centered in the origin to optimize rotation
+	std::vector<int> shapesPerFace(numFaces);
+	std::vector<int> firstShapeIdx_of_face(numFaces);
+		int siAccum = 0;
+		for (int fi = FRONT; fi < numFaces; ++fi) {
+			shapesPerFace[fi] = rowsPerFaceV[fi] * colsPerFaceV[fi];
+			firstShapeIdx_of_face[fi] = siAccum;
+			siAccum += rowsPerFaceV[fi] * colsPerFaceV[fi];
+		}
+	std::vector<Point> faceNRef(numFaces);
+		for (int fi = FRONT; fi < numFaces; ++fi)
+			faceNRef[fi] = volPatchesRef.s[firstShapeIdx_of_face[fi]].normalQUAD();
+	std::vector<Point*> shapeN(numShapes);
+		int fi = -1;
+		for (int si = 0; si < numShapes; ++si) {
+			if (si >= firstShapeIdx_of_face[fi])
+				fi++;
+			shapeN[si] = &(faceNRef[fi]);
+		}
+	std::vector<float> area(numShapes);
+		for (int si = 0; si < numShapes; ++si)
+			area[si] = volPatchesRef.s[si].areaRECTANGLE();
 	Point walN = scene.o[WALL].normalQUAD();
+	Point walL = int_linePN_object3D(scene.o[LASER].s[0].c, scene.o[LASER].normalQUAD(), scene.o[WALL]);
+	int freq_idx = get_freq_idx(info, frame00.freq);	// returns -1 if no idx correspondance was found
+		if (freq_idx < 0) {
+			std::cout << "\nWarning: Frame freq = " << frame00.freq << " is not a freq in .cmx freqV = ";
+			print(info.freqV);
+			return;
+		}
+	int numPix = frame00.data.size();
+	int sizeofFrameData = numPix*sizeof(float);
+
+	// OCCLUSION_ADATA variable parameters
+	Scene sceneCopy(scene);
+	Frame frameSim00;
+	Frame frameSim90;
+		std::vector<float> frameSim00_data(numPix, 0.0f);
+		std::vector<float> frameSim90_data(numPix, 0.0f);
+		frameSim00.set(frameSim00_data, frame00.rows,  frame00.cols, info.freqV[freq_idx], 0.0f, info.shutV[info.shutV.size()-1], info.phasV[0], ps_, pSim_);
+		frameSim90.set(frameSim90_data, frame90.rows,  frame90.cols, info.freqV[freq_idx], 0.0f, info.shutV[info.shutV.size()-1], info.phasV[1], ps_, pSim_);
+	std::vector<Point> faceN(numFaces);
+	int facesFacing_size = 0;
+	std::vector<int> facesFacingIdx(numFaces, 0);
+	std::vector<int> firstShapeIdx_in_volPatchesRadiance_of_facesFacingIdx(numFaces, 0);
+	int volPatchesRadiance_size = 0;
+	std::vector<int> volPatchesRadianceIdx (numShapes, 0);
+	std::vector<float> volPatchesRadiance (numShapes, 0.0f);
+	std::vector<int> transientImage_size (numPix, 0);
+	std::vector<std::vector<float>> transientImageDist (numPix, std::vector<float>(numShapes));
+	std::vector<std::vector<float>> transientImageAmpl (numPix, std::vector<float>(numShapes));
+	Point traV(0.0f, 0.0f, 0.0f);
+	Point axisN(0.0f, 0.0f, 0.0f);
+	float rad = 0.0f;
+
+	// OCCLUSION_ADATA storing additional data in struct
+	struct OCCLUSION_ADATA adata;
+	adata.info = &info;
+	adata.cmx = &cmx;
+	adata.volPatchesRef = &volPatchesRef;		// this 2nd copy is the reference volPatches centered in the origin and should not be modified
+	adata.numFaces = numFaces;
+	adata.numShapes = numShapes;
+	adata.shapesPerFace = &shapesPerFace;
+	adata.firstShapeIdx_of_face = &firstShapeIdx_of_face;
+	adata.faceNRef = &faceNRef;
+	adata.shapeN = &shapeN;						// unnused
+	adata.area = &area;
+	adata.walN = &walN;
+	adata.walL = &walL;
+	adata.freq_idx = freq_idx;
+	adata.ps_ = ps_;
+	adata.pSim_ = pSim_;
+	adata.numPix = numPix;						// rows*cols
+	adata.sizeofFrameData = sizeofFrameData;	// rows*cols*sizeof(float) = rows*cols*4
+	adata.sceneCopy = &sceneCopy;				// semi-constant: sceneCopy.o[VOLUME_PATHCES] is modified in each iteration of levmar
+	adata.frameSim00 = &frameSim00;
+	adata.frameSim90 = &frameSim90;
+	adata.faceN = &faceN;
+	adata.facesFacing_size = facesFacing_size;
+	adata.facesFacingIdx = &facesFacingIdx;
+	adata.firstShapeIdx_in_volPatchesRadiance_of_facesFacingIdx = &firstShapeIdx_in_volPatchesRadiance_of_facesFacingIdx;
+	adata.volPatchesRadiance_size = volPatchesRadiance_size;
+	adata.volPatchesRadianceIdx = &volPatchesRadianceIdx;
+	adata.volPatchesRadiance = &volPatchesRadiance;
+	adata.transientImage_size = &transientImage_size;
+	adata.transientImageDist = &transientImageDist;
+	adata.transientImageAmpl = &transientImageAmpl;
+	adata.traV = &traV;
+	adata.axisN = &axisN;
+	adata.rad = rad;
 
 	// LEVMAR function parameters
 
 	// set the initial parameters (p) and values (x)
-	const int p_size = 6;										// x, y, z, rx, ry, rz
-	const int numFramePix = numPix(ps_, pSim_);					// rows*cols
-	const int x_size = numFramePix * cmx.info->phasV.size();	// rows*cols*phases = rows*cols*2
-	const int sizeofFrameData = numFramePix * sizeof(float);	// rows*cols*sizeof(float) = rows*cols*4
-	float* p = new float[p_size];										// p[0],p[1],p[2],p[3],p[4],p[5] = x,y,z,rx,ry,rz
-	float* x = new float[x_size];										// x[i]: value of simulated pixel i
-	p[0] = 3.0f; p[1] = 1.0f; p[2] = 0.0f;								// initial parameters estimate (x,y,z)
-	p[3] = 0.0f; p[4] = 0.0f; p[5] = 0.0f;								// initial parameters estimate (rx,ry,rz)
-	memcpy(x, frame00.data.data(), sizeofFrameData);					// actual measurement values to be fitted with the model
-	memcpy(x + numFramePix, frame90.data.data(), sizeofFrameData);
-	// Getting normal vectors
-	int numFaces = (int)rowsPerFaceV.size();
-	int numShapes = scene.o[VOLUME_PATCHES].s.size();
-	int shapesPerFace = 0, shapesPerFaceCount = 0;
-	std::vector<Point> faceN(numFaces);	// this will store all the different normals (one per face, many shapes with the same normal)
-	std::vector<Point*> shapeN(numShapes);	// this will store the pointers of each shape to the corresponding normals
-	std::vector<float> area(numShapes);
-	for (int f = FRONT; f < numFaces; ++f) {
-		shapesPerFaceCount += shapesPerFace;
-		shapesPerFace = rowsPerFaceV[f] * colsPerFaceV[f];
-		faceN[f] = scene.o[VOLUME_PATCHES].s[shapesPerFaceCount].normalQUAD();
-		for (int s = 0; s < shapesPerFace; ++s) {
-			shapeN[shapesPerFaceCount + s] = &faceN[f];
-			area[shapesPerFaceCount + s] = scene.o[VOLUME_PATCHES].s[shapesPerFaceCount + s].areaRECTANGLE();
-	}	}
-	// get freq_idx
-	int freq_idx = get_freq_idx(info, frame00.freq);	// returns -1 if no idx correspondance was found
-	if (freq_idx < 0) {
-		std::cout << "\nWarning: Frame freq = " << frame00.freq << " is not a freq in .cmx freqV = ";
-		print(info.freqV);
-		return;
-	}
+	const int p_size = 6;								// x, y, z, rx, ry, rz
+	const int x_size = numPix * info.phasV.size();		// rows*cols*phases = rows*cols*2
+	float* p = new float[p_size];								// p[0],p[1],p[2],p[3],p[4],p[5] = x,y,z,rx,ry,rz
+	float* x = new float[x_size];								// x[i]: value of simulated pixel i
+	p[0] = 3.0f; p[1] = 1.0f; p[2] = 0.0f;						// initial parameters estimate (x,y,z)
+	p[3] = 0.0f; p[4] = 0.0f; p[5] = 0.0f;						// initial parameters estimate (rx,ry,rz)
+	memcpy(x, frame00.data.data(), sizeofFrameData);			// actual measurement values to be fitted with the model
+	memcpy(x + numPix, frame90.data.data(), sizeofFrameData);
 	// optimization control parameters; passing to levmar NULL instead of opts reverts to defaults
 	float opts[LM_OPTS_SZ];
 	opts[0] = LM_INIT_MU;
@@ -1153,25 +1238,6 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	// invoke the optimization function (returns the number of iterations, -1 if failed)
 	int maxIters = 1000;
 	int numIters = 0;
-	// Output / Intermediate parameters
-	std::vector<float> volPatches_Radiance(numShapes);
-
-	// Storing additional data in struct
-	struct OCCLUSION_ADATA adata;
-	adata.info = &info;
-	adata.cmx = &cmx;
-	adata.sceneCopy = &sceneCopy;
-	adata.volPatchesCopy = &volPatchesCopy;
-	adata.frameSim00 = &frameSim00;
-	adata.frameSim90 = &frameSim90;
-	adata.faceN = &faceN;
-	adata.shapeN = &shapeN;
-	adata.area = &area;
-	adata.walN = &walN;
-	adata.freq_idx = freq_idx;
-	adata.ps_ = ps_;
-	adata.pSim_ = pSim_;
-	adata.volPatches_Radiance = &volPatches_Radiance;
 
 	// Syncronization
 	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
@@ -1212,6 +1278,9 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 
 	delete[] p;
 	delete[] x;
+}
+void updateVolumePatches_Occlusion_antiBugThread(Info & info, Scene & scene, Frame & frame00, Frame & frame90, std::vector<int> & rowsPerFaceV, std::vector<int> & colsPerFaceV, bool loop, PixStoring ps_, bool pSim_) {
+	scene.o[VOLUME_PATCHES].updateVolumePatches_Occlusion(info, scene, frame00, frame90, rowsPerFaceV, colsPerFaceV, loop, ps_, pSim_);
 }
 void Object3D::setVolumePatches_OLD() {
 
@@ -1256,7 +1325,7 @@ void Object3D::updateVolumePatches_Occlusion_OLD(Info & info, Scene & scene, Fra
 	// Setting constant elements
 	CalibrationMatrix cmx(info);
 	Scene sceneCopy(scene);
-	Object3D volPatchesCopy(scene.o[VOLUME_PATCHES]);
+	Object3D volPatchesRef(scene.o[VOLUME_PATCHES]);
 	Frame frameSim00, frameSim90;
 	Point camC = scene.o[CAMERA].s[0].c;
 	Point camN = scene.o[CAMERA].normalQUAD();
@@ -1288,7 +1357,7 @@ void Object3D::updateVolumePatches_Occlusion_OLD(Info & info, Scene & scene, Fra
 			cv_frame_object.wait(locker_frame_object);
 
 		// Update pixel patches, setting the Best Fit
-		updateVolumePatches_Occlusion_OLD_BestFit(cmx, sceneCopy, volPatchesCopy, frameSim00, frameSim90, frame00, frame90, walN, _vopN, dRes, ps_, pSim_);
+		updateVolumePatches_Occlusion_OLD_BestFit(cmx, sceneCopy, volPatchesRef, frameSim00, frameSim90, frame00, frame90, walN, _vopN, dRes, ps_, pSim_);
 		scene.o[VOLUME_PATCHES] = sceneCopy.o[VOLUME_PATCHES];
 
 		// Syncronization
