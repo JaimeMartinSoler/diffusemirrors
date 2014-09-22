@@ -301,9 +301,9 @@ public:
 	// Setter Laser Ray (8)
 	void Object3D::setLaserRay(Scene & scene, float R_ = 0.0f, float G_ = 0.0f, float B_ = 1.0f, float A_ = 1.0f, PixStoring ps_ = PIXELS_STORING_GLOBAL);
 	// Setter, Updater Volume Patches (9)
-	void Object3D::setVolumePatchesBox(Point & boxS, std::vector<int> & rowsPerFaceV, std::vector<int> & colsPerFaceV,
-	std::vector<std::vector<float>> & albedoVV, std::vector<std::vector<float>> & RVV, std::vector<std::vector<float>> & GVV, std::vector<std::vector<float>> & BVV, std::vector<std::vector<float>> & AVV);
-	void Object3D::updateVolumePatches_Occlusio(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
+	void Object3D::setVolumePatchesBox(Point & boxPC, Point & boxRaxisN, float deg, Point & boxS, std::vector<int> & rowsPerFaceV, std::vector<int> & colsPerFaceV,
+		std::vector<std::vector<float>> & albedoVV, std::vector<std::vector<float>> & RVV, std::vector<std::vector<float>> & GVV, std::vector<std::vector<float>> & BVV, std::vector<std::vector<float>> & AVV);
+	void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame & frame00, Frame & frame90, std::vector<int> & rowsPerFaceV, std::vector<int> & colsPerFaceV, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	void Object3D::setVolumePatches_OLD();
 	void Object3D::updateVolumePatches_Occlusion_OLD(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	// Setter, Updater Pixel Patches (10)
@@ -410,7 +410,7 @@ public:
 	// Setter Scene Direct Vision
 	void Scene::setScene_DirectVision(PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim_ = false);	// the same for both Sinusoid and Simulation
 	// Setter Scene Occlusion
-	void Scene::setScene_Occlusion(PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim_ = false);
+	void Scene::setScene_Occlusion(std::vector<int> & rowsPerFaceV, std::vector<int> & colsPerFaceV, PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	// Setter Scene Calibration Matrix
 	void Scene::setScene_CalibrationMatrix(float laser_to_cam_offset_x, float laser_to_cam_offset_y, float laser_to_cam_offset_z, float dist_wall_cam,
 		PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim_ = false);

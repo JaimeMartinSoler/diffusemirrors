@@ -142,7 +142,7 @@ int main_DirectVision_Simulation_Frame(char* dir_name_, char* file_name_) {
 	// Set all the corresponding scene and start updating
 	bool loop = false;
 	SCENEMAIN.setScene_DirectVision(ps, pSim);
-	updatePixelPatches_Simulation_antiBugThread(std::ref(info), std::ref(SCENEMAIN), std::ref(frame00), std::ref(frame90), loop, ps, pSim);	// the second Fame is frame90 but it's not used
+	updatePixelPatches_Simulation_antiBugThread(std::ref(info), std::ref(SCENEMAIN), std::ref(frame00), std::ref(frame90), loop, ps, pSim);
 
 	// Render all the object3D of the scene
 	int argcStub = 0;
@@ -158,7 +158,7 @@ int main_DirectVision_Simulation_Frame(char* dir_name_, char* file_name_) {
 
 // Occlusion problem. Real Time.
 int main_Occlusion(char* dir_name_, char* file_name_) {
-	
+
 	// set the Info
 	Info info(dir_name_, file_name_);
 
@@ -173,7 +173,15 @@ int main_Occlusion(char* dir_name_, char* file_name_) {
 	std::thread thread_PMD_params_to_Frame(PMD_params_to_Frame_anti_bug_thread, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), frequency, distance, shutter, comport, loop, ps, pSim);
 
 	// Set all the corresponding scene and start updating
-	SCENEMAIN.setScene_Occlusion(ps, pSim);
+	// faces
+	const int vop_faces = 6;	// 1:Plane, 6:Box
+	std::vector<int> rowsPerFaceV(vop_faces);
+	std::vector<int> colsPerFaceV(vop_faces);
+	for (int f = FRONT; f < vop_faces; ++f) {
+		rowsPerFaceV[f] = 3;
+		colsPerFaceV[f] = 3;
+	}
+	SCENEMAIN.setScene_Occlusion(rowsPerFaceV, colsPerFaceV, ps, pSim);
 	std::thread thread_updateVolumePatches_Occlusion_OLD(updateVolumePatches_Occlusion_OLD_antiBugThread, std::ref(info), std::ref(SCENEMAIN), std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), loop, ps, pSim);
 
 	// Render all the object3D of the scene
@@ -184,7 +192,7 @@ int main_Occlusion(char* dir_name_, char* file_name_) {
 
 	// pause in main to allow control when the loops will finish
 	control_loop_pause();
-	
+
 	// joins
 	thread_PMD_params_to_Frame.join();
 	thread_updateVolumePatches_Occlusion_OLD.join();
@@ -201,7 +209,7 @@ int main_Occlusion_Frame(char* dir_name_, char* file_name_) {
 
 	// get a Frame from the RawData
 	RawData rawData(info);
-	float pathWallOffset = -0.5f;
+	float pathWallOffset = 1.0f;
 	PixStoring ps = PIXELS_VALID;
 	bool pSim = true;
 	int dist_idx = get_dist_idx(info, pathWallOffset);	// returns -1 if no idx correspondance was found
@@ -217,21 +225,32 @@ int main_Occlusion_Frame(char* dir_name_, char* file_name_) {
 
 	// Set all the corresponding scene and start updating
 	bool loop = false;
-	SCENEMAIN.setScene_Occlusion(ps, pSim);
-	std::thread thread_updateVolumePatches_Occlusion_OLD(updateVolumePatches_Occlusion_OLD_antiBugThread, std::ref(info), std::ref(SCENEMAIN), std::ref(frame00), std::ref(frame90), loop, ps, pSim);
+	// faces
+	const int vop_faces = 6;	// 1:Plane, 6:Box
+	std::vector<int> rowsPerFaceV(vop_faces);
+	std::vector<int> colsPerFaceV(vop_faces);
+	for (int f = FRONT; f < vop_faces; ++f) {
+		rowsPerFaceV[f] = 3;
+		colsPerFaceV[f] = 3;
+	}
+	SCENEMAIN.setScene_Occlusion(rowsPerFaceV, colsPerFaceV, ps, pSim);
+	//updateVolumePatches_Occlusion_OLD_antiBugThread(std::ref(info), std::ref(SCENEMAIN), std::ref(frame00), std::ref(frame90), loop, ps, pSim);
 
 	// Render all the object3D of the scene
 	int argcStub = 0;
 	char** argvStub = NULL;
 	std::thread thread_render(render_anti_bug_thread, argcStub, argvStub);
+	std::cout << "\n\nDo NOT close the openGL window while the PMD loop is runnung.\n(it wouldn't be the end of the world, but it's better not to)\n\n";
+
+	// pause in main to allow control when the loops will finish
+	control_loop_pause();
 
 	// joins
-	thread_updateVolumePatches_Occlusion_OLD.join();
 	thread_render.join();
-	//cv::destroyAllWindows();
 
 	return 0;
 }
+
 
 
 
@@ -363,10 +382,10 @@ int main_CalibrationMatrix (char* dir_name_, char* file_name_) {
 int main(int argc, char** argv) {
 	
 	// Set RAW_DATA
-	SceneType sceneType = OCCLUSION;
+	SceneType sceneType = OCCLUSION_FRAME;
 	SCENEMAIN.set(sceneType);
-	//char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\cmx_01";
-	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\cmx_01";
+	char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\cmx_01";
+	//char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\cmx_01";
 	char file_name[1024] = "PMD";
 	
 	// Main Switcher
