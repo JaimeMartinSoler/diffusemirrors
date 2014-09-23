@@ -424,8 +424,9 @@ int get_phas_idx (Info & info, float phas, float RelDiffMax = 0.0001);
 
 
 // other auxiliar functions
-bool equalAproxf (float f0, float f1, float RelDiffMax = 0.0001);
-void print(std::vector<float> v, char* prefix = NULL, char* sufix = NULL);
+bool equalAproxf(float f0, float f1, float RelDiffMax = 0.0001);
+void print(std::vector<float> & v, char* prefix = NULL, char* sufix = NULL);
+void print(std::vector<int> & v, char* prefix = NULL, char* sufix = NULL);
 
 #endif
 
