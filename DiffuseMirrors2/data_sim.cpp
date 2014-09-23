@@ -359,8 +359,10 @@ void set_Occlusion_Simulation_Frame_Optim(float* p, float* x, int p_size, int x_
 	struct OCCLUSION_ADATA* ad = (struct OCCLUSION_ADATA *) adata;
 
 	// Check convergence
-	if (!convergeOcclusion(p, x, p_size, x_size, ad))
+	if (!pInBounds(p, x, p_size, x_size, ad)) {
+		//std::cout << "\nOut of bounds, p = [" << p[0] << ", "  << p[1] << ", "  << p[2] << ", "  << p[3] << ", "  << p[4] << ", "  << p[5] << "]";
 		return;
+	}
 
 	// Update Scene 
 	updateSceneOcclusion(p, ad);
@@ -404,19 +406,55 @@ void set_Occlusion_Simulation_Frame_Optim(float* p, float* x, int p_size, int x_
 	ad->frameSim90->plot(1, false, "Frame Sim90 Occl");
 	*/
 	// Plot a transient pixel with MATLAB Engine, from TransientImage (MATLAB Engine takes too much time to start) comment out next lines unless you need to debugg
-	/*
-	int pixRow = 0; // ad->frameSim00->rows / 2;
-	int pixCol = ad->frameSim00->cols - 1; // ad->frameSim00->cols / 2;
-	int pixIdx = rc2idx(pixRow, pixCol, ad->ps_, ad->pSim_);
-	plot_transientPixel((*ad->transientImageDist)[pixIdx], (*ad->transientImageAmpl)[pixIdx], (*ad->transientImage_size)[pixIdx]);
-	*/
-	
+	//
+	//int pixRow = ad->frameSim00->rows / 2; // ad->frameSim00->rows / 2;
+	//int pixCol = ad->frameSim00->cols / 2; // ad->frameSim00->cols / 2;
+	//int pixIdx = rc2idx(pixRow, pixCol, ad->ps_, ad->pSim_);
+	//plot_transientPixel((*ad->transientImageDist)[pixIdx], (*ad->transientImageAmpl)[pixIdx], (*ad->transientImage_size)[pixIdx]);
+	//
 }
 
 // Part of set_Occlusion_Simulation_Frame_Optim(...)
 // check if the parameters converge with the given bounds. If not, it sets big values in x
-bool convergeOcclusion(float* p, float* x, int p_size, int x_size, struct OCCLUSION_ADATA* ad) {
-	return true;
+bool pInBounds(float* p, float* x, int p_size, int x_size, struct OCCLUSION_ADATA* ad) {
+	
+	// if p is out of bounds, x is filled with the final x_value;
+	const float x_offset = 1000.0f;
+	const float x_scale  = 1000.0f;
+	float x_value = 0.0f;			
+	float x_aux = 0.0f;
+	bool pInBounds_bool = true;
+	// iterate through all the parameters checking if they are in bounds
+	for (int i = 0; i < p_size; ++i) {
+		if (p[i] < (*ad->pL)[i]) {
+			x_aux = (*ad->pL)[i] - p[i];
+			x_value += (x_aux * x_aux);
+			pInBounds_bool = false;
+		} else if (p[i] > (*ad->pU)[i]) {
+			x_aux = p[i] - (*ad->pU)[i];
+			x_value += (x_aux * x_aux);
+			pInBounds_bool = false;
+	}	}
+	// if some parameters are out of bounds, update x
+	if (!pInBounds_bool) {
+		x_value = x_value * x_scale + x_offset;
+		for (int i = 0; i < x_size; ++i) {
+			x[i] = x_value;
+	}	}
+
+	return pInBounds_bool;
+}
+
+// Auxiliar function for updateSceneOcclusion(...)
+// sets the axisN and the rad from the parameters
+void set_axisNrad_fromP (Point & axisN, float & rad, float* p) {
+	// axisN
+	axisN.set(p[3], p[4], p[5]);
+	float axisMod = axisN.mod();
+	if (axisMod > 0.0f)
+		axisN /= axisMod;
+	// rad
+	rad = (p[3]*p[3]) + (p[4]*p[4]) + (p[5]*p[5]);	// rad is defined as the modPow2 of (p[3], p[4], p[5])
 }
 
 // Part of set_Occlusion_Simulation_Frame_Optim(...)
@@ -424,11 +462,7 @@ bool convergeOcclusion(float* p, float* x, int p_size, int x_size, struct OCCLUS
 void updateSceneOcclusion(float* p, struct OCCLUSION_ADATA* ad) {
 
 	ad->traV->set(p[0], p[1], p[2]);
-	ad->axisN->set(p[3], p[4], p[5]);
-	float axisMod = ad->axisN->mod();
-	if (axisMod > 0.0f)
-		*ad->axisN /= axisMod;
-	ad->rad = p[3] * p[3] + p[4] * p[4] + p[5] * p[5];	// rad is defined as the modPow2 of (p[3], p[4], p[5])
+	set_axisNrad_fromP (*ad->axisN, ad->rad, p);
 	float r11, r12, r13, r21, r22, r23, r31, r32, r33;
 	setRotationMatrix(r11, r12, r13, r21, r22, r23, r31, r32, r33, ad->axisN->x, ad->axisN->y, ad->axisN->z, ad->rad);
 	for (int si = 0; si < ad->numShapes; ++si) {
@@ -696,7 +730,7 @@ void plot_transientPixel(std::vector<float> & transientPixDist, std::vector<floa
 
 	// Plot the result
 	engEvalString(ep, "stem(D,V);");
-	engEvalString(ep, "title('Impulse Response: ampl(time)');");
+	engEvalString(ep, "title('Impulse Response: ampl(dist)');");
 	engEvalString(ep, "xlabel('distance (m)');");
 	engEvalString(ep, "ylabel('ampl');");
 

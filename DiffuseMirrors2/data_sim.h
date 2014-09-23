@@ -52,7 +52,11 @@ void set_Occlusion_Simulation_Frame_Optim(float* p, float* x, int p_size, int x_
 
 // Part of set_Occlusion_Simulation_Frame_Optim(...)
 // check if the parameters converge with the given bounds. If not, it sets big values in x
-bool convergeOcclusion(float* p, float* x, int p_size, int x_size, struct OCCLUSION_ADATA* ad);
+bool pInBounds(float* p, float* x, int p_size, int x_size, struct OCCLUSION_ADATA* ad);
+
+// Auxiliar function for updateSceneOcclusion(...)
+// sets the axisN and the rad from the parameters
+void set_axisNrad_fromP (Point & axisN, float & rad, float* p);
 
 // Part of set_Occlusion_Simulation_Frame_Optim(...)
 // updates the current scene with the values of the given parameters p

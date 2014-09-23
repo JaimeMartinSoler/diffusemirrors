@@ -1195,8 +1195,8 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	adata.pSim_ = pSim_;
 	adata.numPix = numPix;						// rows*cols
 	adata.sizeofFrameData = sizeofFrameData;	// rows*cols*sizeof(float) = rows*cols*4
-	adata.sceneCopy = &sceneCopy;				// semi-constant: sceneCopy.o[VOLUME_PATHCES] is modified in each iteration of levmar
-	//adata.sceneCopy = &scene;					// original scene, for debugging
+	//adata.sceneCopy = &sceneCopy;				// semi-constant: sceneCopy.o[VOLUME_PATHCES] is modified in each iteration of levmar
+	adata.sceneCopy = &scene;					// original scene, for debugging
 	adata.frameSim00 = &frameSim00;
 	adata.frameSim90 = &frameSim90;
 	adata.faceN = &faceN;
@@ -1240,16 +1240,51 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	int maxIters = 1000;
 	int numIters = 0;
 
+	// OCCLUSION_ADATA variable parameters p bounds
+	const float rb = sqrt(PI) * 1.2f;	// rads are calculated as p[3]*p[3] + p[4]*p[4] + p[5]*p[5]. So the a good bound would be +-sqrt(PI). *1.2f to avoid bound problems
+	std::vector<float> pL(p_size);	pL[0]=p[0]-1.5f;	pL[1]=p[1]-0.5f;	pL[2]=p[2]-1.5f;	pL[3]=p[3]-rb;	pL[4]=p[4]-rb;	pL[5]=p[5]-rb;	
+	std::vector<float> pU(p_size);	pU[0]=p[0]+1.5f;	pU[1]=p[1]+1.0f;	pU[2]=p[2]+1.5f;	pU[3]=p[3]+rb;	pU[4]=p[4]+rb;	pU[5]=p[5]+rb;	
+	adata.pL = &pL;
+	adata.pU = &pU;
+
 	// Syncronization
 	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
 	locker_frame_object = std::unique_lock<std::mutex>(mutex_frame_object, std::defer_lock);
+
+	// actual initial parameters
+	const bool actual_p_known = true;
+	float* pA = new float[p_size];
+	pA[0] = 2.5f;	pA[1] = 0.75f;	pA[2] = -0.5f;	pA[3] = 0.0f;	pA[4] = 0.0f;	pA[5] = 0.0f;
+	Point posA(pA[0], pA[1], pA[2]);
+	Point axisNA;
+	float radA;
+	set_axisNrad_fromP (axisNA, radA, pA);
+	float degA = radA * 180.0f / PI;
+	if (actual_p_known) {
+		std::cout << "\n\nActual parameters : pA = [" << pA[0] << ", "  << pA[1] << ", "  << pA[2] << ", "  << pA[3] << ", "  << pA[4] << ", "  << pA[5] << "]";
+		posA.print  ("\nposA    = ", "");
+		axisNA.print("\naxisA   = ", "");
+		std::cout << "\nrad/deg = " << radA << " / " << degA;
+	}
+	// initial parameters
+	Point pos0(p[0], p[1], p[2]);
+	Point axisN0;
+	float rad0;
+	set_axisNrad_fromP (axisN0, rad0, p);
+	float deg0 = rad0 * 180.0f / PI;
+	std::cout <<"\n\nInitial parameters: p0 = [" << p[0] << ", "  << p[1] << ", "  << p[2] << ", "  << p[3] << ", "  << p[4] << ", "  << p[5] << "]";
+	pos0.print  ("\npos0      = ", "");
+	axisN0.print("\naxis0     = ", "");
+	std::cout << "\nrad0/deg0 = " << rad0 << " / " << deg0;
 
 	// --- LOOP ------------------------------------------------------------------------------------------------
 	bool first_iter = true;
 	while (loop || first_iter) {
 
+		// Timing
 		const clock_t begin_time = clock();
 
+		// External control
 		if (!PMD_LOOP_ENABLE && !first_iter)
 			break;
 		first_iter = false;
@@ -1259,21 +1294,40 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 		while (!UPDATED_NEW_FRAME)	//std::cout << "Waiting in Object to finish the UPDATED_NEW_Frame. This is OK!\n";
 			cv_frame_object.wait(locker_frame_object);
 
-		// Update pixel patches, setting the Best Fit
+		// ----- Update pixel patches, setting the Best Fit --------------------------------------------------------------------------------
 		numIters = slevmar_dif(set_Occlusion_Simulation_Frame_Optim, p, x, p_size, x_size, maxIters, opts, inf, work, covar, (void*)&adata); // withOUT analytic Jacobian
-		scene.o[VOLUME_PATCHES].set(sceneCopy.o[VOLUME_PATCHES]);
+		scene.o[VOLUME_PATCHES].set(sceneCopy.o[VOLUME_PATCHES]);	// we could also modify the original scene with the final parameters
 
-		// Syncronization
-		//std::cout << ",    UPDATED_NEW_SCENE\n";
+		// Syncronization	//std::cout << ",    UPDATED_NEW_SCENE\n";
 		UPDATED_NEW_FRAME = false;
 		UPDATED_NEW_SCENE = true;
 		cv_frame_object.notify_all();	// Notify all cv_frame_object. All threads waiting for cv_frame_object will break the wait after waking up
 		locker_frame_object.unlock();	// Unlock mutex_frame_object, now threads which used mutex_frame_object can continue
-
+		
+		// Timing
 		const clock_t end_time = clock();
 		float ms_time = 1000.0f * float(end_time - begin_time) / (float)CLOCKS_PER_SEC;
 		float fps_time = 1000.0f / ms_time;
 		std::cout << "\ntime = " << ms_time << " ms,    fps = " << fps_time << " fps";
+		
+		// final parameters
+		Point posF(p[0], p[1], p[2]);
+		Point axisNF;
+		float radF;
+		set_axisNrad_fromP (axisNF, radF, p);
+		float degF = radF * 180.0f / PI;
+		std::cout <<"\n\Final parameters: pF = [" << p[0] << ", "  << p[1] << ", "  << p[2] << ", "  << p[3] << ", "  << p[4] << ", "  << p[5] << "]";
+		posF.print  ("\nposF      = ", "");
+		axisNF.print("\naxisF     = ", "");
+		std::cout << "\nradF/degF = " << radF << " / " << degF;
+		// error parameters
+		Point posE = posF - posA;
+		float axisNradE, axisNdegE;
+		float radE, degE;
+		std::cout <<"\n\Einal parameters: pE = [" << p[0] << ", "  << p[1] << ", "  << p[2] << ", "  << p[3] << ", "  << p[4] << ", "  << p[5] << "]";
+		posE.print  ("\nposE      = ", "");
+		axisNE.print("\naxisE     = ", "");
+		std::cout << "\nradE/degE = " << radE << " / " << degE;
 	}
 	// --- END OF LOOP -----------------------------------------------------------------------------------------
 
