@@ -23,6 +23,8 @@ struct set_DirectVision_Simulation_Frame_STRUCT_DATA {
 	// Parameters of set_DirectVision_Simulation_Frame(...)
 	CalibrationMatrix * cmx;
 	Scene* sceneCopy;
+	//Frame* frame00;
+	//Frame* frame90;
 	Frame* frameSim00;
 	Frame* frameSim90;
 	int freq_idx;
@@ -46,10 +48,12 @@ void updatePixelPatches_Simulation_BestFit_Optim (CalibrationMatrix & cmx, Scene
 	const int p_size = 1;
 	const int numFramePix = numPix(ps_, pSim_);					// rows*cols
 	const int x_size = numFramePix * cmx.info->phasV.size();	// rows*cols*phases = rows*cols*2
+	//const int x_size = 1;
 	const int sizeofFrameData = numFramePix * sizeof(float);	// rows*cols*sizeof(float) = rows*cols*4
 	float* p = new float[p_size];										// p[0] = dist(camC,wall)
 	float* x = new float[x_size];										// x[i]: value of simulated pixel i
 	p[0] = 2.0f;														// initial parameters estimate
+	//x[0] = 0.0f;
 	memcpy(x, frame00.data.data(), sizeofFrameData);					// actual measurement values to be fitted with the model
 	memcpy(x + numFramePix, frame90.data.data(), sizeofFrameData);
 	
@@ -59,6 +63,8 @@ void updatePixelPatches_Simulation_BestFit_Optim (CalibrationMatrix & cmx, Scene
 	// Parameters of set_DirectVision_Simulation_Frame(...)
 	adata.cmx = &cmx;
 	adata.sceneCopy = &sceneCopy;
+	//adata.frame00 = &frame00;
+	//adata.frame90 = &frame90;
 	adata.frameSim00 = &frameSim00;
 	adata.frameSim90 = &frameSim90;
 	adata.freq_idx = freq_idx;
@@ -101,6 +107,22 @@ void updatePixelPatches_Simulation_BestFit_Optim (CalibrationMatrix & cmx, Scene
 	//std::cout << "\ndist = " << p[0] << ". numIters = " << numIters;
 }
 
+/*
+float distHS_Opt(float* H00, float* H90, float* S00, float* S90, int size) {
+
+	// dist(H,S) = Sum{(Hi-Si)^2}
+	float H00_S00 = H00[0] - S00[0];
+	float H90_S90 = H90[0] - S90[0];
+	float distResult = (H00_S00 * H00_S00) + (H90_S90 * H90_S90);
+	for (int i = 1; i < size; ++i) {
+		H00_S00 = H00[i] - S00[i];
+		H90_S90 = H90[i] - S90[i];
+		distResult += ((H00_S00 * H00_S00) + (H90_S90 * H90_S90));
+	}
+	return distResult;
+}
+*/
+
 // model to be fitted to measurements
 //     p: Input parameters to be fitted. p_size: number of parameters (only distance in this first approach)
 //         p[0] = dist(camC,wall)
@@ -129,6 +151,7 @@ void set_DirectVision_Simulation_Frame_Optim(float* p, float* x, int p_size, int
 	const int sizeofFrameData = numFramePix * sizeof(float);	// rows*cols*sizeof(float) = rows*cols*4
 	memcpy(x, ad->frameSim00->data.data(), sizeofFrameData);
 	memcpy(x + numFramePix, ad->frameSim90->data.data(), sizeofFrameData);
+	//x[0] = distHS_Opt(ad->frame00->data.data(), ad->frame90->data.data(), ad->frameSim00->data.data(), ad->frameSim90->data.data(), ad->frame00->data.size());
 }
 
 
@@ -335,34 +358,37 @@ void set_Occlusion_Simulation_Frame_Optim(float* p, float* x, int p_size, int x_
 	// get struct with the additional data
 	struct OCCLUSION_ADATA* ad = (struct OCCLUSION_ADATA *) adata;
 
+	// Check convergence
+	if (!convergeOcclusion(p, x, p_size, x_size, ad))
+		return;
+
 	// Update Scene 
-	ad->traV->set(p[0], p[1], p[2]);
-	ad->axisN->set(p[3], p[4], p[5]);
-	ad->axisN->normalize();
-	ad->rad = p[3]*p[3] + p[4]*p[4] + p[5]*p[5];	// rad is defined as the modPow2 of (p[3], p[4], p[5])
-	float r11, r12, r13, r21, r22, r23, r31, r32, r33;
-	setRotationMatrix(r11, r12, r13, r21, r22, r23, r31, r32, r33, ad->axisN->x, ad->axisN->y, ad->axisN->z, ad->rad);
-	for (int si = 0; si < ad->numShapes; ++si) {
-		ad->sceneCopy->o[VOLUME_PATCHES].s[si].c.rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33, ad->volPatchesRef->s[si].c);	// useful for meas
-		ad->sceneCopy->o[VOLUME_PATCHES].s[si].c.tra(*ad->traV);																	// useful for meas
-		// useless for meas, just for rendering:
-		for (size_t pi = 0; pi < ad->volPatchesRef->s[si].p.size(); ++pi) {
-			ad->sceneCopy->o[VOLUME_PATCHES].s[si].p[pi].rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33, ad->volPatchesRef->s[si].p[pi]);	// useless for meas, just for rendering
-			ad->sceneCopy->o[VOLUME_PATCHES].s[si].p[pi].tra(*ad->traV);																		// useless for meas, just for rendering
-		}
-	}
-	for (int fi = 0; fi < ad->numFaces; ++fi)
-		(*ad->faceN)[fi].rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33, (*ad->faceNRef)[fi]);	// useful for meas
+	updateSceneOcclusion(p, ad);
+	/*
+	ad->traV->print("\n\ntrv   = ", "");
+	ad->axisN->print("\naxisN = ", "");
+	std::cout << "\ndeg   = " << ad->rad * 180.0f / PI;
+	char stub[128];
+	std::cin >> stub;
+	*/
 
 	// L_E;		// Le(l) in the paper. Radiance from the light point in the wall from the laser
 	
 	// Radiance from each volume patch. L(x) in the paper.
 	set_volPatchesRadiance(ad);
-
+	/*
+	std::cout << "\n\nvolPatchesRadiance_size = " << ad->volPatchesRadiance_size;
+	print((*ad->volPatchesRadianceIdx), "\nvolPatchesRadianceIdx = ", "");
+	print((*ad->volPatchesRadiance), "\nvolPatchesRadiance    = ", "");
+	for (int sii = 0; sii < ad->volPatchesRadiance_size; ++sii) {
+		ad->sceneCopy->o[VOLUME_PATCHES].s[(*ad->volPatchesRadianceIdx)[sii]].G = 0.5f;
+		ad->sceneCopy->o[VOLUME_PATCHES].s[(*ad->volPatchesRadianceIdx)[sii]].B = 0.5f;
+	}
+	*/
 	// Transient pixel = Impulse response of the ad->sceneCopy-> alpha_r in Ref08
 	// vector of maps. One map for pixel representing:
-	//   x axis = key   = path length (r) in m
-	//   y axis = value = amplitude of the impulse response
+	//   x axis = path length (r) in m
+	//   y axis = amplitude of the impulse response
 	set_TransientImage(ad);
 
 	// Pixels value. H(w,phi) in the paper
@@ -372,16 +398,50 @@ void set_Occlusion_Simulation_Frame_Optim(float* p, float* x, int p_size, int x_
 	memcpy(x, ad->frameSim00->data.data(), ad->sizeofFrameData);
 	memcpy(x + ad->numPix, ad->frameSim90->data.data(), ad->sizeofFrameData);
 
-	// Plot a transient pixel with MATLAB Engine, from TransientImage
+	// Plot simulated frames
 	/*
-	int pixRow = frameSim00.rows / 2;
-	int pixCol = frameSim00.cols / 2;
-	int pixIdx = rc2idx(pixRow, pixCol, ps_, pSim_);
-	// MATLAB Engine takes too much time to start, comment out next line unless you need to debugg
-	plot_transientPixel(transientImageDist[pixIdx], transientImageAmpl[pixIdx]);
+	ad->frameSim00->plot(1, false, "Frame Sim00 Occl");
+	ad->frameSim90->plot(1, false, "Frame Sim90 Occl");
 	*/
+	// Plot a transient pixel with MATLAB Engine, from TransientImage (MATLAB Engine takes too much time to start) comment out next lines unless you need to debugg
+	/*
+	int pixRow = 0; // ad->frameSim00->rows / 2;
+	int pixCol = ad->frameSim00->cols - 1; // ad->frameSim00->cols / 2;
+	int pixIdx = rc2idx(pixRow, pixCol, ad->ps_, ad->pSim_);
+	plot_transientPixel((*ad->transientImageDist)[pixIdx], (*ad->transientImageAmpl)[pixIdx], (*ad->transientImage_size)[pixIdx]);
+	*/
+	
 }
 
+// Part of set_Occlusion_Simulation_Frame_Optim(...)
+// check if the parameters converge with the given bounds. If not, it sets big values in x
+bool convergeOcclusion(float* p, float* x, int p_size, int x_size, struct OCCLUSION_ADATA* ad) {
+	return true;
+}
+
+// Part of set_Occlusion_Simulation_Frame_Optim(...)
+// updates the current scene with the values of the given parameters p
+void updateSceneOcclusion(float* p, struct OCCLUSION_ADATA* ad) {
+
+	ad->traV->set(p[0], p[1], p[2]);
+	ad->axisN->set(p[3], p[4], p[5]);
+	float axisMod = ad->axisN->mod();
+	if (axisMod > 0.0f)
+		*ad->axisN /= axisMod;
+	ad->rad = p[3] * p[3] + p[4] * p[4] + p[5] * p[5];	// rad is defined as the modPow2 of (p[3], p[4], p[5])
+	float r11, r12, r13, r21, r22, r23, r31, r32, r33;
+	setRotationMatrix(r11, r12, r13, r21, r22, r23, r31, r32, r33, ad->axisN->x, ad->axisN->y, ad->axisN->z, ad->rad);
+	for (int si = 0; si < ad->numShapes; ++si) {
+		ad->sceneCopy->o[VOLUME_PATCHES].s[si].c.rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33, ad->volPatchesRef->s[si].c);	// useful for meas
+		ad->sceneCopy->o[VOLUME_PATCHES].s[si].c.tra(*ad->traV);																	// useful for meas
+		// useless for meas, just for rendering:
+		for (size_t pi = 0; pi < ad->volPatchesRef->s[si].p.size(); ++pi) {
+			ad->sceneCopy->o[VOLUME_PATCHES].s[si].p[pi].rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33, ad->volPatchesRef->s[si].p[pi]);	// useless for meas, just for rendering
+			ad->sceneCopy->o[VOLUME_PATCHES].s[si].p[pi].tra(*ad->traV);																		// useless for meas, just for rendering
+	}	}
+	for (int fi = 0; fi < ad->numFaces; ++fi)
+		(*ad->faceN)[fi].rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33, (*ad->faceNRef)[fi]);	// useful for meas
+}
 
 // For set_Occlusion_Simulation_Frame(...)
 // gets the Radiance from each volume patch (radiance from each volume patch). L(x) in the paper. 
@@ -452,6 +512,9 @@ void set_FrameSim(struct OCCLUSION_ADATA* ad) {
 				ad->frameSim90->data[pix] += (*ad->transientImageAmpl)[pix][i] * ad->cmx->C_atX(ad->freq_idx, (*ad->transientImageDist)[pix][i], 1, r, c, ad->ps_, ad->pSim_);
 	}	}	}
 }
+
+
+
 
 
 
@@ -549,6 +612,7 @@ void updateVolumePatches_Occlusion_OLD_BestFit(CalibrationMatrix & cmx, Scene & 
 	sceneCopy.o[VOLUME_PATCHES].set(volPatchesBestFit);
 }
 
+
 // sets a Simulated Frame for the Occlusion case, from a Transient Image and a Calibration Matrix. This does all the calculations
 void set_Occlusion_Simulation_Frame(CalibrationMatrix & cmx, Scene & scene, Frame & frameSim00, Frame & frameSim90, Point & walN, int freq_idx, PixStoring ps_, bool pSim_) {
 	
@@ -600,7 +664,7 @@ float correlation(float frequency_, float phase_, float r_, float N_) {
 }
 
 // Plot a transient pixel with MATLAB Engine
-void plot_transientPixel (std::vector<float> & transientPixDist, std::vector<float> & transientPixAmpl) {
+void plot_transientPixel(std::vector<float> & transientPixDist, std::vector<float> & transientPixAmpl, int transientPixSize) {
 	
 	// MATLAB variables
 	Engine *ep;
@@ -608,7 +672,6 @@ void plot_transientPixel (std::vector<float> & transientPixDist, std::vector<flo
 	mxArray *V = NULL;
 
 	// Variables. Array structure needed to deal with MATLAB functions
-	int transientPixSize = transientPixDist.size();
 	double* dist = new double[transientPixSize];	// need to convert to double to deal with MATLAB
 	double* ampl = new double[transientPixSize];	// need to convert to double to deal with MATLAB
 	// Fill with the ampls of the Transient Pixel

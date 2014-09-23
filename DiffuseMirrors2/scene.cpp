@@ -1196,6 +1196,7 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	adata.numPix = numPix;						// rows*cols
 	adata.sizeofFrameData = sizeofFrameData;	// rows*cols*sizeof(float) = rows*cols*4
 	adata.sceneCopy = &sceneCopy;				// semi-constant: sceneCopy.o[VOLUME_PATHCES] is modified in each iteration of levmar
+	//adata.sceneCopy = &scene;					// original scene, for debugging
 	adata.frameSim00 = &frameSim00;
 	adata.frameSim90 = &frameSim90;
 	adata.faceN = &faceN;
@@ -1219,8 +1220,8 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	const int x_size = numPix * info.phasV.size();		// rows*cols*phases = rows*cols*2
 	float* p = new float[p_size];								// p[0],p[1],p[2],p[3],p[4],p[5] = x,y,z,rx,ry,rz
 	float* x = new float[x_size];								// x[i]: value of simulated pixel i
-	p[0] = 3.0f; p[1] = 1.0f; p[2] = 0.0f;						// initial parameters estimate (x,y,z)
-	p[3] = 0.0f; p[4] = 0.0f; p[5] = 0.0f;						// initial parameters estimate (rx,ry,rz)
+	p[0] = 3.0f; p[1] = 0.75f; p[2] = 0.0f;						// initial parameters estimate (x,y,z)
+	p[3] = 0.0f; p[4] = 0.8f; p[5] = 0.0f;						// initial parameters estimate (rx,ry,rz)
 	memcpy(x, frame00.data.data(), sizeofFrameData);			// actual measurement values to be fitted with the model
 	memcpy(x + numPix, frame90.data.data(), sizeofFrameData);
 	// optimization control parameters; passing to levmar NULL instead of opts reverts to defaults
@@ -1534,6 +1535,7 @@ void Object3D::updatePixelPatches_Simulation(Info & info, Scene & scene, Frame &
 		// Update pixel patches, setting the Best Fit
 		//updatePixelPatches_Simulation_BestFit(cmx, sceneCopy, frameSim00, frameSim90, frame00, frame90, camC, camN, screenFoVmeasNs, ps_, pSim_);
 		//updatePixelPatches_Simulation_BestFit_WithTilt(cmx, sceneCopy, NsMod, sinAG, frameSim00, frameSim90, frame00, frame90, camC, camN, screenFoVmeasNs, ps_, pSim_);
+		//for (int i = 0; i < 1000; ++i)
 		updatePixelPatches_Simulation_BestFit_Optim(cmx, sceneCopy, frameSim00, frameSim90, frame00, frame90, camC, camN, screenFoVmeasNs, ps_, pSim_);
 		scene.o[PIXEL_PATCHES] = sceneCopy.o[PIXEL_PATCHES];
 		//frameSim.plot(1, false, "Frame Sim Dir");
@@ -1549,7 +1551,7 @@ void Object3D::updatePixelPatches_Simulation(Info & info, Scene & scene, Frame &
 		float ms_time = 1000.0f * float(end_time - begin_time) / (float)CLOCKS_PER_SEC;
 		float fps_time = 1000.0f / ms_time;
 		std::cout << "\ntime = " << ms_time << " ms,    fps = " << fps_time <<  " fps";
-		//std::cout << "\ndist(cam,wall) = " << dist(camC, (scene.o[PIXEL_PATCHES].s[0].c + scene.o[PIXEL_PATCHES].s[rc2idx(0, cols(ps_, pSim_)-1, ps_, pSim_)].c + scene.o[PIXEL_PATCHES].s[rc2idx(rows(ps_, pSim_)-1, 0, ps_, pSim_)].c + scene.o[PIXEL_PATCHES].s[numPix(ps_, pSim_)-1].c) / 4.0f);
+		std::cout << "\ndist(cam,wall) = " << dist(camC, (scene.o[PIXEL_PATCHES].s[0].c + scene.o[PIXEL_PATCHES].s[rc2idx(0, cols(ps_, pSim_)-1, ps_, pSim_)].c + scene.o[PIXEL_PATCHES].s[rc2idx(rows(ps_, pSim_)-1, 0, ps_, pSim_)].c + scene.o[PIXEL_PATCHES].s[numPix(ps_, pSim_)-1].c) / 4.0f);
 	}
 	// --- END OF LOOP -----------------------------------------------------------------------------------------
 }

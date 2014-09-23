@@ -50,6 +50,14 @@ float distHS(Frame & H00, Frame & H90, Frame & S00, Frame & S90);
 // sets a Simulated Frame for the Occlusion case, from a Transient Image and a Calibration Matrix. This does all the calculations
 void set_Occlusion_Simulation_Frame_Optim(float* p, float* x, int p_size, int x_size, void* adata);
 
+// Part of set_Occlusion_Simulation_Frame_Optim(...)
+// check if the parameters converge with the given bounds. If not, it sets big values in x
+bool convergeOcclusion(float* p, float* x, int p_size, int x_size, struct OCCLUSION_ADATA* ad);
+
+// Part of set_Occlusion_Simulation_Frame_Optim(...)
+// updates the current scene with the values of the given parameters p
+void updateSceneOcclusion(float* p, struct OCCLUSION_ADATA* ad);
+
 // This will include a minimization algorithm, but for now it will run some simulations manually and get the best fit
 // is totally inefficient with this implementation, just to try the system
 void updateVolumePatches_Occlusion_OLD_BestFit(CalibrationMatrix & cmx, Scene & sceneCopy, Object3D volPatchesRef, Frame & frameSim00, Frame & frameSim90, Frame & frame00, Frame & frame90, Point & walN, Point & _vopN, float dRes, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
@@ -85,7 +93,7 @@ void set_FrameSim(struct OCCLUSION_ADATA* ad);
 float correlation(float frequency_, float phase_, float r_, float N_);
 
 // Plot a transient pixel with MATLAB Engine
-void plot_transientPixel(std::vector<float> & transientPixDist, std::vector<float> & transientPixAmpl);
+void plot_transientPixel(std::vector<float> & transientPixDist, std::vector<float> & transientPixAmpl, int transientPixSize);
 
 /*
 // Plot image pixels values with MATLAB Engine

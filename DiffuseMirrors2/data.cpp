@@ -1633,7 +1633,7 @@ bool equalAproxf (float f0, float f1, float RelDiffMax) {
 		diffMax = 0.000001;
 	return ((diff < diffMax) && (diff > -diffMax));
 }
-void print(std::vector<float> v, char* prefix, char* sufix) {
+void print(std::vector<float> & v, char* prefix, char* sufix) {
 	if (prefix)
 		std::cout << prefix;
 	if (v.size() <= 0) {
@@ -1647,4 +1647,18 @@ void print(std::vector<float> v, char* prefix, char* sufix) {
 	if (sufix)
 		std::cout << sufix;
 }
-
+void print(std::vector<int> & v, char* prefix, char* sufix) {
+	if (prefix)
+		std::cout << prefix;
+	if (v.size() <= 0) {
+		std::cout << "[empty]";
+	}
+	else {
+		std::cout << "[" << v[0];
+		for (size_t i = 1; i < v.size(); i++)
+			std::cout << ", " << v[i];
+		std::cout << "]";
+	}
+	if (sufix)
+		std::cout << sufix;
+}
