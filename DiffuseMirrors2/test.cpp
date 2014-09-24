@@ -52,7 +52,20 @@
 
 // test function for testing
 void test(char* dir_name, char* file_name) {
-
+	/*
+	Info info(dir_name, file_name);
+	RawData rawData(info);
+	CalibrationMatrix cmx(info);
+	std::cout << "\n\ndistV.size() = " << info.distV.size();
+	print(info.distV, "\ndistV = ", "\n\n");
+	std::cout << "\n\nphasV.size() = " << info.phasV.size();
+	print(info.phasV, "\nphasV = ", "\n\n");
+	Frame frame00(rawData, 1, 40, 0, 0, PIXELS_VALID, false); 
+	Frame frame90(rawData, 1, 40, 0, 1, PIXELS_VALID, false); 
+	frame00.plot(1, false, "00");
+	frame90.plot(1, false, "90");
+	return;
+	*/
 	test_optimization();
 	
 	std::cout << "\n\nTest done...\n\n";

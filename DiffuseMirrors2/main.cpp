@@ -56,7 +56,7 @@ int main_DirectVision_Sinusoid() {
 	char comport[128] = "COM6";
 	bool loop = true;
 	PixStoring ps = PIXELS_STORING_GLOBAL;
-	bool pSim = true;
+	bool pSim = false;
 	std::thread thread_PMD_params_to_Frame(PMD_params_to_Frame_anti_bug_thread, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), frequency, distance, shutter, comport, loop, ps, pSim);
 
 	// Set all the object3D of the corresponding scene
@@ -87,7 +87,7 @@ int main_DirectVision_Simulation(char* dir_name_, char* file_name_) {
 	Info info(dir_name_, file_name_);
 
 	// capture data directly from PMD to Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE)
-	float frequency = 100.0f;
+	float frequency = 50.0f;
 	float distance = 0.0f;
 	float shutter = 1920.0f;
 	char comport[128] = "COM6";
@@ -177,10 +177,17 @@ int main_Occlusion(char* dir_name_, char* file_name_) {
 	const int vop_faces = 6;	// 1:Plane, 6:Box
 	std::vector<int> rowsPerFaceV(vop_faces);
 	std::vector<int> colsPerFaceV(vop_faces);
-	for (int f = FRONT; f < vop_faces; ++f) {
-		rowsPerFaceV[f] = 3;
-		colsPerFaceV[f] = 3;
-	}
+	/*for (int f = FRONT; f < vop_faces; ++f) {
+		rowsPerFaceV[f] = 4;
+		colsPerFaceV[f] = 4;
+	}*/
+	// Point vopS(0.584f, 0.505f, 0.399f);	// manual measurement
+	rowsPerFaceV[FRONT]  = 5;	colsPerFaceV[FRONT]  = 6;
+	rowsPerFaceV[BACK]   = 5;	colsPerFaceV[BACK]   = 6;
+	rowsPerFaceV[RIGHT]  = 5;	colsPerFaceV[RIGHT]  = 4;
+	rowsPerFaceV[LEFT]   = 5;	colsPerFaceV[LEFT]   = 4;
+	rowsPerFaceV[BOTTOM] = 4;	colsPerFaceV[BOTTOM] = 6;
+	rowsPerFaceV[TOP]    = 4;	colsPerFaceV[TOP]    = 6;
 	SCENEMAIN.setScene_Occlusion(rowsPerFaceV, colsPerFaceV, ps, pSim);
 	std::thread thread_updateVolumePatches_Occlusion(updateVolumePatches_Occlusion_antiBugThread, std::ref(info), std::ref(SCENEMAIN), std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), std::ref(rowsPerFaceV), std::ref(colsPerFaceV), loop, ps, pSim);
 	//std::thread thread_updateVolumePatches_Occlusion(updateVolumePatches_Occlusion_OLD_antiBugThread, std::ref(info), std::ref(SCENEMAIN), std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), loop, ps, pSim);
@@ -263,9 +270,9 @@ int main_RawData(char* dir_name_, char* file_name_) {
 	
 	// set all the object3D of the corresponding scene (just camera, laser and wall)
 	bool cmx_info = true;	// pure raw data is not cmx oriented, but it's a good idea to store the corresponding info anyway
-	float laser_to_cam_offset_x = -0.15f;
-	float laser_to_cam_offset_y = 0.0f;
-	float laser_to_cam_offset_z = 0.0;
+	float laser_to_cam_offset_x = -0.140f;
+	float laser_to_cam_offset_y = 0.00f;
+	float laser_to_cam_offset_z = -0.05;
 	float dist_wall_cam = 2.0f;
 	float cmx_params[4] = {laser_to_cam_offset_x, laser_to_cam_offset_y, laser_to_cam_offset_z, dist_wall_cam};
 
@@ -273,20 +280,19 @@ int main_RawData(char* dir_name_, char* file_name_) {
 
 	// FREQUENCIES
 	std::vector<float> frequencies;	// (MHz)
-	float freq_res = 50.0f;
-	float freq_min = 50.0f;
-	float freq_max = 100.0f + freq_res/2.0f;	// (+ freq_res/2.0f) is due to avoid rounding problems
+	float freq_res = 5.0f;
+	float freq_min = 5.0f;
+	float freq_max = 120.0f + freq_res/2.0f;	// (+ freq_res/2.0f) is due to avoid rounding problems
 	for (float fi = freq_min; fi <= freq_max; fi += freq_res)
 		frequencies.push_back(fi);
 	// DISTANCES
 	std::vector<float> delays;		// (m)
-	float delay_res = 2.0f;
-	float delay_min = -3.0f;
-	float delay_max = 10.0f + delay_res/2.0f;	// (+ delay_res/2.0f) is due to avoid rounding problems
+	float delay_res = 0.1f;
+	float delay_min = 0.0f;
+	float delay_max = 0.0f + delay_res/2.0f;	// (+ delay_res/2.0f) is due to avoid rounding problems
 	for (float di = delay_min; di <= delay_max; di += delay_res)
 		delays.push_back(di);
-	// SUTTERS
-	//std::vector<float> shutters_float(1, 1920.0f);	// (us)
+	// SUTTERS	//std::vector<float> shutters_float(1, 1920.0f);	// (us)
 	std::vector<float> shutters_float;		// (m)
 	float shutters_float_mul = 2.0f;	if (shutters_float_mul <= 1.0f)	{ shutters_float_mul = 2.0f; }
 	float shutters_float_min = SHUTTER_MAX / 1.0f;	// 15(/128), 30(/64), 60(/32), 120(/16), 240(/8), 480(/4), 960(/2), 1920(/1)
@@ -294,7 +300,7 @@ int main_RawData(char* dir_name_, char* file_name_) {
 	for (float si = shutters_float_min; si <= shutters_float_max; si *= shutters_float_mul)
 		shutters_float.push_back(si);
 	// NUMTAKES
-	int numtakes = 10;
+	int numtakes = 20;
 	// OTHER
 	char comport[128] = "COM6";
 	std::thread thread_PMD_params_to_file (PMD_params_to_file_anti_bug_thread, frequencies, delays, shutters_float, dir_name_, file_name_, comport, numtakes, cmx_info, cmx_params);
@@ -312,9 +318,9 @@ int main_RawData(char* dir_name_, char* file_name_) {
 int main_FoVmeas() {
 
 	// capture data directly from PMD to Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE)
-	float frequency = 100.0f;
+	float frequency = 25.0f;
 	float distance = 0.0f;
-	float shutter = 1920.0f; // 1920.0f;
+	float shutter = 1920.0f / 8.0f; // 1920.0f;
 	char comport[128] = "COM6";
 	bool loop = true;
 	PixStoring ps = PIXELS_STORING_GLOBAL;
@@ -385,10 +391,10 @@ int main_CalibrationMatrix (char* dir_name_, char* file_name_) {
 int main(int argc, char** argv) {
 	
 	// Set RAW_DATA
-	SceneType sceneType = OCCLUSION_FRAME;
+	SceneType sceneType = OCCLUSION;
 	SCENEMAIN.set(sceneType);
 	//char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\cmx_01";
-	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\cmx_01";
+	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\cmx_02";
 	char file_name[1024] = "PMD";
 	
 	// Main Switcher
