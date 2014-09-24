@@ -148,21 +148,6 @@ const float VOLUME_GRID_Y_ANGLE_MIN = -180.0f;
 const float VOLUME_GRID_Y_ANGLE_MAX = 180.0f;
 const float VOLUME_GRID_Y_ANGLE_STEP = 10.0f;
 
-// OBJECT3D_SET[i], i = constant index content
-/*
-const int CAMERA		 = 0;
-const int LASER			 = 1;
-const int WALL			 = 2;
-const int OCCLUDER		 = 3;
-const int FLOOR			 = 4;
-const int VOLUME		 = 5;
-const int WALL_PATCHES	 = 6;
-const int CAMERA_FOV	 = 7;
-const int LASER_RAY		 = 8;
-const int VOLUME_PATCHES = 9;
-const int PIXEL_PATCHES  = 10;	// Only to represent the Direct-Vision-Any scene
-*/
-
 // Image Formation Model
 const float L_E = 1.0f;	// Le(l) in the paper. Radiance from the light point in the wall from the laser
 
