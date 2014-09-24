@@ -427,11 +427,11 @@ bool pInBounds(float* p, float* x, int p_size, int x_size, struct OCCLUSION_ADAT
 	// iterate through all the parameters checking if they are in bounds
 	for (int i = 0; i < p_size; ++i) {
 		if (p[i] < (*ad->pL)[i]) {
-			x_aux = (*ad->pL)[i] - p[i];
+			x_aux = ((*ad->pL)[i] - p[i]) / ((*ad->pU)[i] - (*ad->pL)[i]);
 			x_value += (x_aux * x_aux);
 			pInBounds_bool = false;
 		} else if (p[i] > (*ad->pU)[i]) {
-			x_aux = p[i] - (*ad->pU)[i];
+			x_aux = (p[i] - (*ad->pU)[i]) / ((*ad->pU)[i] - (*ad->pL)[i]);
 			x_value += (x_aux * x_aux);
 			pInBounds_bool = false;
 	}	}
@@ -441,20 +441,8 @@ bool pInBounds(float* p, float* x, int p_size, int x_size, struct OCCLUSION_ADAT
 		for (int i = 0; i < x_size; ++i) {
 			x[i] = x_value;
 	}	}
-
+	
 	return pInBounds_bool;
-}
-
-// Auxiliar function for updateSceneOcclusion(...)
-// sets the axisN and the rad from the parameters
-void set_axisNrad_fromP (Point & axisN, float & rad, float* p) {
-	// axisN
-	axisN.set(p[3], p[4], p[5]);
-	float axisMod = axisN.mod();
-	if (axisMod > 0.0f)
-		axisN /= axisMod;
-	// rad
-	rad = (p[3]*p[3]) + (p[4]*p[4]) + (p[5]*p[5]);	// rad is defined as the modPow2 of (p[3], p[4], p[5])
 }
 
 // Part of set_Occlusion_Simulation_Frame_Optim(...)
@@ -468,7 +456,6 @@ void updateSceneOcclusion(float* p, struct OCCLUSION_ADATA* ad) {
 	for (int si = 0; si < ad->numShapes; ++si) {
 		ad->sceneCopy->o[VOLUME_PATCHES].s[si].c.rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33, ad->volPatchesRef->s[si].c);	// useful for meas
 		ad->sceneCopy->o[VOLUME_PATCHES].s[si].c.tra(*ad->traV);																	// useful for meas
-		// useless for meas, just for rendering:
 		for (size_t pi = 0; pi < ad->volPatchesRef->s[si].p.size(); ++pi) {
 			ad->sceneCopy->o[VOLUME_PATCHES].s[si].p[pi].rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33, ad->volPatchesRef->s[si].p[pi]);	// useless for meas, just for rendering
 			ad->sceneCopy->o[VOLUME_PATCHES].s[si].p[pi].tra(*ad->traV);																		// useless for meas, just for rendering
@@ -535,22 +522,40 @@ void set_FrameSim(struct OCCLUSION_ADATA* ad) {
 
 	// Go pixel by pixel
 	int pix = -1;
-	for (int r = 0; r < ad->frameSim00->rows; r++) {
-		for (int c = 0; c < ad->frameSim00->cols; c++) {
+	for (int r = 0; r < ad->frameSim00->rows; ++r) {
+		for (int c = 0; c < ad->frameSim00->cols; ++c) {
 			// Fill with the values of the Transient Pixel
-			pix++;
+			++pix;
 			ad->frameSim00->data[pix] = 0.0f;
 			ad->frameSim90->data[pix] = 0.0f;
-			for (int i = 0; i < (*ad->transientImage_size)[pix]; i++) {
+			for (int i = 0; i < (*ad->transientImage_size)[pix]; ++i) {
 				ad->frameSim00->data[pix] += (*ad->transientImageAmpl)[pix][i] * ad->cmx->C_atX(ad->freq_idx, (*ad->transientImageDist)[pix][i], 0, r, c, ad->ps_, ad->pSim_);
 				ad->frameSim90->data[pix] += (*ad->transientImageAmpl)[pix][i] * ad->cmx->C_atX(ad->freq_idx, (*ad->transientImageDist)[pix][i], 1, r, c, ad->ps_, ad->pSim_);
 	}	}	}
 }
 
 
+// Auxiliar function for updateSceneOcclusion(...)
+// sets the axisN and the rad from the parameters
+void set_axisNrad_fromP(Point & axisN, float & rad, float* p) {
+	axisN.set(p[3], p[4], p[5]);
+	float axisMod = axisN.mod();
+	if (axisMod > 0.0f) {
+		axisN /= axisMod;
+		rad = (p[3] * p[3]) + (p[4] * p[4]) + (p[5] * p[5]);	// rad is defined as the modPow2 of (p[3], p[4], p[5])
+	}
+	else {
+		axisN.y = 1.0f;	// (0,1,0) is the arbitrary axisN when p[3]=p[4]=p[5]=0
+		rad = 0.0f;
+	}
+}
 
 
 
+
+// ----------------------------------------------------------------------------------------------------------------------------------------
+// ----- OCCLUSION OLD IMPLEMENTATION -----------------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------------------------------------------------------
 
 // This will include a minimization algorithm, but for now it will run some simulations manually and get the best fit
 // is totally inefficient with this implementation, just to try the system
@@ -645,7 +650,6 @@ void updateVolumePatches_Occlusion_OLD_BestFit(CalibrationMatrix & cmx, Scene & 
 
 	sceneCopy.o[VOLUME_PATCHES].set(volPatchesBestFit);
 }
-
 
 // sets a Simulated Frame for the Occlusion case, from a Transient Image and a Calibration Matrix. This does all the calculations
 void set_Occlusion_Simulation_Frame(CalibrationMatrix & cmx, Scene & scene, Frame & frameSim00, Frame & frameSim90, Point & walN, int freq_idx, PixStoring ps_, bool pSim_) {
@@ -748,58 +752,4 @@ void plot_transientPixel(std::vector<float> & transientPixDist, std::vector<floa
 	delete [] ampl;
 }
 
-/*
-// Plot image pixels values with MATLAB Engine
-void plot_image_pixels_values(std::vector<float> & pixels_value_, int heigth_, int width_) {
-
-	// MATLAB variables
-	Engine *ep;
-	mxArray *I = NULL;
-	mxArray *heigth = NULL;
-	mxArray *width = NULL;
-
-	// Variables. Array structure needed to deal with MATLAB functions
-	int size = pixels_value_.size();
-	double* pixels_value_array = new double[size];
-
-	// Fill the arrays with their corresponding values
-	int i = 0;
-	for (std::vector<float>::iterator it = pixels_value_.begin(); it != pixels_value_.end(); ++it) {
-		pixels_value_array[i++] = (double)(*it);
-	}
-
-	// Call engOpen(""). This starts a MATLAB process on the current host using the command "matlab"
-	if (!(ep = engOpen("")))
-		fprintf(stderr, "\nCan't start MATLAB engine\n");
-
-	// Create MATLAB variables from C++ variables
-	I = mxCreateDoubleMatrix(1, size, mxREAL);
-	memcpy((void *)mxGetPr(I), (void *)pixels_value_array, size*sizeof(pixels_value_array));
-	heigth = mxCreateDoubleScalar(heigth_);
-	width = mxCreateDoubleScalar(width_);
-
-	// Place MATLAB variables into the MATLAB workspace
-	engPutVariable(ep, "I", I);
-	engPutVariable(ep, "heigth", heigth);
-	engPutVariable(ep, "width", width);
-
-	// Manage I and plot the result 
-	engEvalString(ep, "I");	
-	engEvalString(ep, "I = I - min(min(I));");
-	engEvalString(ep, "I = I / max(max(I));");
-	engEvalString(ep, "I = flipud([reshape(I, width, heigth)]');");
-	engEvalString(ep, "imshow(I);");
-	engEvalString(ep, "title('Image Pixels Values');");
-
-	// use fgetc() to make sure that we pause long enough to be able to see the plot
-	printf("Press ENTER to continue\n\n");
-	fgetc(stdin);
-	// Free memory, close MATLAB figure.
-	mxDestroyArray(I);
-	mxDestroyArray(heigth);
-	mxDestroyArray(width);
-	engEvalString(ep, "close;");
-	engClose(ep);
-}
-*/
 

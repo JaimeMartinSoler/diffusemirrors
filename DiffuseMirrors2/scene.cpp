@@ -1195,8 +1195,8 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	adata.pSim_ = pSim_;
 	adata.numPix = numPix;						// rows*cols
 	adata.sizeofFrameData = sizeofFrameData;	// rows*cols*sizeof(float) = rows*cols*4
-	//adata.sceneCopy = &sceneCopy;				// semi-constant: sceneCopy.o[VOLUME_PATHCES] is modified in each iteration of levmar
-	adata.sceneCopy = &scene;					// original scene, for debugging
+	adata.sceneCopy = &sceneCopy;				// semi-constant: sceneCopy.o[VOLUME_PATHCES] is modified in each iteration of levmar
+	//adata.sceneCopy = &scene;					// original scene, for debugging
 	adata.frameSim00 = &frameSim00;
 	adata.frameSim90 = &frameSim90;
 	adata.faceN = &faceN;
@@ -1221,7 +1221,7 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	float* p = new float[p_size];								// p[0],p[1],p[2],p[3],p[4],p[5] = x,y,z,rx,ry,rz
 	float* x = new float[x_size];								// x[i]: value of simulated pixel i
 	p[0] = 3.0f; p[1] = 0.75f; p[2] = 0.0f;						// initial parameters estimate (x,y,z)
-	p[3] = 0.0f; p[4] = 0.8f; p[5] = 0.0f;						// initial parameters estimate (rx,ry,rz)
+	p[3] = 0.0f; p[4] = 0.0f; p[5] = 0.0f;						// initial parameters estimate (rx,ry,rz)
 	memcpy(x, frame00.data.data(), sizeofFrameData);			// actual measurement values to be fitted with the model
 	memcpy(x + numPix, frame90.data.data(), sizeofFrameData);
 	// optimization control parameters; passing to levmar NULL instead of opts reverts to defaults
@@ -1239,6 +1239,7 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	// invoke the optimization function (returns the number of iterations, -1 if failed)
 	int maxIters = 1000;
 	int numIters = 0;
+	int numCaptures = 0;
 
 	// OCCLUSION_ADATA variable parameters p bounds
 	const float rb = sqrt(PI) * 1.2f;	// rads are calculated as p[3]*p[3] + p[4]*p[4] + p[5]*p[5]. So the a good bound would be +-sqrt(PI). *1.2f to avoid bound problems
@@ -1252,19 +1253,21 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	locker_frame_object = std::unique_lock<std::mutex>(mutex_frame_object, std::defer_lock);
 
 	// actual initial parameters
-	const bool actual_p_known = true;
+	const bool print_p_info = false;
+	const bool actual_p_known = false;
 	float* pA = new float[p_size];
-	pA[0] = 2.5f;	pA[1] = 0.75f;	pA[2] = -0.5f;	pA[3] = 0.0f;	pA[4] = 0.0f;	pA[5] = 0.0f;
+	pA[0] = 2.5f;	pA[1] = 0.75f;	pA[2] = -0.5f;	pA[3] = 0.0f;	pA[4] = 0.0;	pA[5] = 0.0f;
 	Point posA(pA[0], pA[1], pA[2]);
 	Point axisNA;
 	float radA;
 	set_axisNrad_fromP (axisNA, radA, pA);
 	float degA = radA * 180.0f / PI;
-	if (actual_p_known) {
-		std::cout << "\n\nActual parameters : pA = [" << pA[0] << ", "  << pA[1] << ", "  << pA[2] << ", "  << pA[3] << ", "  << pA[4] << ", "  << pA[5] << "]";
-		posA.print  ("\nposA    = ", "");
-		axisNA.print("\naxisA   = ", "");
-		std::cout << "\nrad/deg = " << radA << " / " << degA;
+	if (print_p_info && actual_p_known) {
+		std::cout << "\n\nActual parameters : pA\n"
+			"  pA = [" << pA[0] << ", "  << pA[1] << ", "  << pA[2] << ", "  << pA[3] << ", "  << pA[4] << ", "  << pA[5] << "]";
+		posA.print  ("\n  posA    = ", "");
+		axisNA.print("\n  axisA   = ", "");
+		std::cout << "\n  rad/deg = " << radA << " / " << degA;
 	}
 	// initial parameters
 	Point pos0(p[0], p[1], p[2]);
@@ -1272,17 +1275,27 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	float rad0;
 	set_axisNrad_fromP (axisN0, rad0, p);
 	float deg0 = rad0 * 180.0f / PI;
-	std::cout <<"\n\nInitial parameters: p0 = [" << p[0] << ", "  << p[1] << ", "  << p[2] << ", "  << p[3] << ", "  << p[4] << ", "  << p[5] << "]";
-	pos0.print  ("\npos0      = ", "");
-	axisN0.print("\naxis0     = ", "");
-	std::cout << "\nrad0/deg0 = " << rad0 << " / " << deg0;
+	if (print_p_info) {
+		std::cout << "\n\nInitial parameters: p0\n"
+			"  p0 = [" << p[0] << ", " << p[1] << ", " << p[2] << ", " << p[3] << ", " << p[4] << ", " << p[5] << "]";
+		pos0.print("\n  pos0      = ", "");
+		axisN0.print("\n  axis0     = ", "");
+		std::cout << "\n  rad0/deg0 = " << rad0 << " / " << deg0;
+	}
+	// final, error parameters
+	Point posF, axisNF, posE;
+	float radF, degF, axisNradE, axisNdegE, radE, degE;
+
+	// Timing
+	clock_t begin_time, end_time;
+	float ms_time, fps_time;
 
 	// --- LOOP ------------------------------------------------------------------------------------------------
 	bool first_iter = true;
 	while (loop || first_iter) {
 
 		// Timing
-		const clock_t begin_time = clock();
+		begin_time = clock();
 
 		// External control
 		if (!PMD_LOOP_ENABLE && !first_iter)
@@ -1304,30 +1317,36 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 		cv_frame_object.notify_all();	// Notify all cv_frame_object. All threads waiting for cv_frame_object will break the wait after waking up
 		locker_frame_object.unlock();	// Unlock mutex_frame_object, now threads which used mutex_frame_object can continue
 		
-		// Timing
-		const clock_t end_time = clock();
-		float ms_time = 1000.0f * float(end_time - begin_time) / (float)CLOCKS_PER_SEC;
-		float fps_time = 1000.0f / ms_time;
-		std::cout << "\ntime = " << ms_time << " ms,    fps = " << fps_time << " fps";
-		
 		// final parameters
-		Point posF(p[0], p[1], p[2]);
-		Point axisNF;
-		float radF;
-		set_axisNrad_fromP (axisNF, radF, p);
-		float degF = radF * 180.0f / PI;
-		std::cout <<"\n\Final parameters: pF = [" << p[0] << ", "  << p[1] << ", "  << p[2] << ", "  << p[3] << ", "  << p[4] << ", "  << p[5] << "]";
-		posF.print  ("\nposF      = ", "");
-		axisNF.print("\naxisF     = ", "");
-		std::cout << "\nradF/degF = " << radF << " / " << degF;
+		if (print_p_info) {
+			posF.set(p[0], p[1], p[2]);
+			set_axisNrad_fromP(axisNF, radF, p);
+			degF = radF * 180.0f / PI;
+			std::cout << "\n\nFinal parameters: pF\n"
+				"  pF = [" << p[0] << ", " << p[1] << ", " << p[2] << ", " << p[3] << ", " << p[4] << ", " << p[5] << "]";
+			posF.print("\n  posF      = ", "");
+			axisNF.print("\n  axisF     = ", "");
+			std::cout << "\n  radF/degF = " << radF << " / " << degF << "\n";
+		}
 		// error parameters
-		Point posE = posF - posA;
-		float axisNradE, axisNdegE;
-		float radE, degE;
-		std::cout <<"\n\Einal parameters: pE = [" << p[0] << ", "  << p[1] << ", "  << p[2] << ", "  << p[3] << ", "  << p[4] << ", "  << p[5] << "]";
-		posE.print  ("\nposE      = ", "");
-		axisNE.print("\naxisE     = ", "");
-		std::cout << "\nradE/degE = " << radE << " / " << degE;
+		if (print_p_info && actual_p_known) {
+			posE = posF - posA;
+			axisNradE = radN(axisNF, axisNA);
+			axisNdegE = axisNradE * 180.0f / PI;
+			radE = radF - radA;
+			degE = radE * 180.0f / PI;
+			std::cout << "\nError parameters: pE = p - pA\n"
+				"  pE = [" << p[0] - pA[0] << ", " << p[1] - pA[1] << ", " << p[2] - pA[2] << ", " << p[3] - pA[3] << ", " << p[4] - pA[4] << ", " << p[5] - pA[5] << "]";
+			posE.print("\n  posE      = ", "");
+			std::cout << "\n  axisN Error rad/deg = " << axisNradE << " / " << axisNdegE;
+			std::cout << "\n  radE/degE = " << radE << " / " << degE << "\n";
+		}
+
+		// Timing and info
+		end_time = clock();
+		ms_time = 1000.0f * float(end_time - begin_time) / (float)CLOCKS_PER_SEC;
+		fps_time = 1000.0f / ms_time;
+		std::cout << "\nCapture#: " << numCaptures++ << ",    levmarIters: " << numIters << ",    time: " << ms_time << " ms,    fps = " << fps_time;
 	}
 	// --- END OF LOOP -----------------------------------------------------------------------------------------
 
@@ -2181,9 +2200,9 @@ void Scene::setScene_Occlusion(std::vector<int> & rowsPerFaceV, std::vector<int>
 	o[LASER_RAY].setLaserRay(*this, larR, larG, larB, larA, ps);
 
 	// VOLUME_PATCHES (9)
-	Point vopPosC(3.0f, 1.0f, 0.0f);
-	Point vopAxisN(0.0f, 1.0f, 0.0f);
-	float vopDeg = 0.0f;
+	Point vopPosC(3.0f, 1.0f, 0.0f);	// doesn't matter (it's centered to (0,0,0) in updateVolumePatches(...))
+	Point vopAxisN(0.0f, 1.0f, 0.0f);	// doesn't matter (new assignation in updateVolumePatches(...))
+	float vopDeg = 0.0f;				// must be 0.0f (this are the reference degrees used along all updateVolumePatches(...))
 	Point vopS(0.5f, 0.5f, 0.5f);
 	// albedo, R, G, B, A
 	int const vop_faces = rowsPerFaceV.size();

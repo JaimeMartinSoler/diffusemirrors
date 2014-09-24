@@ -210,7 +210,7 @@ int main_Occlusion_Frame(char* dir_name_, char* file_name_) {
 
 	// get a Frame from the RawData
 	RawData rawData(info);
-	float pathWallOffset = 1.0f;
+	float pathWallOffset = 0.0f;
 	PixStoring ps = PIXELS_VALID;
 	bool pSim = true;
 	int dist_idx = get_dist_idx(info, pathWallOffset);	// returns -1 if no idx correspondance was found
@@ -231,8 +231,8 @@ int main_Occlusion_Frame(char* dir_name_, char* file_name_) {
 	std::vector<int> rowsPerFaceV(vop_faces);
 	std::vector<int> colsPerFaceV(vop_faces);
 	for (int f = FRONT; f < vop_faces; ++f) {
-		rowsPerFaceV[f] = 3;
-		colsPerFaceV[f] = 3;
+		rowsPerFaceV[f] = 4;
+		colsPerFaceV[f] = 4;
 	}
 	SCENEMAIN.setScene_Occlusion(rowsPerFaceV, colsPerFaceV, ps, pSim);
 	std::thread thread_updateVolumePatches_Occlusion(updateVolumePatches_Occlusion_antiBugThread, std::ref(info), std::ref(SCENEMAIN), std::ref(frame00), std::ref(frame90), std::ref(rowsPerFaceV), std::ref(colsPerFaceV), loop, ps, pSim);
