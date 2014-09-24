@@ -1062,13 +1062,13 @@ int PMD_params_to_file (std::vector<float> & freqV, std::vector<float> & distV, 
 	float time_tot_s, time_h, time_m, time_s;
 	float period_shut_tot = 0.0f;
 	for (size_t si = 0; si < shutV.size(); si++)
-		period_shut_tot +=  shutV_float[si] / (1000000.0f * DUTYCYCLE);
-	time_tot_s = TAKES_PER_CAPTURE * period_shut_tot * freqV.size() * distV.size() * numtakes;
+		period_shut_tot +=  TAKES_PER_CAPTURE * shutV_float[si] / (1000000.0f * DUTYCYCLE);
+	time_tot_s = period_shut_tot * freqV.size() * distV.size() * numtakes;
 	if (check_time(time_tot_s, true, true) == 0)
 		return -2;	// if did not want to continue
 	
 	// Start countdown
-	countdown (false, 0, false);
+	countdown (true, 1, true);
 
 	// close cv Frame window
 	cv::destroyAllWindows();
@@ -1094,7 +1094,7 @@ int PMD_params_to_file (std::vector<float> & freqV, std::vector<float> & distV, 
 	// timing: timer
 	bool set_timer = true;
 	float ms_time_timer;
-	float ms_time_timer_max = 5000.0f;
+	float ms_time_timer_max = 5000.0f;	// time info will be printed each ms_time_timer_max miliseconds
 	clock_t begin_time_timer, end_time_timer;
 	float time_tot_s_rem, time_h_rem, time_m_rem, time_s_rem, percent;
 	seconds_to_hms (time_tot_s, time_h, time_m, time_s);
@@ -1129,10 +1129,7 @@ int PMD_params_to_file (std::vector<float> & freqV, std::vector<float> & distV, 
 						time_tot_s_rem = time_tot_s - period_shut_tot * (take * distV.size() * freqV.size() + di * freqV.size() + fi);
 						percent = (1.0f - (time_tot_s_rem / time_tot_s)) * 100.0f;
 						seconds_to_hms (time_tot_s_rem, time_h_rem, time_m_rem, time_s_rem);
-						std::setprecision(2);
-						std::cout << "\n" << percent << " %. "; 
-						std::setprecision(6);	// original precision
-						std::cout << "Remaning time: " << time_h_rem << "h " << time_m_rem << "' " << time_s_rem << "'', of a total of : " << time_h << "h " << time_m << "' " << time_s << "''.";
+						std::cout << "\n" << percent << " %. Remaning time: " << time_h_rem << "h " << time_m_rem << "' " << time_s_rem << "'', of a total of : " << time_h << "h " << time_m << "' " << time_s << "''.";
 					}
 				}
 

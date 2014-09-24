@@ -439,15 +439,16 @@ void setRotationMatrix(float & r11, float & r12, float & r13,
 float dist(Point & p0, Point & p1);
 float distPow2(Point & p0, Point & p1);
 // normal / degrees
-Point crossN(Point & p0N, Point & p1N);
 float radN(Point & p0N, Point & p1N);
 float degN(Point & p0N, Point & p1N);
 Point cross(Point & p0, Point & p1);
+float dot(Point & p0, Point & p1);
 float rad(Point & p0, Point & p1);
 float deg(Point & p0, Point & p1);
 float cosNN(Point & n0, Point & n1);
 float cosVN(Point & v, Point & n);
 float cosVV(Point & v0, Point & v1);
+Point axisNVV(Point & v0, Point & v1);
 // set depth map
 void setDepthMap(std::vector<float> & depthMap, Frame & frame00, Frame & frame90);
 // simulation.cpp uses

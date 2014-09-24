@@ -815,7 +815,7 @@ void Object3D::setScreenFoVmeasP(Point & camC, Point & camN, PixStoring ps_, boo
 	Point sreenC(CAMERA_FOV_X_METERS / 2.0f, -CAMERA_FOV_Y_METERS / 2.0f, 0.0f);	// actual center of screen, indep of ps, pSim
 	Point screenN(0.0f, 0.0f, 1.0f);
 	tra(camC - sreenC);
-	rotFromP(crossN(screenN, camN).normal(), radN(screenN, camN) + PI, camC);	// note +PI we need to add 180 deg
+	rotFromP(axisNVV(screenN,camN), radN(screenN, camN) + PI, camC);	// note +PI we need to add 180 deg
 	tra(camN * CAMERA_DIST_FOV_MEAS);
 	//if (SCENEMAIN.o.size() <= SCENE_SIZE)	// just for testing
 	//	SCENEMAIN.o.push_back((*this));		// just for testing
@@ -899,21 +899,21 @@ void Object3D::setCamera(Point & posC, Point & axisN, float deg, Point & size, P
 	// Stick box of the camera
 	float base_height = 0.02f;
 	Point stickPC = mean(mainBox.s[BOTTOM].p);
-	Point stickS (0.025f, posC.y - base_height - c_relToP0.y, 0.025f);
+	Point stickS (0.020f, posC.y - base_height - c_relToP0.y, 0.020f);
 	Point stickC (stickS.x/2.0f, stickS.y, -stickS.z/2.0f);
 	Object3D stickBox(stickPC, stub0, 0.0f, stickS, stickC, albedoVV[1], RVV[1], GVV[1], BVV[1], AVV[1]);
 	add(stickBox);
 
 	// Base box of the camera
 	Point basePC = mean(stickBox.s[BOTTOM].p);
-	Point baseS (0.14f, base_height, 0.14f);
+	Point baseS (0.12f, base_height, 0.12f);
 	Point baseC(baseS.x / 2.0f, baseS.y, -baseS.z / 2.0f);
 	Object3D baseBox (basePC, stub0, 0.0f, baseS, baseC, albedoVV[2], RVV[2], GVV[2], BVV[2], AVV[2]);
 	add(baseBox);
 
 	// Lens box of the camera
 	Point lensPC = mean(mainBox.s[FRONT].p);
-	Point lensS (0.08f, 0.08f, 0.1f);
+	Point lensS (0.045f, 0.045f, 0.075f);
 	Point lensC(lensS.x / 2.0f, lensS.y / 2.0f, -lensS.z);
 	Object3D lensBox (lensPC, stub0, 0.0f, lensS, lensC, albedoVV[3], RVV[3], GVV[3], BVV[3], AVV[3]);
 	lensBox.s.erase(lensBox.s.begin() + BACK);
@@ -975,14 +975,14 @@ void Object3D::setLaser(Point & posC, Point & axisN, float deg, Point & size, Po
 	// Stick box of the laser
 	float base_height = 0.02f;
 	Point stickPC = mean(mainBox.s[BOTTOM].p);
-	Point stickS(0.025f, posC.y - base_height - c_relToP0.y, 0.025f);
+	Point stickS(0.020f, posC.y - base_height - c_relToP0.y, 0.020f);
 	Point stickC(stickS.x / 2.0f, stickS.y, -stickS.z / 2.0f);
 	Object3D stickBox(stickPC, stub0, 0.0f, stickS, stickC, albedoVV[1], RVV[1], GVV[1], BVV[1], AVV[1]);
 	add(stickBox);
 
 	// Base box of the laser
 	Point basePC = mean(stickBox.s[BOTTOM].p);
-	Point baseS(0.14f, base_height, 0.14f);
+	Point baseS(0.12f, base_height, 0.12f);
 	Point baseC(baseS.x / 2.0f, baseS.y, -baseS.z / 2.0f);
 	Object3D baseBox(basePC, stub0, 0.0f, baseS, baseC, albedoVV[2], RVV[2], GVV[2], BVV[2], AVV[2]);
 	add(baseBox);
@@ -1220,7 +1220,7 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	const int x_size = numPix * info.phasV.size();		// rows*cols*phases = rows*cols*2
 	float* p = new float[p_size];								// p[0],p[1],p[2],p[3],p[4],p[5] = x,y,z,rx,ry,rz
 	float* x = new float[x_size];								// x[i]: value of simulated pixel i
-	p[0] = 3.0f; p[1] = 0.75f; p[2] = 0.0f;						// initial parameters estimate (x,y,z)
+	p[0] = 0.8f; p[1] = 0.75f; p[2] = -1.2f;					// initial parameters estimate (x,y,z)
 	p[3] = 0.0f; p[4] = 0.0f; p[5] = 0.0f;						// initial parameters estimate (rx,ry,rz)
 	memcpy(x, frame00.data.data(), sizeofFrameData);			// actual measurement values to be fitted with the model
 	memcpy(x + numPix, frame90.data.data(), sizeofFrameData);
@@ -1243,8 +1243,8 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 
 	// OCCLUSION_ADATA variable parameters p bounds
 	const float rb = sqrt(PI) * 1.2f;	// rads are calculated as p[3]*p[3] + p[4]*p[4] + p[5]*p[5]. So the a good bound would be +-sqrt(PI). *1.2f to avoid bound problems
-	std::vector<float> pL(p_size);	pL[0]=p[0]-1.5f;	pL[1]=p[1]-0.5f;	pL[2]=p[2]-1.5f;	pL[3]=p[3]-rb;	pL[4]=p[4]-rb;	pL[5]=p[5]-rb;	
-	std::vector<float> pU(p_size);	pU[0]=p[0]+1.5f;	pU[1]=p[1]+1.0f;	pU[2]=p[2]+1.5f;	pU[3]=p[3]+rb;	pU[4]=p[4]+rb;	pU[5]=p[5]+rb;	
+	std::vector<float> pL(p_size);	pL[0]=p[0]-0.4f;	pL[1]=p[1]-0.5f;	pL[2]=p[2]-0.5f;	pL[3]=p[3]-rb;	pL[4]=p[4]-rb;	pL[5]=p[5]-rb;	
+	std::vector<float> pU(p_size);	pU[0]=p[0]+1.0f;	pU[1]=p[1]+1.0f;	pU[2]=p[2]+1.5f;	pU[3]=p[3]+rb;	pU[4]=p[4]+rb;	pU[5]=p[5]+rb;	
 	adata.pL = &pL;
 	adata.pU = &pU;
 
@@ -1252,7 +1252,7 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
 	locker_frame_object = std::unique_lock<std::mutex>(mutex_frame_object, std::defer_lock);
 
-	// actual initial parameters
+	// printing actual parameters
 	const bool print_p_info = false;
 	const bool actual_p_known = false;
 	float* pA = new float[p_size];
@@ -1269,7 +1269,7 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 		axisNA.print("\n  axisA   = ", "");
 		std::cout << "\n  rad/deg = " << radA << " / " << degA;
 	}
-	// initial parameters
+	// printing initial parameters
 	Point pos0(p[0], p[1], p[2]);
 	Point axisN0;
 	float rad0;
@@ -1294,9 +1294,6 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	bool first_iter = true;
 	while (loop || first_iter) {
 
-		// Timing
-		begin_time = clock();
-
 		// External control
 		if (!PMD_LOOP_ENABLE && !first_iter)
 			break;
@@ -1306,6 +1303,9 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 		locker_frame_object.lock();		// Lock mutex_frame_object, any thread which used mutex_frame_object can NOT continue until unlock()
 		while (!UPDATED_NEW_FRAME)	//std::cout << "Waiting in Object to finish the UPDATED_NEW_Frame. This is OK!\n";
 			cv_frame_object.wait(locker_frame_object);
+		
+		// Timing
+		begin_time = clock();
 
 		// ----- Update pixel patches, setting the Best Fit --------------------------------------------------------------------------------
 		numIters = slevmar_dif(set_Occlusion_Simulation_Frame_Optim, p, x, p_size, x_size, maxIters, opts, inf, work, covar, (void*)&adata); // withOUT analytic Jacobian
@@ -1317,7 +1317,7 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 		cv_frame_object.notify_all();	// Notify all cv_frame_object. All threads waiting for cv_frame_object will break the wait after waking up
 		locker_frame_object.unlock();	// Unlock mutex_frame_object, now threads which used mutex_frame_object can continue
 		
-		// final parameters
+		// printing final parameters
 		if (print_p_info) {
 			posF.set(p[0], p[1], p[2]);
 			set_axisNrad_fromP(axisNF, radF, p);
@@ -1328,7 +1328,7 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 			axisNF.print("\n  axisF     = ", "");
 			std::cout << "\n  radF/degF = " << radF << " / " << degF << "\n";
 		}
-		// error parameters
+		// printing error parameters
 		if (print_p_info && actual_p_known) {
 			posE = posF - posA;
 			axisNradE = radN(axisNF, axisNA);
@@ -1607,9 +1607,9 @@ void Object3D::updatePixelPatches_Simulation(Info & info, Scene & scene, Frame &
 
 		// Update pixel patches, setting the Best Fit
 		//updatePixelPatches_Simulation_BestFit(cmx, sceneCopy, frameSim00, frameSim90, frame00, frame90, camC, camN, screenFoVmeasNs, ps_, pSim_);
-		//updatePixelPatches_Simulation_BestFit_WithTilt(cmx, sceneCopy, NsMod, sinAG, frameSim00, frameSim90, frame00, frame90, camC, camN, screenFoVmeasNs, ps_, pSim_);
+		updatePixelPatches_Simulation_BestFit_WithTilt(cmx, sceneCopy, NsMod, sinAG, frameSim00, frameSim90, frame00, frame90, camC, camN, screenFoVmeasNs, ps_, pSim_);
 		//for (int i = 0; i < 1000; ++i)
-		updatePixelPatches_Simulation_BestFit_Optim(cmx, sceneCopy, frameSim00, frameSim90, frame00, frame90, camC, camN, screenFoVmeasNs, ps_, pSim_);
+		//updatePixelPatches_Simulation_BestFit_Optim(cmx, sceneCopy, frameSim00, frameSim90, frame00, frame90, camC, camN, screenFoVmeasNs, ps_, pSim_);
 		scene.o[PIXEL_PATCHES] = sceneCopy.o[PIXEL_PATCHES];
 		//frameSim.plot(1, false, "Frame Sim Dir");
 
@@ -1955,10 +1955,10 @@ void Scene::add(Object3D & o0) {
 void Scene::setScene_DirectVision(PixStoring ps, bool pSim_) {
 
 	// CAMERA (0)
-	Point camPosC(0.0f, 0.75f, 0.0f);	// pos of the center of the camera
+	Point camPosC(0.0f, 0.763f, 0.0f);	// pos of the center of the camera
 	Point camAxisN(0.0f, 1.0f, 0.0f);	// normal axis of rotation from the center of the camera (axis Y in this case)
 	float camDeg = 180.0f;				// degrees of rotation of the camera around axis normal axis of rotaiton
-	Point camS(0.15f, 0.15f, 0.04f);	// size of the main box of the camera
+	Point camS(0.074f, 0.075f, 0.03f);	// size of the main box of the camera
 	Point camC_relToP0(camS.x / 2.0f, camS.y / 2.0f, 0.0f);	// pos of the centre, relative to the first point of the main box before transformations
 	//std::vector<std::vector<float>> camAlbedoVV(0), camRVV(0), camGVV(0), camBVV(0), camAVV(0);
 	int cam_s_per_box = 6;
@@ -1979,10 +1979,11 @@ void Scene::setScene_DirectVision(PixStoring ps, bool pSim_) {
 	o[CAMERA].setCamera(camPosC, camAxisN, camDeg, camS, camC_relToP0, camAlbedoVV, camRVV, camGVV, camBVV, camAVV);
 
 	// LASER (1)
-	Point lasPosC(-0.15f, 0.75f, 0.0f);
+	Point lasPosCrelToCam(-0.140f, 0.0f, -0.05f);
+	Point lasPosC = camPosC + lasPosCrelToCam;
 	Point lasAxisN(0.0f, 1.0f, 0.0f);
 	float lasDeg = 180.0f;
-	Point lasS(0.1f, 0.1f, 0.15f);
+	Point lasS(0.102f, 0.064f, 0.097f);
 	Point lasC_relToP0(lasS.x / 2.0f, lasS.y / 2.0f, 0.0f);
 	//std::vector<std::vector<float>> lasAlbedoVV(0), lasRVV(0), lasGVV(0), lasBVV(0), lasAVV(0);
 	int las_s_per_box = 6;
@@ -2070,10 +2071,10 @@ void Scene::setScene_DirectVision(PixStoring ps, bool pSim_) {
 void Scene::setScene_Occlusion(std::vector<int> & rowsPerFaceV, std::vector<int> & colsPerFaceV, PixStoring ps, bool pSim_) {
 
 	// CAMERA (0)
-	Point camPosC(0.0f, 0.75f, 0.0f);	// pos of the center of the camera
+	Point camPosC(0.0f, 0.763f, 0.0f);	// pos of the center of the camera
 	Point camAxisN(0.0f, 1.0f, 0.0f);	// normal axis of rotation from the center of the camera (axis Y in this case)
-	float camDeg = 135.0f;				// degrees of rotation of the camera around axis normal axis of rotaiton
-	Point camS(0.15f, 0.15f, 0.04f);	// size of the main box of the camera
+	float camDeg = 180.0f;				// degrees of rotation of the camera around axis normal axis of rotaiton (135.0f)
+	Point camS(0.074f, 0.075f, 0.03f);	// size of the main box of the camera
 	Point camC_relToP0(camS.x / 2.0f, camS.y / 2.0f, 0.0f);	// pos of the centre, relative to the first point of the main box before transformations
 	//std::vector<std::vector<float>> camAlbedoVV(0), camRVV(0), camGVV(0), camBVV(0), camAVV(0);
 	int cam_s_per_box = 6;
@@ -2094,33 +2095,8 @@ void Scene::setScene_Occlusion(std::vector<int> & rowsPerFaceV, std::vector<int>
 	}
 	o[CAMERA].setCamera(camPosC, camAxisN, camDeg, camS, camC_relToP0, camAlbedoVV, camRVV, camGVV, camBVV, camAVV);
 
-	// LASER (1)
-	Point lasPosC(0.5f, 0.75f, 0.0f);
-	Point lasAxisN(0.0f, 1.0f, 0.0f);
-	float lasDeg = 120.0f;
-	Point lasS(0.1f, 0.1f, 0.15f);
-	Point lasC_relToP0(lasS.x / 2.0f, lasS.y / 2.0f, 0.0f);
-	//std::vector<std::vector<float>> lasAlbedoVV(0), lasRVV(0), lasGVV(0), lasBVV(0), lasAVV(0);
-	int las_s_per_box = 6;
-	int las_boxes = 4;
-	std::vector<std::vector<float>> lasAlbedoVV(las_boxes, std::vector<float>(las_s_per_box));
-	std::vector<std::vector<float>> lasRVV(las_boxes, std::vector<float>(las_s_per_box));
-	std::vector<std::vector<float>> lasGVV(las_boxes, std::vector<float>(las_s_per_box));
-	std::vector<std::vector<float>> lasBVV(las_boxes, std::vector<float>(las_s_per_box));
-	std::vector<std::vector<float>> lasAVV(las_boxes, std::vector<float>(las_s_per_box));
-	for (int b = 0; b < las_boxes; b++) {
-		lasRVV[b][FRONT] = 0.5f;  lasRVV[b][RIGHT] = 0.8f;  lasRVV[b][BACK] = 0.4f;  lasRVV[b][LEFT] = 0.3f;  lasRVV[b][BOTTOM] = 0.25f;  lasRVV[b][TOP] = 0.65f;
-		lasGVV[b][FRONT] = 0.5f;  lasGVV[b][RIGHT] = 0.8f;  lasGVV[b][BACK] = 0.4f;  lasGVV[b][LEFT] = 0.3f;  lasGVV[b][BOTTOM] = 0.25f;  lasGVV[b][TOP] = 0.65f;
-		lasBVV[b][FRONT] = 0.5f;  lasBVV[b][RIGHT] = 0.8f;  lasBVV[b][BACK] = 0.4f;  lasBVV[b][LEFT] = 0.3f;  lasBVV[b][BOTTOM] = 0.25f;  lasBVV[b][TOP] = 0.65f;
-		for (int s = FRONT; s <= TOP; s++) {
-			lasAlbedoVV[b][s] = 1.0f;
-			lasAVV[b][s] = 1.0f;
-		}
-	}
-	o[LASER].setLaser(lasPosC, lasAxisN, lasDeg, lasS, lasC_relToP0, lasAlbedoVV, lasRVV, lasGVV, lasBVV, lasAVV);
-
-	// WALL (2)
-	Point walPosC(-1.0f, 0.0f, -1.5f);
+	// WALL (2)		// before LASER, because LASER lasAxisN, lasDeg are WALL-dependent
+	Point walPosC(-1.0f, 0.0f, -2.00f);
 	Point walS(6.0f, 3.0f, 0.2f);
 	Point walAxisN(0.0f, 1.0f, 0.0f);
 	float walDeg = 0.0f;
@@ -2141,9 +2117,53 @@ void Scene::setScene_Occlusion(std::vector<int> & rowsPerFaceV, std::vector<int>
 	}
 	o[WALL].setBox(walPosC, walAxisN, walDeg, walS, walC_relToP0, walAlbedoV, walRV, walGV, walBV, walAV);
 	o[WALL].ot = WALL;
+	
+	// LASER (1)	// after WALL, because LASER lasAxisN, lasDeg are WALL-dependent
+	Point lasPosCrelToCam(0.335f, 0.0f, -0.05f);			// manual measurement
+	Point lasPosC = camPosC + lasPosCrelToCam;
+	// measurements WALL-dependent for lasAxisN, lasDeg
+	Point walN = o[WALL].normalQUAD();	// this must be (0,0,1);
+	Point walCamFloor(camPosC.x, 0.0f, walPosC.z);
+	Point lasPosLPrelTowalCamFloor(0.945f, 0.795f, 0.0f);	// manual measurement
+	Point lasPosLP = walCamFloor + lasPosLPrelTowalCamFloor;
+	Point lasV = lasPosLP - lasPosC;
+	Point lasAxisN = axisNVV(walN, lasV);
+	float lasDeg = deg(walN, lasV);
+	Point lasS(0.102f, 0.064f, 0.097f);
+	Point lasC_relToP0(lasS.x / 2.0f, lasS.y / 2.0f, 0.0f);
+	// print for testing
+	/*
+	walN.print("\nwalN = ", "\n");
+	walCamFloor.print("walCamFloor = ", "\n");
+	lasPosLPrelTowalCamFloor.print("lasPosLPrelTowalCamFloor = ", "\n");
+	lasPosLP.print("lasPosLP = ", "\n");
+	lasV.print("lasV = ", "\n");
+	lasAxisN.print("lasAxisN = ", "\n");
+	std::cout << "lasDeg = " << lasDeg << "\n";
+	lasS.print("lasS = ", "\n");
+	lasC_relToP0.print("lasC_relToP0 = ", "\n");
+	*/
+	//std::vector<std::vector<float>> lasAlbedoVV(0), lasRVV(0), lasGVV(0), lasBVV(0), lasAVV(0);
+	int las_s_per_box = 6;
+	int las_boxes = 4;
+	std::vector<std::vector<float>> lasAlbedoVV(las_boxes, std::vector<float>(las_s_per_box));
+	std::vector<std::vector<float>> lasRVV(las_boxes, std::vector<float>(las_s_per_box));
+	std::vector<std::vector<float>> lasGVV(las_boxes, std::vector<float>(las_s_per_box));
+	std::vector<std::vector<float>> lasBVV(las_boxes, std::vector<float>(las_s_per_box));
+	std::vector<std::vector<float>> lasAVV(las_boxes, std::vector<float>(las_s_per_box));
+	for (int b = 0; b < las_boxes; b++) {
+		lasRVV[b][FRONT] = 0.5f;  lasRVV[b][RIGHT] = 0.8f;  lasRVV[b][BACK] = 0.4f;  lasRVV[b][LEFT] = 0.3f;  lasRVV[b][BOTTOM] = 0.25f;  lasRVV[b][TOP] = 0.65f;
+		lasGVV[b][FRONT] = 0.5f;  lasGVV[b][RIGHT] = 0.8f;  lasGVV[b][BACK] = 0.4f;  lasGVV[b][LEFT] = 0.3f;  lasGVV[b][BOTTOM] = 0.25f;  lasGVV[b][TOP] = 0.65f;
+		lasBVV[b][FRONT] = 0.5f;  lasBVV[b][RIGHT] = 0.8f;  lasBVV[b][BACK] = 0.4f;  lasBVV[b][LEFT] = 0.3f;  lasBVV[b][BOTTOM] = 0.25f;  lasBVV[b][TOP] = 0.65f;
+		for (int s = FRONT; s <= TOP; s++) {
+			lasAlbedoVV[b][s] = 1.0f;
+			lasAVV[b][s] = 1.0f;
+		}
+	}
+	o[LASER].setLaser(lasPosC, lasAxisN, lasDeg, lasS, lasC_relToP0, lasAlbedoVV, lasRVV, lasGVV, lasBVV, lasAVV);
 
 	// OCCLUDER (3)
-	Point occPosC(1.5f, 0.0f, 0.7f);
+	Point occPosC(0.6f, 0.0f, 0.7f);
 	Point occS(1.0f, 3.0f, 0.05f);
 	Point occAxisN(0.0f, 1.0f, 0.0f);
 	float occDeg = 90.0f;
@@ -2203,7 +2223,7 @@ void Scene::setScene_Occlusion(std::vector<int> & rowsPerFaceV, std::vector<int>
 	Point vopPosC(3.0f, 1.0f, 0.0f);	// doesn't matter (it's centered to (0,0,0) in updateVolumePatches(...))
 	Point vopAxisN(0.0f, 1.0f, 0.0f);	// doesn't matter (new assignation in updateVolumePatches(...))
 	float vopDeg = 0.0f;				// must be 0.0f (this are the reference degrees used along all updateVolumePatches(...))
-	Point vopS(0.5f, 0.5f, 0.5f);
+	Point vopS(0.584f, 0.505f, 0.399f);	// manual measurement
 	// albedo, R, G, B, A
 	int const vop_faces = rowsPerFaceV.size();
 	std::vector<std::vector<float>> vopAlbedoVV(vop_faces);
@@ -2233,10 +2253,10 @@ void Scene::setScene_CalibrationMatrix(float laser_to_cam_offset_x, float laser_
 	PixStoring ps, bool pSim_) {
 	
 	// CAMERA (0)
-	Point camPosC(0.0f, 0.75f, 0.0f);	// pos of the center of the camera
+	Point camPosC(0.0f, 0.763f, 0.0f);	// pos of the center of the camera
 	Point camAxisN(0.0f, 1.0f, 0.0f);	// normal axis of rotation from the center of the camera (axis Y in this case)
 	float camDeg = 180.0f;				// degrees of rotation of the camera around axis normal axis of rotaiton
-	Point camS(0.15f, 0.15f, 0.04f);	// size of the main box of the camera
+	Point camS(0.074f, 0.075f, 0.03f);	// size of the main box of the camera
 	Point camC_relToP0(camS.x / 2.0f, camS.y / 2.0f, 0.0f);	// pos of the centre, relative to the first point of the main box before transformations
 	//std::vector<std::vector<float>> camAlbedoVV(0), camRVV(0), camGVV(0), camBVV(0), camAVV(0);
 	int cam_s_per_box = 6;
@@ -2257,10 +2277,11 @@ void Scene::setScene_CalibrationMatrix(float laser_to_cam_offset_x, float laser_
 	o[CAMERA].setCamera(camPosC, camAxisN, camDeg, camS, camC_relToP0, camAlbedoVV, camRVV, camGVV, camBVV, camAVV);
 
 	// LASER (1)
-	Point lasPosC = camPosC + Point(laser_to_cam_offset_x, laser_to_cam_offset_y, laser_to_cam_offset_z);
+	Point lasPosCrelToCam(laser_to_cam_offset_x, laser_to_cam_offset_y, laser_to_cam_offset_z);
+	Point lasPosC = camPosC + lasPosCrelToCam;
 	Point lasAxisN = camAxisN;
 	float lasDeg = camDeg;
-	Point lasS(0.1f, 0.1f, 0.15f);
+	Point lasS(0.102f, 0.064f, 0.097f);
 	Point lasC_relToP0(lasS.x / 2.0f, lasS.y / 2.0f, 0.0f);
 	//std::vector<std::vector<float>> lasAlbedoVV(0), lasRVV(0), lasGVV(0), lasBVV(0), lasAVV(0);
 	int las_s_per_box = 6;
@@ -2374,9 +2395,6 @@ float distPow2(Point & p0, Point & p1) {
 	return dif.modPow2();
 }
 // normal / degrees
-Point crossN(Point & p0N, Point & p1N) {
-	return p0N.cross(p1N);
-}
 float radN(Point & p0N, Point & p1N) {
 	return acos(p0N.dot(p1N));
 }
@@ -2384,13 +2402,16 @@ float degN(Point & p0N, Point & p1N) {
 	return radN(p0N,p1N) * PI / 180.0f;
 }
 Point cross(Point & p0, Point & p1) {
-	return (p0.normal()).cross(p1.normal());
+	return p0.cross(p1);
+}
+float dot(Point & p0, Point & p1) {
+	return p0.dot(p1);
 }
 float rad(Point & p0, Point & p1) {
 	return radN(p0.normal(), p1.normal());
 }
 float deg(Point & p0, Point & p1) {
-	return radN(p0.normal(), p1.normal()) * PI / 180.0f;
+	return radN(p0.normal(), p1.normal()) * 180.0f / PI;
 }
 float cosNN(Point & n0, Point & n1) {
 	return n0.dot(n1);
@@ -2400,6 +2421,14 @@ float cosVN(Point & v, Point & n) {
 }
 float cosVV(Point & v0, Point & v1) {
 	return (v0.normal()).dot(v1.normal());
+}
+Point axisNVV(Point & v0, Point & v1) {
+	Point axisN = v0.cross(v1);
+	float modPow2_ = axisN.modPow2();
+	if (modPow2_ > 1E-12)	// v0 and v1 are NOT parallel
+		return (axisN / sqrt(modPow2_));
+	else					// v0 and v1 are parallel
+		return Point(0.0f, 1.0f, 0.0f);	// (0,1,0) is the arbitrary axisN vector when v0 and v1 are parallel
 }
 // set depth map
 void setDepthMap(std::vector<float> & depthMap, Frame & frame00, Frame & frame90) {
