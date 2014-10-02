@@ -1265,7 +1265,7 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_
 		return -3;
 	std::vector<float> phases(2);	phases[0] = 0.0f;	phases[1] = 90.0f; 
 	// Shutters vector of pairs
-	std::vector<std::pair<int, unsigned short*>> shutV;	// process_data_to_buffer(...) deal with vectors of pairs
+	std::vector<std::pair<int, unsigned short*>> shutV;	// shutV[0].first = shut, shutV[0].second = buffer
 	shutV.push_back(std::pair<int, unsigned short*>((int)shut_, new unsigned short [PMD_WIDTH*PMD_HEIGTH*10]));
 	
 	// Buffer of the PMD data
@@ -1281,9 +1281,10 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_
 	float ms_time_loop;
 	int ms_extra_delay;
 	clock_t begin_time_loop, end_time_loop;
-	// Init OpenCV
-	if (CV_WHILE_CAPTURING)
-		cvNamedWindow(WindowNameCVCAP, CV_WINDOW_AUTOSIZE);
+	// openCV
+	float scale = -1.0f;
+	if (pSim)
+		scale = (int)(CAMERA_PIX_X / (float)PMD_SIM_COLS);
 
 	// Syncronization
 	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
@@ -1298,24 +1299,17 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_
 		if (!PMD_LOOP_ENABLE && !first_iter)
 			break;
 		first_iter = false;
-
-		int shut = shutV[0].first;
-		unsigned short* buffer = shutV[0].second;
 		
 		// PMD CAPTURE
 				//const clock_t begin_time_pmd_capture = clock();
-		pmd_capture(hnd, port, shut, freq_, dist_, buffer, colsPT, rowsPT, numframes);
+		pmd_capture(hnd, port, shutV[0].first, freq_, dist_, shutV[0].second, colsPT, rowsPT, numframes);
 				//const clock_t end_time_pmd_capture = clock();
 				//float ms_time_pmd_capture = 1000.0f * float(end_time_pmd_capture - begin_time_pmd_capture) / (float)CLOCKS_PER_SEC;
 				//std::cout << "pmd_capture    : time = " << ms_time_pmd_capture << " ms\n";
 		
-		// unsigned short* ushort_img[0][0] will be size w*h*shutV.size()*2	// 2 = num_of_phases
-		// will contain all the data captured for those shutV
+		// PROCESS DATA
 				//const clock_t begin_time_process_data_to_buffer = clock();
-		if (CV_WHILE_CAPTURING)
-			process_data_to_buffer(colsPT, rowsPT, shutV, ushort_img, 0);
-		else
-			process_data_to_buffer_no_cv(colsPT, rowsPT, shutV, ushort_img);
+		process_data_to_buffer_no_cv(colsPT, rowsPT, shutV, ushort_img);
 				//const clock_t end_time_process_data_to_buffer = clock();
 				//float ms_time_process_data_to_buffer = 1000.0f * float(end_time_process_data_to_buffer - begin_time_process_data_to_buffer) / (float)CLOCKS_PER_SEC;
 				//std::cout << "data_to_buffer : time = " << ms_time_process_data_to_buffer << " ms\n";
@@ -1332,8 +1326,8 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_
 		if (&Frame_90_cap != NULL)
 			Frame_90_cap.set(ushort_img[0], rowsPT, colsPT, freq_, dist_, shut_, phases[1], 1, ps, pSim);
 		//plot_frame(Frame_00_cap, Frame_90_cap, 1, false, "Frame RT");
-		Frame_00_cap.plot(1, false, "Frame00 RT");
-		Frame_90_cap.plot(1, false, "Frame90 RT");
+		Frame_00_cap.plot(1, false, "R00", scale);
+		Frame_90_cap.plot(1, false, "R90", scale);
 		//std::cout << "UPDATED_NEW_FRAME";
 		UPDATED_NEW_FRAME = true;
 		UPDATED_NEW_SCENE = false;
@@ -1345,7 +1339,7 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_
 
 		end_time_loop = clock();		// end_time_loop for DUTYCYCLE Sleep
 		ms_time_loop = 1000.0f * float(end_time_loop - begin_time_loop) / (float)CLOCKS_PER_SEC;
-		ms_extra_delay = (TAKES_PER_CAPTURE * ((float)shut)/(DUTYCYCLE*1000.0f)) - ms_time_loop + 1.0f;
+		ms_extra_delay = (TAKES_PER_CAPTURE * ((float)shutV[0].first)/(DUTYCYCLE*1000.0f)) - ms_time_loop + 1.0f;
 		if (ms_extra_delay > 0)
 			Sleep(ms_extra_delay);	// suspends the execution of the current thread until the time-out interval elapses
 				//std::cout << "ms_time_loop   : " << ms_time_loop << " ms\n";

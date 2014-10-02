@@ -360,7 +360,7 @@ void set_Occlusion_Simulation_Frame_Optim(float* p, float* x, int p_size, int x_
 
 	// Check convergence
 	if (!pInBounds(p, x, p_size, x_size, ad)) {
-		//std::cout << "\nOut of bounds, p = [" << p[0] << ", "  << p[1] << ", "  << p[2] << ", "  << p[3] << ", "  << p[4] << ", "  << p[5] << "]";
+		//std::cout << "\nOut of bounds, p = [" << p[0] << ", " << p[1] << ", " << p[2] << ", " << p[3] << ", " << p[4] << ", " << p[5] << ", " << p[6] << "]";
 		return;
 	}
 
@@ -399,11 +399,11 @@ void set_Occlusion_Simulation_Frame_Optim(float* p, float* x, int p_size, int x_
 	// store the Simulation Frame (S) into the output array x
 	memcpy(x, ad->frameSim00->data.data(), ad->sizeofFrameData);
 	memcpy(x + ad->numPix, ad->frameSim90->data.data(), ad->sizeofFrameData);
-
+	
 	// Plot simulated frames
 	/*
-	ad->frameSim00->plot(1, false, "Frame Sim00 Occl");
-	ad->frameSim90->plot(1, false, "Frame Sim90 Occl");
+	ad->frameSim00->plot(1, false, "Sx00", 10.0f);
+	ad->frameSim90->plot(1, false, "Sx90", 10.0f);
 	*/
 	// Plot a transient pixel with MATLAB Engine, from TransientImage (MATLAB Engine takes too much time to start) comment out next lines unless you need to debugg
 	//
@@ -456,6 +456,7 @@ void updateSceneOcclusion(float* p, struct OCCLUSION_ADATA* ad) {
 	for (int si = 0; si < ad->numShapes; ++si) {
 		ad->sceneCopy->o[VOLUME_PATCHES].s[si].c.rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33, ad->volPatchesRef->s[si].c);	// useful for meas
 		ad->sceneCopy->o[VOLUME_PATCHES].s[si].c.tra(*ad->traV);																	// useful for meas
+		ad->sceneCopy->o[VOLUME_PATCHES].s[si].albedo = p[6];																		// useful for meas
 		for (size_t pi = 0; pi < ad->volPatchesRef->s[si].p.size(); ++pi) {
 			ad->sceneCopy->o[VOLUME_PATCHES].s[si].p[pi].rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33, ad->volPatchesRef->s[si].p[pi]);	// useless for meas, just for rendering
 			ad->sceneCopy->o[VOLUME_PATCHES].s[si].p[pi].tra(*ad->traV);																		// useless for meas, just for rendering

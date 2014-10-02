@@ -1216,14 +1216,14 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	// LEVMAR function parameters
 
 	// set the initial parameters (p) and values (x)
-	const int p_size = 6;								// x, y, z, rx, ry, rz
+	const int p_size = 7;								// x, y, z, rx, ry, rz, (rel)albedo
 	const int x_size = numPix * info.phasV.size();		// rows*cols*phases = rows*cols*2
 	float* p = new float[p_size];								// p[0],p[1],p[2],p[3],p[4],p[5] = x,y,z,rx,ry,rz
 	float* x = new float[x_size];								// x[i]: value of simulated pixel i
 	p[0] = 0.8f; p[1] = 0.75f; p[2] = -1.2f;					// initial parameters estimate (x,y,z)
 	p[3] = 0.0f; p[4] = 0.0f; p[5] = 0.0f;						// initial parameters estimate (rx,ry,rz)
-	memcpy(x, frame00.data.data(), sizeofFrameData);			// actual measurement values to be fitted with the model
-	memcpy(x + numPix, frame90.data.data(), sizeofFrameData);
+	p[6] = 1.0f;												// initial parameters estimate (albedo) / (relative albedo)
+	bool resetP = true;									// resets p in each iteration to its initial value
 	// optimization control parameters; passing to levmar NULL instead of opts reverts to defaults
 	float opts[LM_OPTS_SZ];
 	opts[0] = LM_INIT_MU;
@@ -1243,8 +1243,8 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 
 	// OCCLUSION_ADATA variable parameters p bounds
 	const float rb = sqrt(PI) * 1.2f;	// rads are calculated as p[3]*p[3] + p[4]*p[4] + p[5]*p[5]. So the a good bound would be +-sqrt(PI). *1.2f to avoid bound problems
-	std::vector<float> pL(p_size);	pL[0]=p[0]-0.4f;	pL[1]=p[1]-0.5f;	pL[2]=p[2]-0.5f;	pL[3]=p[3]-rb;	pL[4]=p[4]-rb;	pL[5]=p[5]-rb;	
-	std::vector<float> pU(p_size);	pU[0]=p[0]+1.0f;	pU[1]=p[1]+1.0f;	pU[2]=p[2]+1.5f;	pU[3]=p[3]+rb;	pU[4]=p[4]+rb;	pU[5]=p[5]+rb;	
+	std::vector<float> pL(p_size);	pL[0]=p[0]-0.4f;	pL[1]=p[1]-0.5f;	pL[2]=p[2]-0.5f;	pL[3]=p[3]-rb;	pL[4]=p[4]-rb;	pL[5]=p[5]-rb;	pL[6]=0.1f;	
+	std::vector<float> pU(p_size);	pU[0]=p[0]+1.0f;	pU[1]=p[1]+1.0f;	pU[2]=p[2]+1.5f;	pU[3]=p[3]+rb;	pU[4]=p[4]+rb;	pU[5]=p[5]+rb;	pU[6]=10.0f;	
 	adata.pL = &pL;
 	adata.pU = &pU;
 
@@ -1253,10 +1253,10 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	locker_frame_object = std::unique_lock<std::mutex>(mutex_frame_object, std::defer_lock);
 
 	// printing actual parameters
-	const bool print_p_info = false;
+	const bool print_p_info = true;
 	const bool actual_p_known = false;
 	float* pA = new float[p_size];
-	pA[0] = 2.5f;	pA[1] = 0.75f;	pA[2] = -0.5f;	pA[3] = 0.0f;	pA[4] = 0.0;	pA[5] = 0.0f;
+	pA[0] = 2.5f;	pA[1] = 0.75f;	pA[2] = -0.5f;	pA[3] = 0.0f;	pA[4] = 0.0;	pA[5] = 0.0f;	pA[6] = 1.0f;
 	Point posA(pA[0], pA[1], pA[2]);
 	Point axisNA;
 	float radA;
@@ -1264,27 +1264,39 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	float degA = radA * 180.0f / PI;
 	if (print_p_info && actual_p_known) {
 		std::cout << "\n\nActual parameters : pA\n"
-			"  pA = [" << pA[0] << ", "  << pA[1] << ", "  << pA[2] << ", "  << pA[3] << ", "  << pA[4] << ", "  << pA[5] << "]";
+			"  pA = [" << pA[0] << ", " << pA[1] << ", " << pA[2] << ", " << pA[3] << ", " << pA[4] << ", " << pA[5] <<  ", " << pA[6] << "]";
 		posA.print  ("\n  posA    = ", "");
 		axisNA.print("\n  axisA   = ", "");
 		std::cout << "\n  rad/deg = " << radA << " / " << degA;
+		std::cout << "\n  albedoA = " << pA[6];
 	}
 	// printing initial parameters
-	Point pos0(p[0], p[1], p[2]);
+	float* p0 = new float[p_size];
+	p0[0] = p[0];	p0[1] = p[1];	p0[2] = p[2];	p0[3] = p[3];	p0[4] = p[4];	p0[5] = p[5];	p0[6] = p[6];
+	Point pos0(p0[0], p0[1], p0[2]);
 	Point axisN0;
 	float rad0;
-	set_axisNrad_fromP (axisN0, rad0, p);
+	set_axisNrad_fromP (axisN0, rad0, p0);
 	float deg0 = rad0 * 180.0f / PI;
 	if (print_p_info) {
 		std::cout << "\n\nInitial parameters: p0\n"
-			"  p0 = [" << p[0] << ", " << p[1] << ", " << p[2] << ", " << p[3] << ", " << p[4] << ", " << p[5] << "]";
+			"  p0 = [" << p0[0] << ", " << p0[1] << ", " << p0[2] << ", " << p0[3] << ", " << p0[4] << ", " << p0[5] <<  ", " << p0[6] << "]";
 		pos0.print("\n  pos0      = ", "");
 		axisN0.print("\n  axis0     = ", "");
 		std::cout << "\n  rad0/deg0 = " << rad0 << " / " << deg0;
+		std::cout << "\n  albedo0   = " << p0[6];
 	}
 	// final, error parameters
 	Point posF, axisNF, posE;
 	float radF, degF, axisNradE, axisNdegE, radE, degE;
+
+	// openCV, plotting
+	float scale = -1.0f;
+	if (pSim_)
+		scale = (int)(CAMERA_PIX_X / (float)PMD_SIM_COLS);
+	bool epExtStarted = false;
+	bool epExtUsing = true;
+	Engine *epExt;
 
 	// Timing
 	clock_t begin_time, end_time;
@@ -1308,8 +1320,18 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 		begin_time = clock();
 
 		// ----- Update pixel patches, setting the Best Fit --------------------------------------------------------------------------------
+		memcpy(x, frame00.data.data(), sizeofFrameData);			// actual measurement values to be fitted with the model
+		memcpy(x + numPix, frame90.data.data(), sizeofFrameData);
 		numIters = slevmar_dif(set_Occlusion_Simulation_Frame_Optim, p, x, p_size, x_size, maxIters, opts, inf, work, covar, (void*)&adata); // withOUT analytic Jacobian
 		scene.o[VOLUME_PATCHES].set(sceneCopy.o[VOLUME_PATCHES]);	// we could also modify the original scene with the final parameters
+
+		// plotting simulated frames
+		frameSim00.plot(1, false, "S00", scale);
+		frameSim00.plot(1, false, "S90", scale);
+		// plotting rows values. This takes around 30ms
+		plot_rowcol2(frame00, frameSim00, "Real", "Sim", frameSim00.rows/2, -1, epExtStarted, epExtUsing, epExt);
+		//plot_rowcol(frame00, "Real Frame", frame00.rows/2, -1, epExtStarted, epExtUsing, epExt);
+		//plot_rowcol(frameSim00, "Simulated Frame", frameSim00.rows/2, -1, epExtStarted, epExtUsing, epExt);
 
 		// Syncronization	//std::cout << ",    UPDATED_NEW_SCENE\n";
 		UPDATED_NEW_FRAME = false;
@@ -1323,10 +1345,11 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 			set_axisNrad_fromP(axisNF, radF, p);
 			degF = radF * 180.0f / PI;
 			std::cout << "\n\nFinal parameters: pF\n"
-				"  pF = [" << p[0] << ", " << p[1] << ", " << p[2] << ", " << p[3] << ", " << p[4] << ", " << p[5] << "]";
+				"  pF = [" << p[0] << ", " << p[1] << ", " << p[2] << ", " << p[3] << ", " << p[4] << ", " << p[5] <<  ", " << p[6] << "]";
 			posF.print("\n  posF      = ", "");
 			axisNF.print("\n  axisF     = ", "");
-			std::cout << "\n  radF/degF = " << radF << " / " << degF << "\n";
+			std::cout << "\n  radF/degF = " << radF << " / " << degF;
+			std::cout << "\n  albedoF   = " << p[6] << "\n";
 		}
 		// printing error parameters
 		if (print_p_info && actual_p_known) {
@@ -1336,10 +1359,16 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 			radE = radF - radA;
 			degE = radE * 180.0f / PI;
 			std::cout << "\nError parameters: pE = p - pA\n"
-				"  pE = [" << p[0] - pA[0] << ", " << p[1] - pA[1] << ", " << p[2] - pA[2] << ", " << p[3] - pA[3] << ", " << p[4] - pA[4] << ", " << p[5] - pA[5] << "]";
+				"  pE = [" << p[0] - pA[0] << ", " << p[1] - pA[1] << ", " << p[2] - pA[2] << ", " << p[3] - pA[3] << ", " << p[4] - pA[4] << ", " << p[5] - pA[5] <<  ", " << p[6] - pA[6]<< "]";
 			posE.print("\n  posE      = ", "");
 			std::cout << "\n  axisN Error rad/deg = " << axisNradE << " / " << axisNdegE;
-			std::cout << "\n  radE/degE = " << radE << " / " << degE << "\n";
+			std::cout << "\n  radE/degE = " << radE << " / " << degE;
+			std::cout << "\n  albedoE   = " << p[6] - pA[6] << "\n";
+		}
+
+		// reset p
+		if (resetP) {
+			p[0] = p0[0];	p[1] = p0[1];	p[2] = p0[2];	p[3] = p0[3];	p[4] = p0[4];	p[5] = p0[5];	p[6] = p0[6];
 		}
 
 		// Timing and info
@@ -1349,8 +1378,10 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 		std::cout << "\nCapture#: " << numCaptures++ << ",    levmarIters: " << numIters << ",    time: " << ms_time << " ms,    fps = " << fps_time;
 	}
 	// --- END OF LOOP -----------------------------------------------------------------------------------------
-
+	
 	delete[] p;
+	delete[] pA;
+	delete[] p0;
 	delete[] x;
 }
 void updateVolumePatches_Occlusion_antiBugThread(Info & info, Scene & scene, Frame & frame00, Frame & frame90, std::vector<int> & rowsPerFaceV, std::vector<int> & colsPerFaceV, bool loop, PixStoring ps_, bool pSim_) {

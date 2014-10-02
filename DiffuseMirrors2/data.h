@@ -10,6 +10,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv/cv.h>	
 
+#include "engine.h"
 
 	// ------------------------------------------------------------------------------------------------------------------------------
 	// The measured data is stored in shutters[i].second, while calling:
@@ -360,13 +361,16 @@ public:
 	// Frame Simulated to Frame Real (useless, but for testing)
 	void Frame::toPixReal();
 	// Plot frame with opencv
-	void Frame::plot(int delay_ms = 1000, bool destroyWindow_ = false, char* windowName = NULL);
+	void Frame::plot(int delay_ms = 1000, bool destroyWindow_ = false, char* windowName = NULL, float scale = -1.0f);
 };
 // plot frame amplitude with sinusoidal assumption
-void plot_frame(Frame & frame_00, Frame & frame_90, int delay_ms = 1000, bool destroyWindow_ = false, char* windowName = NULL);
+void plot_frame(Frame & frame_00, Frame & frame_90, int delay_ms = 1000, bool destroyWindow_ = false, char* windowName = NULL, float scale = -1.0f);
 // For FoV measurement scene. Plot frame with opencv with syncronization
 void plot_frame_fov_measurement(Frame & frame_00, Frame & frame_90, bool loop = false, bool destroyWindow_ = false, char* windowName = NULL);
-
+// Plots a row (if >=0) or a col (otherwise and if >= 0) of a Frame using MATALAB engine
+void plot_rowcol(Frame & frame, char* text, int row, int col, bool & epExtStarted, bool epExtUsing = false, Engine *epExt = NULL);
+// Plots a row (if >=0) or a col (otherwise and if >= 0) of 2 Frames using MATALAB engine
+void plot_rowcol2(Frame & frame0, Frame & frame1, char* text0, char* text1, int row, int col, bool & epExtStarted, bool epExtUsing = false, Engine *epExt = NULL);
 
 
 
