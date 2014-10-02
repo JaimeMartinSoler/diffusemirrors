@@ -392,6 +392,10 @@ void RawData::set (Info & info_, int take_) { // by default: take = -1
 
 	// expected file size (in number of elements)
 	int file_data_size_expected = info->freqV.size() * info->distV.size() * info->shutV.size() * info->phasV.size() * info->rows * info->cols;
+	std::cout << "\nfreqV.size() = "<< info->freqV.size();
+	std::cout << "\ndistV.size() = "<< info->distV.size();
+	std::cout << "\nshutV.size() = "<< info->shutV.size();
+	std::cout << "\nphasV.size() = "<< info->phasV.size() << "\n";
 
 	// DATA FILE. Open with read permissions
 	FILE* raw_file = fopen(raw_fn, "rb");	// open in binary/raw mode
@@ -407,7 +411,7 @@ void RawData::set (Info & info_, int take_) { // by default: take = -1
 	data_size = ftell (raw_file) / (*info).sizeof_value_raw;
 	rewind (raw_file);
 	if (data_size != file_data_size_expected) {
-		std::cout << "\n\nSize Incoherence Error while getting size of \""<< raw_fn << "\"\n\n";
+		std::cout << "\n\nSize Incoherence Error while getting size of \""<< raw_fn << "\"\nexpected data size: " << file_data_size_expected << "\nactual data size  : " << data_size << "\n\n";
 		error_code = 4;
 		return;
 	}
@@ -1226,7 +1230,7 @@ void Frame::toPixReal() {
 }
 
 // Plot frame with opencv
-void Frame::plot(int delay_ms, bool destroyWindow_, char* windowName) { // by default: delay_ms = 1000, destroyWindow = false, windowName = NULL
+void Frame::plot(int delay_ms, bool destroyWindow_, char* windowName, float scale) { // by default: delay_ms = 1000, destroyWindow = false, windowName = NULL, scale = -1.0f
 
 	if ((rows <= 0) || (cols <= 0))
 		return;
@@ -1243,6 +1247,8 @@ void Frame::plot(int delay_ms, bool destroyWindow_, char* windowName) { // by de
 	}
 	
 	// show the image
+	if (scale > 0.0f)
+		cv::resize(M_norm, M_norm, cv::Size(), scale, scale, cv::INTER_NEAREST);
 	if (windowName == NULL)
 		windowName = "Frame.plot()";
 	cv::namedWindow(windowName, cv::WINDOW_AUTOSIZE);	// WINDOW_NORMAL, WINDOW_AUTOSIZE
@@ -1252,7 +1258,7 @@ void Frame::plot(int delay_ms, bool destroyWindow_, char* windowName) { // by de
 		cv::destroyWindow(windowName);
 }
 // plot frame amplitude with sinusoidal assumption
-void plot_frame(Frame & frame_00, Frame & frame_90, int delay_ms, bool destroyWindow_, char* windowName) { // by default: delay_ms = 1000, destroyWindow = false, windowName = NULL
+void plot_frame(Frame & frame_00, Frame & frame_90, int delay_ms, bool destroyWindow_, char* windowName, float scale) { // by default: delay_ms = 1000, destroyWindow = false, windowName = NULL, scale = -1.0f
 
 	if ((frame_00.rows <= 0) || (frame_00.cols <= 0) || (frame_90.rows <= 0) || (frame_90.cols <= 0))
 		return;
@@ -1275,6 +1281,8 @@ void plot_frame(Frame & frame_00, Frame & frame_90, int delay_ms, bool destroyWi
 	}
 	
 	// show the image
+	if (scale > 0.0f)
+		cv::resize(M_out, M_out, cv::Size(), scale, scale, cv::INTER_NEAREST);
 	if (windowName == NULL)
 		windowName = "plot_frame(Frame,Frame)";
 	cv::namedWindow(windowName, cv::WINDOW_AUTOSIZE);	// WINDOW_NORMAL, WINDOW_AUTOSIZE
@@ -1352,6 +1360,173 @@ void plot_frame_fov_measurement(Frame & frame_00, Frame & frame_90, bool loop, b
 	}
 	if (destroyWindow_)
 		cv::destroyWindow(windowName);
+}
+// Plots a row (if >=0) or a col (otherwise and if >= 0) of a Frame using MATALAB engine
+void plot_rowcol(Frame & frame, char* text, int row, int col, bool & epExtStarted, bool epExtUsing, Engine *epExt) {
+	
+	// MATLAB variables
+	Engine *ep;
+	mxArray *X = NULL;
+	mxArray *V = NULL;
+	if (epExtUsing)
+		ep = epExt;
+
+	// Variables. Array structure needed to deal with MATLAB functions
+	int rc, size;
+	if (row >= 0)
+		size = frame.cols;
+	else if (col >= 0)
+		size = frame.rows;
+	else
+		return;
+	double* x = new double[size];	// need to convert to double to deal with MATLAB
+	double* value = new double[size];	// need to convert to double to deal with MATLAB
+	// Fill with the ampls of the Transient Pixel
+	for (int i = 0; i < size; ++i) {
+		x[i] = (double)i;
+		if (row >= 0)
+			value[i] = (double)(frame.at(row, i));
+		else
+			value[i] = (double)(frame.at(i, col));
+	}
+
+	// Call engOpen(""). This starts a MATLAB process on the current host using the command "matlab"
+	if (!(ep = engOpen("")))
+		fprintf(stderr, "\nCan't start MATLAB engine\n");
+	
+	// Create MATLAB variables from C++ variables
+	X = mxCreateDoubleMatrix(1, size, mxREAL);
+	V = mxCreateDoubleMatrix(1, size, mxREAL);
+	memcpy((void *)mxGetPr(X), (void *)x, size*sizeof(x));
+	memcpy((void *)mxGetPr(V), (void *)value, size*sizeof(value));
+	
+	// Place MATLAB variables into the MATLAB workspace
+	engPutVariable(ep, "X", X);
+	engPutVariable(ep, "V", V);
+	
+	// Plot the result
+	engEvalString(ep, "plot(X,V);");
+	char titleTxt[1024];
+	char xTxt[1024] = "xlabel('%s of the %s #%d');";
+	if (row >= 0) {
+		sprintf(titleTxt,"title('%s. Values of each %s of the %s #%d');", text, "col", "row", row);
+		sprintf(xTxt,"xlabel('%s of the %s #%d');", "cols", "row", row);
+	} else {
+		sprintf(titleTxt,"title('%s. Values of each %s of the %s #%d');", text, "row", "col", col);
+		sprintf(xTxt,"xlabel('%s of the %s #%d');", "rows", "col", col);
+	}
+	engEvalString(ep, titleTxt);
+	engEvalString(ep, xTxt);
+	engEvalString(ep, "ylabel('values');");
+
+	// use std::cin freeze the plot
+	if (!epExtUsing) {
+		std::cout << "\nWrite any std::string and click ENTER to continue\n";
+		std::string answer;
+		std::cin >> answer;
+	}
+	
+	// Free memory, close MATLAB figure.
+	mxDestroyArray(X);
+	mxDestroyArray(V);
+	if (!epExtUsing) {
+		engEvalString(ep, "close;");
+		engClose(ep);
+	} else {
+		epExtStarted = true;
+	}
+	delete [] x;
+	delete [] value;
+}
+
+// Plots a row (if >=0) or a col (otherwise and if >= 0) of 2 Frames using MATALAB engine
+void plot_rowcol2(Frame & frame0, Frame & frame1, char* text0, char* text1, int row, int col, bool & epExtStarted, bool epExtUsing, Engine *epExt) {
+	
+	// MATLAB variables
+	Engine *ep;
+	mxArray *X = NULL;
+	mxArray *V0 = NULL;
+	mxArray *V1 = NULL;
+	if (epExtUsing)
+		ep = epExt;
+
+	// Variables. Array structure needed to deal with MATLAB functions
+	int rc, size;
+	if (row >= 0)
+		size = frame0.cols;
+	else if (col >= 0)
+		size = frame0.rows;
+	else
+		return;
+	double* x = new double[size];		// need to convert to double to deal with MATLAB
+	double* value0 = new double[size];	// need to convert to double to deal with MATLAB
+	double* value1 = new double[size];	// need to convert to double to deal with MATLAB
+	// Fill with the ampls of the Transient Pixel
+	for (int i = 0; i < size; ++i) {
+		x[i] = (double)i;
+		if (row >= 0) {
+			value0[i] = (double)(frame0.at(row, i));
+			value1[i] = (double)(frame1.at(row, i));
+		} else {
+			value0[i] = (double)(frame0.at(i, col)); 
+			value1[i] = (double)(frame1.at(i, col)); 
+	}	}
+	
+	// Call engOpen(""). This starts a MATLAB process on the current host using the command "matlab"
+	if (!(ep = engOpen("")))
+		fprintf(stderr, "\nCan't start MATLAB engine\n");
+	
+	// Create MATLAB variables from C++ variables
+	X = mxCreateDoubleMatrix(1, size, mxREAL);
+	V0 = mxCreateDoubleMatrix(1, size, mxREAL);
+	V1 = mxCreateDoubleMatrix(1, size, mxREAL);
+	memcpy((void *)mxGetPr(X), (void *)x, size*sizeof(x));
+	memcpy((void *)mxGetPr(V0), (void *)value0, size*sizeof(value0));
+	memcpy((void *)mxGetPr(V1), (void *)value1, size*sizeof(value1));
+	
+	// Place MATLAB variables into the MATLAB workspace
+	engPutVariable(ep, "X", X);
+	engPutVariable(ep, "V0", V0);
+	engPutVariable(ep, "V1", V1);
+	
+	// Plot the result
+	engEvalString(ep, "plot(X, V0, 'b', X, V1, 'r');");
+	char titleTxt[1024];
+	char xTxt[1024];
+	if (row >= 0) {
+		sprintf(titleTxt,"title('Values of each %s of the %s #%d.   Blue=%s, Red=%s');", "col", "row", row, text0, text1);
+		sprintf(xTxt,"xlabel('%s of the %s #%d');", "cols", "row", row);
+	} else {
+		sprintf(titleTxt,"title('Values of each %s of the %s #%d.   Blue=%s, Red=%s');", "row", "col", col, row, text0, text1);
+		sprintf(xTxt,"xlabel('%s of the %s #%d');", "rows", "col", col);
+	}
+	engEvalString(ep, titleTxt);
+	engEvalString(ep, xTxt);
+	engEvalString(ep, "ylabel('values');");
+	//char legendTxt[1024];
+	//sprintf(legendTxt,"legend('%s','%s');", text0, text1);
+	//engEvalString(ep, legendTxt);		// the legend blinks iterating through an external ep
+
+	// use std::cin freeze the plot
+	if (!epExtUsing) {
+		std::cout << "\nWrite any std::string and click ENTER to continue\n";
+		std::string answer;
+		std::cin >> answer;
+	}
+	
+	// Free memory, close MATLAB figure.
+	mxDestroyArray(X);
+	mxDestroyArray(V0);
+	mxDestroyArray(V1);
+	if (!epExtUsing) {
+		engEvalString(ep, "close;");
+		engClose(ep);
+	} else {
+		epExtStarted = true;
+	}
+	delete [] x;
+	delete [] value0;
+	delete [] value1;
 }
 
 

@@ -213,21 +213,29 @@ int main_Occlusion(char* dir_name_, char* file_name_) {
 int main_Occlusion_Frame(char* dir_name_, char* file_name_) {
 
 	// set the Info
-	Info info(dir_name_, file_name_);
 
 	// get a Frame from the RawData
-	RawData rawData(info);
-	float pathWallOffset = 0.0f;
 	PixStoring ps = PIXELS_VALID;
 	bool pSim = true;
+	float scale = -1.0f;
+	if (pSim)
+		scale = (int)(CAMERA_PIX_X / (float)PMD_SIM_COLS);
+	/*
+	RawData rawData(info);
+	float pathWallOffset = 0.0f;
 	int dist_idx = get_dist_idx(info, pathWallOffset);	// returns -1 if no idx correspondance was found
 	if (dist_idx < 0) {
 		std::cout << "\nWarning: Distance Offset = " << pathWallOffset << " is not a dist in .cmx distV = ";
 		print(info.distV);
 		return -1;
 	}
-	Frame frame00(rawData, info.freqV.size() - 1, dist_idx, info.shutV.size() - 1, 0, ps, pSim);
-	Frame frame90(rawData, info.freqV.size() - 1, dist_idx, info.shutV.size() - 1, 1, ps, pSim);
+	*/
+	int dist_idx = 0;
+	Info infoVideo("F:\\Jaime\\CalibrationMatrix\\video_occlusion_000", "PMD_video_occlusion");
+	RawData rawDataVideo(infoVideo);
+	Frame frame00(rawDataVideo, infoVideo.freqV.size() - 5, dist_idx, infoVideo.shutV.size() - 1, 0, ps, pSim);
+	Frame frame90(rawDataVideo, infoVideo.freqV.size() - 5, dist_idx, infoVideo.shutV.size() - 1, 1, ps, pSim);
+	std::cout << "\nHERE 002";
 	UPDATED_NEW_FRAME = true;
 	//frame00.plot();
 
@@ -241,6 +249,9 @@ int main_Occlusion_Frame(char* dir_name_, char* file_name_) {
 		rowsPerFaceV[f] = 4;
 		colsPerFaceV[f] = 4;
 	}
+	frame00.plot(1, false, "R00", scale);
+	frame90.plot(1, false, "R90", scale);
+	Info info(dir_name_, file_name_);
 	SCENEMAIN.setScene_Occlusion(rowsPerFaceV, colsPerFaceV, ps, pSim);
 	std::thread thread_updateVolumePatches_Occlusion(updateVolumePatches_Occlusion_antiBugThread, std::ref(info), std::ref(SCENEMAIN), std::ref(frame00), std::ref(frame90), std::ref(rowsPerFaceV), std::ref(colsPerFaceV), loop, ps, pSim);
 	//std::thread thread_updateVolumePatches_Occlusion(updateVolumePatches_Occlusion_OLD_antiBugThread, std::ref(info), std::ref(SCENEMAIN), std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), loop, ps, pSim);
