@@ -52,25 +52,51 @@
 
 // test function for testing
 void test(char* dir_name, char* file_name) {
-	/*
-	Info info(dir_name, file_name);
-	RawData rawData(info);
-	CalibrationMatrix cmx(info);
-	std::cout << "\n\ndistV.size() = " << info.distV.size();
-	print(info.distV, "\ndistV = ", "\n\n");
-	std::cout << "\n\nphasV.size() = " << info.phasV.size();
-	print(info.phasV, "\nphasV = ", "\n\n");
-	Frame frame00(rawData, 1, 40, 0, 0, PIXELS_VALID, false); 
-	Frame frame90(rawData, 1, 40, 0, 1, PIXELS_VALID, false); 
-	frame00.plot(1, false, "00");
-	frame90.plot(1, false, "90");
-	return;
-	*/
-	test_optimization();
+
+	test_cosXYZ();
 	
 	std::cout << "\n\nTest done...\n\n";
 }
 
+// test_cosXYZ(...)
+void test_cosXYZ() {
+	// Phi
+	Point pP0(1.0f, 0.0f, 1.0f);
+	Point pP1(1.0f, 0.0f, -1.0f);
+	Point pP2(-1.0f, 0.0f, -1.0f);
+	Point pP3(-1.0f, 0.0f, 1.0f);
+	std::cout << "\n\n\n ---------- PHI ----------";
+	pP0.print("\n\npP0 = ", "");
+	std::cout << "\ndeg = " << degP(pP0);
+	std::cout << "\ncos = " << cosP(pP0);
+	pP1.print("\n\npP1 = ", "");
+	std::cout << "\ndeg = " << degP(pP1);
+	std::cout << "\ncos = " << cosP(pP1);
+	pP2.print("\n\npP2 = ", "");
+	std::cout << "\ndeg = " << degP(pP2);
+	std::cout << "\ncos = " << cosP(pP2);
+	pP3.print("\n\npP3 = ", "");
+	std::cout << "\ndeg = " << degP(pP3);
+	std::cout << "\ncos = " << cosP(pP3);
+	// Theta
+	Point pT0(0.0f, -4.0f, 1.0f);
+	Point pT1(0.0f, -4.0f, -1.0f);
+	Point pT2(0.0f, 4.0f, -1.0f);
+	Point pT3(0.0f, 4.0f, 1.0f);
+	std::cout << "\n\n\n ---------- THETA ----------";
+	pT0.print("\n\npT0 = ", "");
+	std::cout << "\ndeg = " << degT(pT0);
+	std::cout << "\ncos = " << cosT(pT0);
+	pT1.print("\n\npT1 = ", "");
+	std::cout << "\ndeg = " << degT(pT1);
+	std::cout << "\ncos = " << cosT(pT1);
+	pT2.print("\n\npT2 = ", "");
+	std::cout << "\ndeg = " << degT(pT2);
+	std::cout << "\ncos = " << cosT(pT2);
+	pT3.print("\n\npT3 = ", "");
+	std::cout << "\ndeg = " << degT(pT3);
+	std::cout << "\ncos = " << cosT(pT3);
+}
 
 
 

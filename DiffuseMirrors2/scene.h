@@ -88,29 +88,36 @@ public:
 	void Point::rotOpt(	float const & r11, float const & r12, float const & r13, 
 					float const & r21, float const & r22, float const & r23, 
 					float const & r31, float const & r32, float const & r33, Point & src);
-	void Point::rotxOpt(float cosT, float sinT);
-	void Point::rotyOpt(float cosT, float sinT);
-	void Point::rotzOpt(float cosT, float sinT);
+	void Point::rotXYZopt(float cosX, float sinX, float cosY, float sinY, float cosZ, float sinZ);
+	void Point::rotXYZoptInverted(float cosX, float sinX, float cosY, float sinY, float cosZ, float sinZ);
+	void Point::rotXYZopt(float cosX, float sinX, float cosY, float sinY, float cosZ, float sinZ, Point & src);
+	void Point::rotXopt(float cosT, float sinT);
+	void Point::rotYopt(float cosT, float sinT);
+	void Point::rotZopt(float cosT, float sinT);
 	// rotation absolute (from (0,0,0)), radians (setters)
 	void Point::rot(Point & axisN, float rad);
-	void Point::rotx(float rad);
-	void Point::roty(float rad);
-	void Point::rotz(float rad);
+	void Point::rotXYZ(float radX, float radY, float radZ);
+	void Point::rotX(float rad);
+	void Point::rotY(float rad);
+	void Point::rotZ(float rad);
 	// rotation absolute (from (0,0,0)), degrees (setters)
 	void Point::rotDeg(Point & axisN, float deg);
-	void Point::rotxDeg(float deg);
-	void Point::rotyDeg(float deg);
-	void Point::rotzDeg(float deg);
+	void Point::rotXYZdeg(float degX, float degY, float degZ);
+	void Point::rotXdeg(float deg);
+	void Point::rotYdeg(float deg);
+	void Point::rotZdeg(float deg);
 	// rotation relative (from pr), radians (setters)
 	void Point::rotFromP(Point & axisN, float rad, Point & pr);
-	void Point::rotxFromP(float rad, Point & pr);
-	void Point::rotyFromP(float rad, Point & pr);
-	void Point::rotzFromP(float rad, Point & pr);
+	void Point::rotXYZfromP(float radX, float radY, float radZ, Point & pr);
+	void Point::rotXfromP(float rad, Point & pr);
+	void Point::rotYfromP(float rad, Point & pr);
+	void Point::rotZfromP(float rad, Point & pr);
 	// rotation relative (from pr), degrees (setters)
 	void Point::rotDegFromP(Point & axisN, float deg, Point & pr);
-	void Point::rotxDegFromP(float deg, Point & pr);
-	void Point::rotyDegFromP(float deg, Point & pr);
-	void Point::rotzDegFromP(float deg, Point & pr);
+	void Point::rotXYZdegFromP(float degX, float degY, float degZ, Point & pr);
+	void Point::rotXdegFromP(float deg, Point & pr);
+	void Point::rotYdegFromP(float deg, Point & pr);
+	void Point::rotZdegFromP(float deg, Point & pr);
 };
 // ----- NON-MEMBER FUNCITONS ------------------------
 
@@ -190,34 +197,40 @@ public:
 	void Shape::traCto(Point & Cto);
 	// rotation absolute (from (0,0,0)), radians (setters)
 	void Shape::rot(Point & axisN, float rad);
-	void Shape::rotx(float rad);
-	void Shape::roty(float rad);
-	void Shape::rotz(float rad);
+	void Shape::rotXYZ(float radX, float radY, float radZ, bool inverted = false);
+	void Shape::rotX(float rad);
+	void Shape::rotY(float rad);
+	void Shape::rotZ(float rad);
 	// rotation absolute (from (0,0,0)), degrees (setters)
 	void Shape::rotDeg(Point & axisN, float deg);
-	void Shape::rotxDeg(float deg);
-	void Shape::rotyDeg(float deg);
-	void Shape::rotzDeg(float deg);
+	void Shape::rotXYZdeg(float degX, float degY, float degZ, bool inverted = false);
+	void Shape::rotXdeg(float deg);
+	void Shape::rotYdeg(float deg);
+	void Shape::rotZdeg(float deg);
 	// rotation relative (from pr), radians (setters)
 	void Shape::rotFromP(Point & axisN, float rad, Point & pr);
-	void Shape::rotxFromP(float rad, Point & pr);
-	void Shape::rotyFromP(float rad, Point & pr);
-	void Shape::rotzFromP(float rad, Point & pr);
+	void Shape::rotXYZfromP(float radX, float radY, float radZ, Point & pr, bool inverted = false);
+	void Shape::rotXfromP(float rad, Point & pr);
+	void Shape::rotYfromP(float rad, Point & pr);
+	void Shape::rotZfromP(float rad, Point & pr);
 	// rotation relative (from pr), degrees (setters)
 	void Shape::rotDegFromP(Point & axisN, float deg, Point & pr);
-	void Shape::rotxDegFromP(float deg, Point & pr);
-	void Shape::rotyDegFromP(float deg, Point & pr);
-	void Shape::rotzDegFromP(float deg, Point & pr);
+	void Shape::rotXYZdegFromP(float degX, float degY, float degZ, Point & pr, bool inverted = false);
+	void Shape::rotXdegFromP(float deg, Point & pr);
+	void Shape::rotYdegFromP(float deg, Point & pr);
+	void Shape::rotZdegFromP(float deg, Point & pr);
 	// rotation relative (from c), radians (setters)
 	void Shape::rotFromC(Point & axisN, float rad);
-	void Shape::rotxFromC(float rad);
-	void Shape::rotyFromC(float rad);
+	void Shape::rotXYZfromC(float radX, float radY, float radZ, bool inverted = false);
+	void Shape::rotXfromC(float rad);
+	void Shape::rotYfromC(float rad);
 	void Shape::rotzFromC(float rad);
 	// rotation relative (from c), degrees (setters)
 	void Shape::rotDegFromC(Point & axisN, float deg);
-	void Shape::rotxDegFromC(float deg);
-	void Shape::rotyDegFromC(float deg);
-	void Shape::rotzDegFromC(float deg);
+	void Shape::rotXYZdegFromC(float degX, float degY, float degZ, bool inverted = false);
+	void Shape::rotXdegFromC(float deg);
+	void Shape::rotYdegFromC(float deg);
+	void Shape::rotZdegFromC(float deg);
 
 	// clear, add Point to Shape
 	void Shape::clear(bool clearAll = true);
@@ -291,12 +304,12 @@ public:
 	void Object3D::setScreenFoVmeasNs(Point & camC, Point & camN, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	
 	// Setter Camera(0)
-	void Object3D::setCamera(Point & posC, Point & axisN, float deg, Point & size, Point & c_relToP0);
-	void Object3D::setCamera(Point & posC, Point & axisN, float deg, Point & size, Point & c_relToP0,
+	void Object3D::setCamera(Point & posC, float degPhi, float degTheta, float degRoll, Point & size, Point & c_relToP0);
+	void Object3D::setCamera(Point & posC, float degPhi, float degTheta, float degRoll, Point & size, Point & c_relToP0,
 		std::vector<std::vector<float>> & albedoVV, std::vector<std::vector<float>> & RVV, std::vector<std::vector<float>> & GVV, std::vector<std::vector<float>> & BVV, std::vector<std::vector<float>> & AVV);
 	// Setter Laser	(1)
-	void Object3D::setLaser(Point & posC, Point & axisN, float deg, Point & size, Point & c_relToP0);
-	void Object3D::setLaser(Point & posC, Point & axisN, float deg, Point & size, Point & c_relToP0,
+	void Object3D::setLaser(Point & posC, float degPhi, float degTheta, float degRoll, Point & size, Point & c_relToP0);
+	void Object3D::setLaser(Point & posC, float degPhi, float degTheta, float degRoll, Point & size, Point & c_relToP0,
 		std::vector<std::vector<float>> & albedoVV, std::vector<std::vector<float>> & RVV, std::vector<std::vector<float>> & GVV, std::vector<std::vector<float>> & BVV, std::vector<std::vector<float>> & AVV);
 	// Setter Wall Patches (6)
 	void Object3D::setWallPatches(Scene & scene, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
@@ -329,34 +342,40 @@ public:
 	void Object3D::traCto(Point & Cto);
 	// rotation absolute (from (0,0,0)), radians (setters)
 	void Object3D::rot(Point & axisN, float rad);
-	void Object3D::rotx(float rad);
-	void Object3D::roty(float rad);
-	void Object3D::rotz(float rad);
+	void Object3D::rotXYZ(float radX, float radY, float radZ, bool inverted = false);
+	void Object3D::rotX(float rad);
+	void Object3D::rotY(float rad);
+	void Object3D::rotZ(float rad);
 	// rotation absolute (from (0,0,0)), degrees (setters)
 	void Object3D::rotDeg(Point & axisN, float deg);
-	void Object3D::rotxDeg(float deg);
-	void Object3D::rotyDeg(float deg);
-	void Object3D::rotzDeg(float deg);
+	void Object3D::rotXYZdeg(float degX, float degY, float degZ, bool inverted = false);
+	void Object3D::rotXdeg(float deg);
+	void Object3D::rotYdeg(float deg);
+	void Object3D::rotZdeg(float deg);
 	// rotation relative (from pr), radians (setters)
 	void Object3D::rotFromP(Point & axisN, float rad, Point & pr);
-	void Object3D::rotxFromP(float rad, Point & pr);
-	void Object3D::rotyFromP(float rad, Point & pr);
-	void Object3D::rotzFromP(float rad, Point & pr);
+	void Object3D::rotXYZfromP(float radX, float radY, float radZ, Point & pr, bool inverted = false);
+	void Object3D::rotXfromP(float rad, Point & pr);
+	void Object3D::rotYfromP(float rad, Point & pr);
+	void Object3D::rotZfromP(float rad, Point & pr);
 	// rotation relative (from pr), degrees (setters)
 	void Object3D::rotDegFromP(Point & axisN, float deg, Point & pr);
-	void Object3D::rotxDegFromP(float deg, Point & pr);
-	void Object3D::rotyDegFromP(float deg, Point & pr);
-	void Object3D::rotzDegFromP(float deg, Point & pr);
+	void Object3D::rotXYZdegFromP(float degX, float degY, float degZ, Point & pr, bool inverted = false);
+	void Object3D::rotXdegFromP(float deg, Point & pr);
+	void Object3D::rotYdegFromP(float deg, Point & pr);
+	void Object3D::rotZdegFromP(float deg, Point & pr);
 	// rotation relative (from c), radians (setters)
 	void Object3D::rotFromC(Point & axisN, float rad);
-	void Object3D::rotxFromC(float rad);
-	void Object3D::rotyFromC(float rad);
+	void Object3D::rotXYZfromC(float radX, float radY, float radZ, bool inverted = false);
+	void Object3D::rotXfromC(float rad);
+	void Object3D::rotYfromC(float rad);
 	void Object3D::rotzFromC(float rad);
 	// rotation relative (from c), degrees (setters)
 	void Object3D::rotDegFromC(Point & axisN, float deg);
-	void Object3D::rotxDegFromC(float deg);
-	void Object3D::rotyDegFromC(float deg);
-	void Object3D::rotzDegFromC(float deg);
+	void Object3D::rotXYZdegFromC(float degX, float degY, float degZ, bool inverted = false);
+	void Object3D::rotXdegFromC(float deg);
+	void Object3D::rotYdegFromC(float deg);
+	void Object3D::rotZdegFromC(float deg);
 	
 	// clear, add Shape to Object3D
 	void Object3D::clear(bool clearAll = true);
@@ -436,19 +455,38 @@ void setRotationMatrix(float & r11, float & r12, float & r13,
 	float & r31, float & r32, float & r33,
 	float const & wx, float const & wy, float const & wz, float const & rad);
 // dist
-float dist(Point & p0, Point & p1);
-float distPow2(Point & p0, Point & p1);
-// normal / degrees
-float radN(Point & p0N, Point & p1N);
-float degN(Point & p0N, Point & p1N);
-Point cross(Point & p0, Point & p1);
-float dot(Point & p0, Point & p1);
-float rad(Point & p0, Point & p1);
-float deg(Point & p0, Point & p1);
-float cosNN(Point & n0, Point & n1);
-float cosVN(Point & v, Point & n);
+float dist(Point & v0, Point & v1);
+float distPow2(Point & v0, Point & v1);
+// dot, cross
+Point cross(Point & v0, Point & v1);
+float dot(Point & v0, Point & v1);
+// cos / rad / deg (rad, deg are dependent of the corresponding cos functions)
 float cosVV(Point & v0, Point & v1);
+float cosVN(Point & v, Point & n);
+float cosNN(Point & n0, Point & n1);
+float radVV(Point & v0, Point & v1);
+float radVN(Point & v, Point & n);
+float radNN(Point & n0, Point & n1);
+float degV(Point & v0, Point & v1);
+float degVN(Point & v, Point & n);
+float degNN(Point & n0, Point & n1);
 Point axisNVV(Point & v0, Point & v1);
+// cos / rad / deg, with the XYZ/PhiTheta rotation system. (rad, deg are dependent of the corresponding cos functions)
+// Note that a rotation in Phi and Theta has the same effect as a rotation in rotX(-Theta) and rotY(Phi) IN THIS ORDER.
+// Phi (P) is rotation around axis OY, CW starting at OZ.
+// Theta (T) is roation around axis OX', which is the axis OX rotated Phi previously. CW starting at OZ'
+float cosP(Point & v);
+float cosPN(Point & vN);
+float cosT(Point & v);
+float cosTN(Point & vN);
+float radP(Point & v);
+float radPN(Point & vN);
+float radT(Point & v);
+float radTN(Point & vN);
+float degP(Point & v);
+float degPN(Point & vN);
+float degT(Point & v);
+float degTN(Point & vN);
 // set depth map
 void setDepthMap(std::vector<float> & depthMap, Frame & frame00, Frame & frame90);
 // simulation.cpp uses
@@ -460,31 +498,5 @@ float distPath4(Point & p0, Point & p1, Point & p2, Point & p3);
 float distPath5(Point & p0, Point & p1, Point & p2, Point & p3, Point & p4);
 
 
-// TO-DO: CREATE ALL OF THIS (SOME ACTUALLY):
-/*
-void set_scene_diffused_mirror(bool loop = false);
-void set_scene_direct_vision_wall(bool loop = false);
-void set_scene_direct_vision_any(bool loop = false);
-void set_scene_calibration_matrix (Info* info_, PixStoring pixel_storing_ = PIXELS_VALID);
-void set_scene_vision_simulation(float dist_cam_wall);
-void clear_scene();
-void set_camera(Point* camera_pos_, Point* camera_rot_, Point* camera_size_, Point* camera_centre_);
-void set_laser(Point* laser_pos_, Point* laser_rot_, Point* laser_size_, Point* laser_centre_);
-void set_box(Point* box_pos_, Point* box_rot_, Point* box_size_, Point* box_centre_, int Obj3D_idx, float albedo);
-void set_wall_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_size_, Point* camera_centre_, std::vector<Point*> & screen_patches_corners_normals_, std::vector<Point*> & screen_patches_centers_normals_, std::vector<float> & wall_patches_albedo_, PixStoring pixel_storing_ = PIXELS_VALID);
-void set_camera_fov(Point* camera_pos_, std::vector<Point*> & screen_patches_corners_normals_, PixStoring pixel_storing_ = PIXELS_VALID);
-void set_laser_ray();
-void set_volume_patches(Point* volume_pos_, Point* volume_rot_, Point* volume_size_, Point* volume_centre_,
-	std::vector<float> & volume_patches_albedo_, std::vector<Point*> & volume_patches_rot_, std::vector<bool> & volume_patches_bool_);
-void set_wall_patches_albedo(std::vector<float> & wall_patches_albedo_);
-void set_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_centre_, std::vector<Point*> & screen_patches_corners_normals_, std::vector<Point*> & screen_patches_centers_normals_);
-void update_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_centre_, std::vector<Point*> & screen_patches_corners_normals_, std::vector<Point*> & screen_patches_centers_normals_, bool loop = false);
-void update_wall_and_pixel_patches(Point* camera_pos_, Point* camera_rot_, Point* camera_centre_, std::vector<Point*> & screen_patches_corners_normals_, std::vector<Point*> & screen_patches_centers_normals_, int r_div, int c_div, bool loop = false);
-void set_screen_normals_pixel_patches(std::vector<Point*> & screen_patches_corners_normals_, std::vector<Point*> & screen_patches_centers_normals_, Point* camera_pos_, Point* camera_rot_, Point* camera_centre_);
-void set_depth_map(std::vector<float> & depth_map_, Frame & Frame_00_cap, Frame & Frame_90_cap);
-void set_volume_patches_params(std::vector<float> & volume_patches_albedo_, std::vector<Point*> & volume_patches_rot_, std::vector<bool> & volume_patches_bool_);
-void mean_vector_of_points (std::vector<Point> & vec, Point & pt);
-void set_point_to_vector_distances (Point* p, std::vector<Point*> & vp, std::vector<float> & vd);
-*/
 #endif
 

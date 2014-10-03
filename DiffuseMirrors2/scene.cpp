@@ -196,23 +196,69 @@ void Point::rotOpt(	float const & r11, float const & r12, float const & r13,
 void Point::rotOpt(	float const & r11, float const & r12, float const & r13, 
 					float const & r21, float const & r22, float const & r23, 
 					float const & r31, float const & r32, float const & r33, Point & src) {
+	// The same as the rotOpt(r11,...,r33) function but applied from an input src point to another point
 	// Rodrigues' Rotation Formula:
 	// http://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula
 	x = r11*src.x + r12*src.y + r13*src.z;
 	y = r21*src.x + r22*src.y + r23*src.z;
 	z = r31*src.x + r32*src.y + r33*src.z;
 }
-void Point::rotxOpt(float cosT, float sinT) {
+void Point::rotXYZopt(float cosX, float sinX, float cosY, float sinY, float cosZ, float sinZ) {
+	// the rotation order matters and is: z, x, y
+	// z rotation
+	float x_copy = x; 
+	x = x * cosZ - y * sinZ;
+	y = x_copy * sinZ + y * cosZ;
+	// x rotation
+	float y_copy = y;
+	y = y * cosX - z * sinX;
+	z = y_copy * sinX + z * cosX;
+	// y rotation
+	x_copy = x;
+	x = x * cosY + z * sinY;
+	z = -x_copy * sinY + z * cosY;
+}
+void Point::rotXYZoptInverted(float cosX, float sinX, float cosY, float sinY, float cosZ, float sinZ) {
+	// the rotation order matters and is: y, x, z
+	// y rotation
+	float x_copy = x;
+	x = x * cosY + z * sinY;
+	z = -x_copy * sinY + z * cosY;
+	// x rotation
+	float y_copy = y;
+	y = y * cosX - z * sinX;
+	z = y_copy * sinX + z * cosX;
+	// z rotation
+	x_copy = x; 
+	x = x * cosZ - y * sinZ;
+	y = x_copy * sinZ + y * cosZ;
+}
+void Point::rotXYZopt(float cosX, float sinX, float cosY, float sinY, float cosZ, float sinZ, Point & src) {
+	// The same as the rotXYZopt(cosX,...,sinZ) function but applied from an input src point to another point
+	// the rotation order matters and is: z, x, y
+	// z rotation
+	x = src.x * cosZ - src.y * sinZ;
+	y = src.x * sinZ + src.y * cosZ;
+	// x rotation
+	float y_copy = y;
+	y = y_copy * cosX - src.z * sinX;
+	z = y_copy * sinX + src.z * cosX;
+	// y rotation
+	float x_copy = x;
+	x = x * cosY + z * sinY;
+	z = -x_copy * sinY + z * cosY;
+}
+void Point::rotXopt(float cosT, float sinT) {
 	float y_copy = y;
 	y = y * cosT - z * sinT;
 	z = y_copy * sinT + z * cosT;
 }
-void Point::rotyOpt(float cosT, float sinT) {
+void Point::rotYopt(float cosT, float sinT) {
 	float x_copy = x;
 	x = x * cosT + z * sinT;
 	z = -x_copy * sinT + z * cosT;
 }
-void Point::rotzOpt(float cosT, float sinT) {
+void Point::rotZopt(float cosT, float sinT) {
 	float x_copy = x;
 	x = x * cosT - y * sinT;
 	y = x_copy * sinT + y * cosT;
@@ -223,30 +269,39 @@ void Point::rot(Point & axisN, float rad) {
 	setRotationMatrix(r11, r12, r13, r21, r22, r23, r31, r32, r33, axisN.x, axisN.y, axisN.z, rad);
 	rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33);
 }
-void Point::rotx(float rad) {
-	rotxOpt(cos(rad), sin(rad));
+void Point::rotXYZ(float radX, float radY, float radZ) {
+	rotXYZopt(cos(radX), sin(radX), cos(radY), sin(radY), cos(radZ), sin(radZ));
 }
-void Point::roty(float rad) {
-	rotyOpt(cos(rad), sin(rad));
+void Point::rotX(float rad) {
+	rotXopt(cos(rad), sin(rad));
 }
-void Point::rotz(float rad) {
-	rotzOpt(cos(rad), sin(rad));
+void Point::rotY(float rad) {
+	rotYopt(cos(rad), sin(rad));
+}
+void Point::rotZ(float rad) {
+	rotZopt(cos(rad), sin(rad));
 }
 // rotation absolute (from (0,0,0)), degrees (setters)
 void Point::rotDeg(Point & axisN, float deg) {
 	rot(axisN, deg * PI / 180.0f);
 }
-void Point::rotxDeg(float deg) {
-	float rad = deg * PI / 180.0f;
-	rotxOpt(cos(rad), sin(rad));
+void Point::rotXYZdeg(float degX, float degY, float degZ) {
+	float radX = degX * PI / 180.0f;
+	float radY = degY * PI / 180.0f;
+	float radZ = degZ * PI / 180.0f;
+	rotXYZopt(cos(radX), sin(radX), cos(radY), sin(radY), cos(radZ), sin(radZ));
 }
-void Point::rotyDeg(float deg) {
+void Point::rotXdeg(float deg) {
 	float rad = deg * PI / 180.0f;
-	rotyOpt(cos(rad), sin(rad));
+	rotXopt(cos(rad), sin(rad));
 }
-void Point::rotzDeg(float deg) {
+void Point::rotYdeg(float deg) {
 	float rad = deg * PI / 180.0f;
-	rotzOpt(cos(rad), sin(rad));
+	rotYopt(cos(rad), sin(rad));
+}
+void Point::rotZdeg(float deg) {
+	float rad = deg * PI / 180.0f;
+	rotZopt(cos(rad), sin(rad));
 }
 // rotation relative (from pr), radians (setters)
 void Point::rotFromP(Point & axisN, float rad, Point & pr) {
@@ -256,33 +311,41 @@ void Point::rotFromP(Point & axisN, float rad, Point & pr) {
 	rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33);
 	x += pr.x; y += pr.y; z += pr.z;
 }
-void Point::rotxFromP(float rad, Point & pr) {
+void Point::rotXYZfromP(float radX, float radY, float radZ, Point & pr) {
 	x -= pr.x; y -= pr.y; z -= pr.z;
-	rotxOpt(cos(rad), sin(rad));
+	rotXYZopt(cos(radX), sin(radX), cos(radY), sin(radY), cos(radZ), sin(radZ));
 	x += pr.x; y += pr.y; z += pr.z;
 }
-void Point::rotyFromP(float rad, Point & pr) {
+void Point::rotXfromP(float rad, Point & pr) {
 	x -= pr.x; y -= pr.y; z -= pr.z;
-	rotyOpt(cos(rad), sin(rad));
+	rotXopt(cos(rad), sin(rad));
 	x += pr.x; y += pr.y; z += pr.z;
 }
-void Point::rotzFromP(float rad, Point & pr) {
+void Point::rotYfromP(float rad, Point & pr) {
 	x -= pr.x; y -= pr.y; z -= pr.z;
-	rotzOpt(cos(rad), sin(rad));
+	rotYopt(cos(rad), sin(rad));
+	x += pr.x; y += pr.y; z += pr.z;
+}
+void Point::rotZfromP(float rad, Point & pr) {
+	x -= pr.x; y -= pr.y; z -= pr.z;
+	rotZopt(cos(rad), sin(rad));
 	x += pr.x; y += pr.y; z += pr.z;
 }
 // rotation relative (from pr), degrees (setters)
 void Point::rotDegFromP(Point & axisN, float deg, Point & pr) {
 	rotFromP(axisN, deg * PI / 180.0f, pr);
 }
-void Point::rotxDegFromP(float deg, Point & pr) {
-	rotxFromP(deg * PI / 180.0f, pr);
+void Point::rotXYZdegFromP(float degX, float degY, float degZ, Point & pr) {
+	rotXYZfromP(degX * PI / 180.0f, degY * PI / 180.0f, degZ * PI / 180.0f, pr);
 }
-void Point::rotyDegFromP(float deg, Point & pr) {
-	rotyFromP(deg * PI / 180.0f, pr);
+void Point::rotXdegFromP(float deg, Point & pr) {
+	rotXfromP(deg * PI / 180.0f, pr);
 }
-void Point::rotzDegFromP(float deg, Point & pr) {
-	rotzFromP(deg * PI / 180.0f, pr);
+void Point::rotYdegFromP(float deg, Point & pr) {
+	rotYfromP(deg * PI / 180.0f, pr);
+}
+void Point::rotZdegFromP(float deg, Point & pr) {
+	rotZfromP(deg * PI / 180.0f, pr);
 }
 
 
@@ -293,15 +356,15 @@ Point normalTo3P(Point & p0, Point & p1, Point & p2) {
 	return ((p1 - p0).cross(p2 - p1)).normal();
 }
 // Intersection Line-Plane. [P=Point, N=Normal]
-Point int_linePN_planePN(Point & lP, Point & lN, Point & pP, Point & pN) {
+Point int_linePN_planePN(Point & lP, Point & lN, Point & pP, Point & vN) {
 	// http://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection#Algebraic_form
-	return lP + lN * ((pP - lP).dot(pN) / lN.dot(pN));
+	return lP + lN * ((pP - lP).dot(vN) / lN.dot(vN));
 }
 Point int_linePN_planePPP(Point & lP, Point & lN, Point & pP0, Point & pP1, Point & pP2) {
 	return int_linePN_planePN(lP, lN, pP0, normalTo3P(pP0, pP1, pP2));
 }
-Point int_linePP_planePN(Point & lP0, Point & lP1, Point & pP, Point & pN) {
-	return int_linePN_planePN(lP0, (lP1 - lP0).normal(), pP, pN);
+Point int_linePP_planePN(Point & lP0, Point & lP1, Point & pP, Point & vN) {
+	return int_linePN_planePN(lP0, (lP1 - lP0).normal(), pP, vN);
 }
 Point int_linePP_planePPP(Point & lP0, Point & lP1, Point & pP0, Point & pP1, Point & pP2) {
 	return int_linePN_planePN(lP0, (lP1 - lP0).normal(), pP0, normalTo3P(pP0, pP1, pP2));
@@ -435,39 +498,56 @@ void Shape::rot(Point & axisN, float rad) {
 		p[i].rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33);
 	c.rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33);
 }
-void Shape::rotx(float rad) {
-	float cosT = cos(rad);
-	float sinT = sin(rad);
-	for (size_t i = 0; i < p.size(); i++)
-		p[i].rotxOpt(cosT, sinT);
-	c.rotxOpt(cosT, sinT);
+void Shape::rotXYZ(float radX, float radY, float radZ, bool inverted) {
+	float cosX = cos(radX); float sinX = sin(radX);
+	float cosY = cos(radY); float sinY = sin(radY);
+	float cosZ = cos(radZ); float sinZ = sin(radZ);
+	if (inverted) {
+		for (size_t i = 0; i < p.size(); i++)
+			p[i].rotXYZoptInverted(cosX, sinX, cosY, sinY, cosZ, sinZ);
+		c.rotXYZoptInverted(cosX, sinX, cosY, sinY, cosZ, sinZ);
+	} else {
+		for (size_t i = 0; i < p.size(); i++)
+			p[i].rotXYZopt(cosX, sinX, cosY, sinY, cosZ, sinZ);
+		c.rotXYZopt(cosX, sinX, cosY, sinY, cosZ, sinZ);
+	}
 }
-void Shape::roty(float rad) {
+void Shape::rotX(float rad) {
 	float cosT = cos(rad);
 	float sinT = sin(rad);
 	for (size_t i = 0; i < p.size(); i++)
-		p[i].rotyOpt(cosT, sinT);
-	c.rotyOpt(cosT, sinT);
+		p[i].rotXopt(cosT, sinT);
+	c.rotXopt(cosT, sinT);
 }
-void Shape::rotz(float rad) {
+void Shape::rotY(float rad) {
 	float cosT = cos(rad);
 	float sinT = sin(rad);
 	for (size_t i = 0; i < p.size(); i++)
-		p[i].rotzOpt(cosT, sinT);
-	c.rotzOpt(cosT, sinT);
+		p[i].rotYopt(cosT, sinT);
+	c.rotYopt(cosT, sinT);
+}
+void Shape::rotZ(float rad) {
+	float cosT = cos(rad);
+	float sinT = sin(rad);
+	for (size_t i = 0; i < p.size(); i++)
+		p[i].rotZopt(cosT, sinT);
+	c.rotZopt(cosT, sinT);
 }
 // rotation absolute (from (0,0,0)), degrees (setters)
 void Shape::rotDeg(Point & axisN, float deg) {
 	rot(axisN, deg * PI / 180.0f);
 }
-void Shape::rotxDeg(float deg) {
-	rotx(deg * PI / 180.0f);
+void Shape::rotXYZdeg(float degX, float degY, float degZ, bool inverted) {
+	rotXYZ(degX * PI / 180.0f, degY * PI / 180.0f, degZ * PI / 180.0f, inverted);
 }
-void Shape::rotyDeg(float deg) {
-	roty(deg * PI / 180.0f);
+void Shape::rotXdeg(float deg) {
+	rotX(deg * PI / 180.0f);
 }
-void Shape::rotzDeg(float deg) {
-	rotz(deg * PI / 180.0f);
+void Shape::rotYdeg(float deg) {
+	rotY(deg * PI / 180.0f);
+}
+void Shape::rotZdeg(float deg) {
+	rotZ(deg * PI / 180.0f);
 }
 // rotation relative (from pr), radians (setters)
 void Shape::rotFromP(Point & axisN, float rad, Point & pr) {
@@ -482,54 +562,82 @@ void Shape::rotFromP(Point & axisN, float rad, Point & pr) {
 	c.rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33);
 	c.x += pr.x; c.y += pr.y; c.z += pr.z;
 }
-void Shape::rotxFromP(float rad, Point & pr) {
+void Shape::rotXYZfromP(float radX, float radY, float radZ, Point & pr, bool inverted) {
+	float cosX = cos(radX); float sinX = sin(radX);
+	float cosY = cos(radY); float sinY = sin(radY);
+	float cosZ = cos(radZ); float sinZ = sin(radZ);
+	if (inverted) {
+		for (size_t i = 0; i < p.size(); i++) {
+			p[i].x -= pr.x; p[i].y -= pr.y; p[i].z -= pr.z;
+			p[i].rotXYZoptInverted(cosX, sinX, cosY, sinY, cosZ, sinZ);
+			p[i].x += pr.x; p[i].y += pr.y; p[i].z += pr.z;
+		}
+		c.x -= pr.x; c.y -= pr.y; c.z -= pr.z;
+		c.rotXYZoptInverted(cosX, sinX, cosY, sinY, cosZ, sinZ);
+		c.x += pr.x; c.y += pr.y; c.z += pr.z;
+	} else {
+		for (size_t i = 0; i < p.size(); i++) {
+			p[i].x -= pr.x; p[i].y -= pr.y; p[i].z -= pr.z;
+			p[i].rotXYZopt(cosX, sinX, cosY, sinY, cosZ, sinZ);
+			p[i].x += pr.x; p[i].y += pr.y; p[i].z += pr.z;
+		}
+		c.x -= pr.x; c.y -= pr.y; c.z -= pr.z;
+		c.rotXYZopt(cosX, sinX, cosY, sinY, cosZ, sinZ);
+		c.x += pr.x; c.y += pr.y; c.z += pr.z;
+	}
+
+}
+void Shape::rotXfromP(float rad, Point & pr) {
 	float cosT = cos(rad);
 	float sinT = sin(rad);
 	for (size_t i = 0; i < p.size(); i++) {
 		p[i].x -= pr.x; p[i].y -= pr.y; p[i].z -= pr.z;
-		p[i].rotxOpt(cosT, sinT);
+		p[i].rotXopt(cosT, sinT);
 		p[i].x += pr.x; p[i].y += pr.y; p[i].z += pr.z;
 	}
 	c.x -= pr.x; c.y -= pr.y; c.z -= pr.z;
-	c.rotxOpt(cosT, sinT);
+	c.rotXopt(cosT, sinT);
 	c.x += pr.x; c.y += pr.y; c.z += pr.z;
 }
-void Shape::rotyFromP(float rad, Point & pr) {
+void Shape::rotYfromP(float rad, Point & pr) {
 	float cosT = cos(rad);
 	float sinT = sin(rad);
 	for (size_t i = 0; i < p.size(); i++) {
 		p[i].x -= pr.x; p[i].y -= pr.y; p[i].z -= pr.z;
-		p[i].rotyOpt(cosT, sinT);
+		p[i].rotYopt(cosT, sinT);
 		p[i].x += pr.x; p[i].y += pr.y; p[i].z += pr.z;
 	}
 	c.x -= pr.x; c.y -= pr.y; c.z -= pr.z;
-	c.rotyOpt(cosT, sinT);
+	c.rotYopt(cosT, sinT);
 	c.x += pr.x; c.y += pr.y; c.z += pr.z;
 }
-void Shape::rotzFromP(float rad, Point & pr) {
+void Shape::rotZfromP(float rad, Point & pr) {
 	float cosT = cos(rad);
 	float sinT = sin(rad);
 	for (size_t i = 0; i < p.size(); i++) {
 		p[i].x -= pr.x; p[i].y -= pr.y; p[i].z -= pr.z;
-		p[i].rotzOpt(cosT, sinT);
+		p[i].rotZopt(cosT, sinT);
 		p[i].x += pr.x; p[i].y += pr.y; p[i].z += pr.z;
 	}
 	c.x -= pr.x; c.y -= pr.y; c.z -= pr.z;
-	c.rotzOpt(cosT, sinT);
+	c.rotZopt(cosT, sinT);
 	c.x += pr.x; c.y += pr.y; c.z += pr.z;
 }
 // rotation relative (from pr), degrees (setters)
 void Shape::rotDegFromP(Point & axisN, float deg, Point & pr) {
 	rotFromP(axisN, deg * PI / 180.0f, pr);
 }
-void Shape::rotxDegFromP(float deg, Point & pr) {
-	rotxFromP(deg * PI / 180.0f, pr);
+void Shape::rotXYZdegFromP(float degX, float degY, float degZ, Point & pr, bool inverted) {
+	rotXYZfromP(degX * PI / 180.0f, degY * PI / 180.0f, degZ * PI / 180.0f, pr, inverted);
 }
-void Shape::rotyDegFromP(float deg, Point & pr) {
-	rotyFromP(deg * PI / 180.0f, pr);
+void Shape::rotXdegFromP(float deg, Point & pr) {
+	rotXfromP(deg * PI / 180.0f, pr);
 }
-void Shape::rotzDegFromP(float deg, Point & pr) {
-	rotzFromP(deg * PI / 180.0f, pr);
+void Shape::rotYdegFromP(float deg, Point & pr) {
+	rotYfromP(deg * PI / 180.0f, pr);
+}
+void Shape::rotZdegFromP(float deg, Point & pr) {
+	rotZfromP(deg * PI / 180.0f, pr);
 }
 // rotation relative (from c), radians (setters)
 void Shape::rotFromC(Point & axisN, float rad) {
@@ -541,21 +649,39 @@ void Shape::rotFromC(Point & axisN, float rad) {
 		p[i].x += c.x; p[i].y += c.y; p[i].z += c.z;
 	}
 }
-void Shape::rotxFromC(float rad) {
+void Shape::rotXYZfromC(float radX, float radY, float radZ, bool inverted) {
+	float cosX = cos(radX); float sinX = sin(radX);
+	float cosY = cos(radY); float sinY = sin(radY);
+	float cosZ = cos(radZ); float sinZ = sin(radZ);
+	if (inverted) {
+		for (size_t i = 0; i < p.size(); i++) {
+			p[i].x -= c.x; p[i].y -= c.y; p[i].z -= c.z;
+			p[i].rotXYZoptInverted(cosX, sinX, cosY, sinY, cosZ, sinZ);
+			p[i].x += c.x; p[i].y += c.y; p[i].z += c.z;
+		}
+	} else {
+		for (size_t i = 0; i < p.size(); i++) {
+			p[i].x -= c.x; p[i].y -= c.y; p[i].z -= c.z;
+			p[i].rotXYZopt(cosX, sinX, cosY, sinY, cosZ, sinZ);
+			p[i].x += c.x; p[i].y += c.y; p[i].z += c.z;
+		}
+	}
+}
+void Shape::rotXfromC(float rad) {
 	float cosT = cos(rad);
 	float sinT = sin(rad);
 	for (size_t i = 0; i < p.size(); i++) {
 		p[i].x -= c.x; p[i].y -= c.y; p[i].z -= c.z;
-		p[i].rotxOpt(cosT, sinT);
+		p[i].rotXopt(cosT, sinT);
 		p[i].x += c.x; p[i].y += c.y; p[i].z += c.z;
 	}
 }
-void Shape::rotyFromC(float rad) {
+void Shape::rotYfromC(float rad) {
 	float cosT = cos(rad);
 	float sinT = sin(rad);
 	for (size_t i = 0; i < p.size(); i++) {
 		p[i].x -= c.x; p[i].y -= c.y; p[i].z -= c.z;
-		p[i].rotyOpt(cosT, sinT);
+		p[i].rotYopt(cosT, sinT);
 		p[i].x += c.x; p[i].y += c.y; p[i].z += c.z;
 	}
 }
@@ -564,7 +690,7 @@ void Shape::rotzFromC(float rad) {
 	float sinT = sin(rad);
 	for (size_t i = 0; i < p.size(); i++) {
 		p[i].x -= c.x; p[i].y -= c.y; p[i].z -= c.z;
-		p[i].rotzOpt(cosT, sinT);
+		p[i].rotZopt(cosT, sinT);
 		p[i].x += c.x; p[i].y += c.y; p[i].z += c.z;
 	}
 }
@@ -572,13 +698,16 @@ void Shape::rotzFromC(float rad) {
 void Shape::rotDegFromC(Point & axisN, float deg) {
 	rotFromC(axisN, deg * PI / 180.0f);
 }
-void Shape::rotxDegFromC(float deg) {
-	rotxFromC(deg * PI / 180.0f);
+void Shape::rotXYZdegFromC(float degX, float degY, float degZ, bool inverted) {
+	rotXYZfromC(degX * PI / 180.0f, degY * PI / 180.0f, degZ * PI / 180.0f, inverted);
 }
-void Shape::rotyDegFromC(float deg) {
-	rotyFromC(deg * PI / 180.0f);
+void Shape::rotXdegFromC(float deg) {
+	rotXfromC(deg * PI / 180.0f);
 }
-void Shape::rotzDegFromC(float deg) {
+void Shape::rotYdegFromC(float deg) {
+	rotYfromC(deg * PI / 180.0f);
+}
+void Shape::rotZdegFromC(float deg) {
 	rotzFromC(deg * PI / 180.0f);
 }
 
@@ -815,7 +944,7 @@ void Object3D::setScreenFoVmeasP(Point & camC, Point & camN, PixStoring ps_, boo
 	Point sreenC(CAMERA_FOV_X_METERS / 2.0f, -CAMERA_FOV_Y_METERS / 2.0f, 0.0f);	// actual center of screen, indep of ps, pSim
 	Point screenN(0.0f, 0.0f, 1.0f);
 	tra(camC - sreenC);
-	rotFromP(axisNVV(screenN,camN), radN(screenN, camN) + PI, camC);	// note +PI we need to add 180 deg
+	rotFromP(axisNVV(screenN,camN), radNN(screenN, camN) + PI, camC);	// note +PI we need to add 180 deg
 	tra(camN * CAMERA_DIST_FOV_MEAS);
 	//if (SCENEMAIN.o.size() <= SCENE_SIZE)	// just for testing
 	//	SCENEMAIN.o.push_back((*this));		// just for testing
@@ -849,15 +978,15 @@ void Object3D::setScreenFoVmeasNs(Point & camC, Point & camN, PixStoring ps_, bo
 }
 
 // Setter Camera(0)
-void Object3D::setCamera(Point & posC, Point & axisN, float deg, Point & size, Point & c_relToP0) {
+void Object3D::setCamera(Point & posC, float degPhi, float degTheta, float degRoll, Point & size, Point & c_relToP0) {
 	std::vector<std::vector<float>> albedoVV_stub;
 	std::vector<std::vector<float>> RVV_stub;
 	std::vector<std::vector<float>> GVV_stub;
 	std::vector<std::vector<float>> BVV_stub;
 	std::vector<std::vector<float>> AVV_stub;
-	setCamera(posC, axisN, deg, size, c_relToP0, albedoVV_stub, RVV_stub, GVV_stub, BVV_stub, AVV_stub);
+	setCamera(posC, degPhi, degTheta, degRoll, size, c_relToP0, albedoVV_stub, RVV_stub, GVV_stub, BVV_stub, AVV_stub);
 }
-void Object3D::setCamera(Point & posC, Point & axisN, float deg, Point & size, Point & c_relToP0,
+void Object3D::setCamera(Point & posC, float degPhi, float degTheta, float degRoll, Point & size, Point & c_relToP0,
 	std::vector<std::vector<float>> & albedoVV, std::vector<std::vector<float>> & RVV, std::vector<std::vector<float>> & GVV, std::vector<std::vector<float>> & BVV, std::vector<std::vector<float>> & AVV) {
 	
 	clear();
@@ -898,18 +1027,16 @@ void Object3D::setCamera(Point & posC, Point & axisN, float deg, Point & size, P
 
 	// Stick box of the camera
 	float base_height = 0.02f;
-	Point stickPC = mean(mainBox.s[BOTTOM].p);
-	Point stickS (0.020f, posC.y - base_height - c_relToP0.y, 0.020f);
-	Point stickC (stickS.x/2.0f, stickS.y, -stickS.z/2.0f);
+	Point stickPC =  mean(mainBox.s[BOTTOM].p);;
+	Point stickS (0.020f, posC.y - base_height - c_relToP0.y + (size.y / 2.0f), 0.020f);
+	Point stickC (stickS.x/2.0f, stickS.y -  + (size.y / 2.0f), -stickS.z/2.0f);
 	Object3D stickBox(stickPC, stub0, 0.0f, stickS, stickC, albedoVV[1], RVV[1], GVV[1], BVV[1], AVV[1]);
-	add(stickBox);
 
 	// Base box of the camera
 	Point basePC = mean(stickBox.s[BOTTOM].p);
 	Point baseS (0.12f, base_height, 0.12f);
 	Point baseC(baseS.x / 2.0f, baseS.y, -baseS.z / 2.0f);
 	Object3D baseBox (basePC, stub0, 0.0f, baseS, baseC, albedoVV[2], RVV[2], GVV[2], BVV[2], AVV[2]);
-	add(baseBox);
 
 	// Lens box of the camera
 	Point lensPC = mean(mainBox.s[FRONT].p);
@@ -919,21 +1046,29 @@ void Object3D::setCamera(Point & posC, Point & axisN, float deg, Point & size, P
 	lensBox.s.erase(lensBox.s.begin() + BACK);
 	lensBox.s.erase(lensBox.s.begin() + FRONT);
 	add(lensBox);
+
+	// Main box and Lens box phi, roll rotation
+	Point mainBoxCenter = (mainBox.s[FRONT].p[0] + mainBox.s[BACK].p[3]) / 2.0f;
+	rotXYZdegFromP(-degTheta, 0.0f, degRoll, mainBoxCenter);
 	
+	// Adding remaning boxes
+	add(stickBox);
+	add(baseBox);
+
 	// Transformaitons
+	rotYdegFromC(degPhi);
 	traCto(posC);
-	rotDegFromC(axisN, deg);
 }
 // Setter Laser (1)
-void Object3D::setLaser(Point & posC, Point & axisN, float deg, Point & size, Point & c_relToP0) {
+void Object3D::setLaser(Point & posC, float degPhi, float degTheta, float degRoll, Point & size, Point & c_relToP0) {
 	std::vector<std::vector<float>> albedoVV_stub;
 	std::vector<std::vector<float>> RVV_stub;
 	std::vector<std::vector<float>> GVV_stub;
 	std::vector<std::vector<float>> BVV_stub;
 	std::vector<std::vector<float>> AVV_stub;
-	setLaser(posC, axisN, deg, size, c_relToP0, albedoVV_stub, RVV_stub, GVV_stub, BVV_stub, AVV_stub);
+	setLaser(posC, degPhi, degTheta, degRoll, size, c_relToP0, albedoVV_stub, RVV_stub, GVV_stub, BVV_stub, AVV_stub);
 }
-void Object3D::setLaser(Point & posC, Point & axisN, float deg, Point & size, Point & c_relToP0,
+void Object3D::setLaser(Point & posC, float degPhi, float degTheta, float degRoll, Point & size, Point & c_relToP0,
 	std::vector<std::vector<float>> & albedoVV, std::vector<std::vector<float>> & RVV, std::vector<std::vector<float>> & GVV, std::vector<std::vector<float>> & BVV, std::vector<std::vector<float>> & AVV) {
 
 	clear();
@@ -974,22 +1109,28 @@ void Object3D::setLaser(Point & posC, Point & axisN, float deg, Point & size, Po
 
 	// Stick box of the laser
 	float base_height = 0.02f;
-	Point stickPC = mean(mainBox.s[BOTTOM].p);
-	Point stickS(0.020f, posC.y - base_height - c_relToP0.y, 0.020f);
-	Point stickC(stickS.x / 2.0f, stickS.y, -stickS.z / 2.0f);
+	Point stickPC = mean(mainBox.s[BOTTOM].p);;
+	Point stickS(0.020f, posC.y - base_height - c_relToP0.y + (size.y / 2.0f), 0.020f);
+	Point stickC(stickS.x / 2.0f, stickS.y - (size.y / 2.0f), -stickS.z / 2.0f);
 	Object3D stickBox(stickPC, stub0, 0.0f, stickS, stickC, albedoVV[1], RVV[1], GVV[1], BVV[1], AVV[1]);
-	add(stickBox);
 
 	// Base box of the laser
 	Point basePC = mean(stickBox.s[BOTTOM].p);
 	Point baseS(0.12f, base_height, 0.12f);
 	Point baseC(baseS.x / 2.0f, baseS.y, -baseS.z / 2.0f);
 	Object3D baseBox(basePC, stub0, 0.0f, baseS, baseC, albedoVV[2], RVV[2], GVV[2], BVV[2], AVV[2]);
+	
+	// Main box phi, roll rotation
+	Point mainBoxCenter = (mainBox.s[FRONT].p[0] + mainBox.s[BACK].p[3]) / 2.0f;
+	rotXYZdegFromP(-degTheta, 0.0f, degRoll, mainBoxCenter);
+
+	// Adding remaning boxes
+	add(stickBox);
 	add(baseBox);
 
 	// Transformaitons
+	rotYdegFromC(degPhi);
 	traCto(posC);
-	rotDegFromC(axisN, deg);
 }
 // Setter Wall Patches (6)
 void Object3D::setWallPatches(Scene & scene, PixStoring ps_, bool pSim_) {
@@ -1216,12 +1357,12 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	// LEVMAR function parameters
 
 	// set the initial parameters (p) and values (x)
-	const int p_size = 7;								// x, y, z, rx, ry, rz, (rel)albedo
+	const int p_size = 7;								// x, y, z, phi, theta, roll (rel)albedo
 	const int x_size = numPix * info.phasV.size();		// rows*cols*phases = rows*cols*2
-	float* p = new float[p_size];								// p[0],p[1],p[2],p[3],p[4],p[5] = x,y,z,rx,ry,rz
+	float* p = new float[p_size];								// p[0],p[1],p[2],p[3],p[4],p[5],p[6] = x,y,z,phi,theta,roll,(rel)albedo
 	float* x = new float[x_size];								// x[i]: value of simulated pixel i
 	p[0] = 0.8f; p[1] = 0.75f; p[2] = -1.2f;					// initial parameters estimate (x,y,z)
-	p[3] = 0.0f; p[4] = 0.0f; p[5] = 0.0f;						// initial parameters estimate (rx,ry,rz)
+	p[3] = 0.0f; p[4] = 0.0f; p[5] = 0.0f;						// initial parameters estimate (phi,theta,roll)
 	p[6] = 1.0f;												// initial parameters estimate (albedo) / (relative albedo)
 	bool resetP = true;									// resets p in each iteration to its initial value
 	// optimization control parameters; passing to levmar NULL instead of opts reverts to defaults
@@ -1240,6 +1381,10 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	int maxIters = 1000;
 	int numIters = 0;
 	int numCaptures = 0;
+	
+
+	// CONTINUE HERE !!!!!!!!!!!!!!!!!!!!!!!
+
 
 	// OCCLUSION_ADATA variable parameters p bounds
 	const float rb = sqrt(PI) * 1.2f;	// rads are calculated as p[3]*p[3] + p[4]*p[4] + p[5]*p[5]. So the a good bound would be +-sqrt(PI). *1.2f to avoid bound problems
@@ -1354,7 +1499,7 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 		// printing error parameters
 		if (print_p_info && actual_p_known) {
 			posE = posF - posA;
-			axisNradE = radN(axisNF, axisNA);
+			axisNradE = radNN(axisNF, axisNA);
 			axisNdegE = axisNradE * 180.0f / PI;
 			radE = radF - radA;
 			degE = radE * 180.0f / PI;
@@ -1422,7 +1567,7 @@ void Object3D::setVolumePatches_OLD() {
 	}	}
 
 	// Apply transformations
-	rotyFromP(radN(originN, refN), originC);
+	rotYfromP(radNN(originN, refN), originC);
 	tra(refC);
 }
 void Object3D::updateVolumePatches_Occlusion_OLD(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_, bool pSim_) {
@@ -1437,8 +1582,8 @@ void Object3D::updateVolumePatches_Occlusion_OLD(Info & info, Scene & scene, Fra
 	Object3D screenFoVmeasNs;
 	screenFoVmeasNs.setScreenFoVmeasNs(camC, camN, ps_, pSim_);
 	Point walN = scene.o[WALL].normalQUAD();
-	Point vopN = scene.o[VOLUME_PATCHES].s[0].normalQUAD();
-	Point _vopN = vopN * (-1.0f);
+	Point vovN = scene.o[VOLUME_PATCHES].s[0].normalQUAD();
+	Point _vovN = vovN * (-1.0f);
 	float dRes = 0.05f;;
 	//float dRes = dist(scene.o[VOLUME_PATCHES].s[0].p[0], scene.o[VOLUME_PATCHES].s[0].p[1]);
 
@@ -1462,7 +1607,7 @@ void Object3D::updateVolumePatches_Occlusion_OLD(Info & info, Scene & scene, Fra
 			cv_frame_object.wait(locker_frame_object);
 
 		// Update pixel patches, setting the Best Fit
-		updateVolumePatches_Occlusion_OLD_BestFit(cmx, sceneCopy, volPatchesRef, frameSim00, frameSim90, frame00, frame90, walN, _vopN, dRes, ps_, pSim_);
+		updateVolumePatches_Occlusion_OLD_BestFit(cmx, sceneCopy, volPatchesRef, frameSim00, frameSim90, frame00, frame90, walN, _vovN, dRes, ps_, pSim_);
 		scene.o[VOLUME_PATCHES] = sceneCopy.o[VOLUME_PATCHES];
 
 		// Syncronization
@@ -1701,45 +1846,66 @@ void Object3D::rot(Point & axisN, float rad) {
 		s[j].c.rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33);
 	}
 }
-void Object3D::rotx(float rad) {
-	float cosT = cos(rad);
-	float sinT = sin(rad);
-	for (size_t j = 0; j < s.size(); j++) {
-		for (size_t i = 0; i < s[j].p.size(); i++)
-			s[j].p[i].rotxOpt(cosT, sinT);
-		s[j].c.rotxOpt(cosT, sinT);
+void Object3D::rotXYZ(float radX, float radY, float radZ, bool inverted) {
+	float cosX = cos(radX); float sinX = sin(radX);
+	float cosY = cos(radY); float sinY = sin(radY);
+	float cosZ = cos(radZ); float sinZ = sin(radZ);
+	if (inverted) {
+		for (size_t j = 0; j < s.size(); j++) {
+			for (size_t i = 0; i < s[j].p.size(); i++)
+				s[j].p[i].rotXYZoptInverted(cosX, sinX, cosY, sinY, cosZ, sinZ);
+			s[j].c.rotXYZoptInverted(cosX, sinX, cosY, sinY, cosZ, sinZ);
+		}
+	} else {
+		for (size_t j = 0; j < s.size(); j++) {
+			for (size_t i = 0; i < s[j].p.size(); i++)
+				s[j].p[i].rotXYZopt(cosX, sinX, cosY, sinY, cosZ, sinZ);
+			s[j].c.rotXYZopt(cosX, sinX, cosY, sinY, cosZ, sinZ);
+		}
 	}
 }
-void Object3D::roty(float rad) {
+void Object3D::rotX(float rad) {
 	float cosT = cos(rad);
 	float sinT = sin(rad);
 	for (size_t j = 0; j < s.size(); j++) {
 		for (size_t i = 0; i < s[j].p.size(); i++)
-			s[j].p[i].rotyOpt(cosT, sinT);
-		s[j].c.rotyOpt(cosT, sinT);
+			s[j].p[i].rotXopt(cosT, sinT);
+		s[j].c.rotXopt(cosT, sinT);
 	}
 }
-void Object3D::rotz(float rad) {
+void Object3D::rotY(float rad) {
 	float cosT = cos(rad);
 	float sinT = sin(rad);
 	for (size_t j = 0; j < s.size(); j++) {
 		for (size_t i = 0; i < s[j].p.size(); i++)
-			s[j].p[i].rotzOpt(cosT, sinT);
-		s[j].c.rotzOpt(cosT, sinT);
+			s[j].p[i].rotYopt(cosT, sinT);
+		s[j].c.rotYopt(cosT, sinT);
+	}
+}
+void Object3D::rotZ(float rad) {
+	float cosT = cos(rad);
+	float sinT = sin(rad);
+	for (size_t j = 0; j < s.size(); j++) {
+		for (size_t i = 0; i < s[j].p.size(); i++)
+			s[j].p[i].rotZopt(cosT, sinT);
+		s[j].c.rotZopt(cosT, sinT);
 	}
 }
 // rotation absolute (from (0,0,0)), degrees (setters)
 void Object3D::rotDeg(Point & axisN, float deg) {
 	rot(axisN, deg * PI / 180.0f);
 }
-void Object3D::rotxDeg(float deg) {
-	rotx(deg * PI / 180.0f);
+void Object3D::rotXYZdeg(float degX, float degY, float degZ, bool inverted) {
+	rotXYZ(degX * PI / 180.0f, degY * PI / 180.0f, degZ * PI / 180.0f, inverted);
 }
-void Object3D::rotyDeg(float deg) {
-	roty(deg * PI / 180.0f);
+void Object3D::rotXdeg(float deg) {
+	rotX(deg * PI / 180.0f);
 }
-void Object3D::rotzDeg(float deg) {
-	rotz(deg * PI / 180.0f);
+void Object3D::rotYdeg(float deg) {
+	rotY(deg * PI / 180.0f);
+}
+void Object3D::rotZdeg(float deg) {
+	rotZ(deg * PI / 180.0f);
 }
 // rotation relative (from pr), radians (setters)
 void Object3D::rotFromP(Point & axisN, float rad, Point & pr) {
@@ -1756,45 +1922,73 @@ void Object3D::rotFromP(Point & axisN, float rad, Point & pr) {
 		s[j].c.x += pr.x; s[j].c.y += pr.y; s[j].c.z += pr.z;
 	}
 }
-void Object3D::rotxFromP(float rad, Point & pr) {
+void Object3D::rotXYZfromP(float radX, float radY, float radZ, Point & pr, bool inverted) {
+	float cosX = cos(radX); float sinX = sin(radX);
+	float cosY = cos(radY); float sinY = sin(radY);
+	float cosZ = cos(radZ); float sinZ = sin(radZ);
+	if (inverted) {
+		for (size_t j = 0; j < s.size(); j++) {
+			for (size_t i = 0; i < s[j].p.size(); i++) {
+				s[j].p[i].x -= pr.x; s[j].p[i].y -= pr.y; s[j].p[i].z -= pr.z;
+				s[j].p[i].rotXYZoptInverted(cosX, sinX, cosY, sinY, cosZ, sinZ);
+				s[j].p[i].x += pr.x; s[j].p[i].y += pr.y; s[j].p[i].z += pr.z;
+			}
+			s[j].c.x -= pr.x; s[j].c.y -= pr.y; s[j].c.z -= pr.z;
+			s[j].c.rotXYZoptInverted(cosX, sinX, cosY, sinY, cosZ, sinZ);
+			s[j].c.x += pr.x; s[j].c.y += pr.y; s[j].c.z += pr.z;
+		}
+	} else {
+		for (size_t j = 0; j < s.size(); j++) {
+			for (size_t i = 0; i < s[j].p.size(); i++) {
+				s[j].p[i].x -= pr.x; s[j].p[i].y -= pr.y; s[j].p[i].z -= pr.z;
+				s[j].p[i].rotXYZopt(cosX, sinX, cosY, sinY, cosZ, sinZ);
+				s[j].p[i].x += pr.x; s[j].p[i].y += pr.y; s[j].p[i].z += pr.z;
+			}
+			s[j].c.x -= pr.x; s[j].c.y -= pr.y; s[j].c.z -= pr.z;
+			s[j].c.rotXYZopt(cosX, sinX, cosY, sinY, cosZ, sinZ);
+			s[j].c.x += pr.x; s[j].c.y += pr.y; s[j].c.z += pr.z;
+		}
+	}
+}
+void Object3D::rotXfromP(float rad, Point & pr) {
 	float cosT = cos(rad);
 	float sinT = sin(rad);
 	for (size_t j = 0; j < s.size(); j++) {
 		for (size_t i = 0; i < s[j].p.size(); i++) {
 			s[j].p[i].x -= pr.x; s[j].p[i].y -= pr.y; s[j].p[i].z -= pr.z;
-			s[j].p[i].rotxOpt(cosT, sinT);
+			s[j].p[i].rotXopt(cosT, sinT);
 			s[j].p[i].x += pr.x; s[j].p[i].y += pr.y; s[j].p[i].z += pr.z;
 		}
 		s[j].c.x -= pr.x; s[j].c.y -= pr.y; s[j].c.z -= pr.z;
-		s[j].c.rotxOpt(cosT, sinT);
+		s[j].c.rotXopt(cosT, sinT);
 		s[j].c.x += pr.x; s[j].c.y += pr.y; s[j].c.z += pr.z;
 	}
 }
-void Object3D::rotyFromP(float rad, Point & pr) {
+void Object3D::rotYfromP(float rad, Point & pr) {
 	float cosT = cos(rad);
 	float sinT = sin(rad);
 	for (size_t j = 0; j < s.size(); j++) {
 		for (size_t i = 0; i < s[j].p.size(); i++) {
 			s[j].p[i].x -= pr.x; s[j].p[i].y -= pr.y; s[j].p[i].z -= pr.z;
-			s[j].p[i].rotyOpt(cosT, sinT);
+			s[j].p[i].rotYopt(cosT, sinT);
 			s[j].p[i].x += pr.x; s[j].p[i].y += pr.y; s[j].p[i].z += pr.z;
 		}
 		s[j].c.x -= pr.x; s[j].c.y -= pr.y; s[j].c.z -= pr.z;
-		s[j].c.rotyOpt(cosT, sinT);
+		s[j].c.rotYopt(cosT, sinT);
 		s[j].c.x += pr.x; s[j].c.y += pr.y; s[j].c.z += pr.z;
 	}
 }
-void Object3D::rotzFromP(float rad, Point & pr) {
+void Object3D::rotZfromP(float rad, Point & pr) {
 	float cosT = cos(rad);
 	float sinT = sin(rad);
 	for (size_t j = 0; j < s.size(); j++) {
 		for (size_t i = 0; i < s[j].p.size(); i++) {
 			s[j].p[i].x -= pr.x; s[j].p[i].y -= pr.y; s[j].p[i].z -= pr.z;
-			s[j].p[i].rotzOpt(cosT, sinT);
+			s[j].p[i].rotZopt(cosT, sinT);
 			s[j].p[i].x += pr.x; s[j].p[i].y += pr.y; s[j].p[i].z += pr.z;
 		}
 		s[j].c.x -= pr.x; s[j].c.y -= pr.y; s[j].c.z -= pr.z;
-		s[j].c.rotzOpt(cosT, sinT);
+		s[j].c.rotZopt(cosT, sinT);
 		s[j].c.x += pr.x; s[j].c.y += pr.y; s[j].c.z += pr.z;
 	}
 }
@@ -1802,14 +1996,17 @@ void Object3D::rotzFromP(float rad, Point & pr) {
 void Object3D::rotDegFromP(Point & axisN, float deg, Point & pr) {
 	rotFromP(axisN, deg * PI / 180.0f, pr);
 }
-void Object3D::rotxDegFromP(float deg, Point & pr) {
-	rotxFromP(deg * PI / 180.0f, pr);
+void Object3D::rotXYZdegFromP(float degX, float degY, float degZ, Point & pr, bool inverted) {
+	rotXYZfromP(degX * PI / 180.0f, degY * PI / 180.0f, degZ * PI / 180.0f, pr, inverted);
 }
-void Object3D::rotyDegFromP(float deg, Point & pr) {
-	rotyFromP(deg * PI / 180.0f, pr);
+void Object3D::rotXdegFromP(float deg, Point & pr) {
+	rotXfromP(deg * PI / 180.0f, pr);
 }
-void Object3D::rotzDegFromP(float deg, Point & pr) {
-	rotzFromP(deg * PI / 180.0f, pr);
+void Object3D::rotYdegFromP(float deg, Point & pr) {
+	rotYfromP(deg * PI / 180.0f, pr);
+}
+void Object3D::rotZdegFromP(float deg, Point & pr) {
+	rotZfromP(deg * PI / 180.0f, pr);
 }
 // rotation relative (from c), radians (setters)
 void Object3D::rotFromC(Point & axisN, float rad) {
@@ -1828,34 +2025,66 @@ void Object3D::rotFromC(Point & axisN, float rad) {
 		}
 	}
 }
-void Object3D::rotxFromC(float rad) {
+void Object3D::rotXYZfromC(float radX, float radY, float radZ, bool inverted) {
+	float cosX = cos(radX); float sinX = sin(radX);
+	float cosY = cos(radY); float sinY = sin(radY);
+	float cosZ = cos(radZ); float sinZ = sin(radZ);
+	if (inverted) {
+		for (size_t j = 0; j < s.size(); j++) {
+			for (size_t i = 0; i < s[j].p.size(); i++) {
+				s[j].p[i].x -= s[0].c.x; s[j].p[i].y -= s[0].c.y; s[j].p[i].z -= s[0].c.z;
+				s[j].p[i].rotXYZoptInverted(cosX, sinX, cosY, sinY, cosZ, sinZ);
+				s[j].p[i].x += s[0].c.x; s[j].p[i].y += s[0].c.y; s[j].p[i].z += s[0].c.z;
+			}
+			if (j >= 1) {
+				s[j].c.x -= s[0].c.x; s[j].c.y -= s[0].c.y; s[j].c.z -= s[0].c.z;
+				s[j].c.rotXYZoptInverted(cosX, sinX, cosY, sinY, cosZ, sinZ);
+				s[j].c.x += s[0].c.x; s[j].c.y += s[0].c.y; s[j].c.z += s[0].c.z;
+			}
+		}
+	} else {
+		for (size_t j = 0; j < s.size(); j++) {
+			for (size_t i = 0; i < s[j].p.size(); i++) {
+				s[j].p[i].x -= s[0].c.x; s[j].p[i].y -= s[0].c.y; s[j].p[i].z -= s[0].c.z;
+				s[j].p[i].rotXYZopt(cosX, sinX, cosY, sinY, cosZ, sinZ);
+				s[j].p[i].x += s[0].c.x; s[j].p[i].y += s[0].c.y; s[j].p[i].z += s[0].c.z;
+			}
+			if (j >= 1) {
+				s[j].c.x -= s[0].c.x; s[j].c.y -= s[0].c.y; s[j].c.z -= s[0].c.z;
+				s[j].c.rotXYZopt(cosX, sinX, cosY, sinY, cosZ, sinZ);
+				s[j].c.x += s[0].c.x; s[j].c.y += s[0].c.y; s[j].c.z += s[0].c.z;
+			}
+		}
+	}
+}
+void Object3D::rotXfromC(float rad) {
 	float cosT = cos(rad);
 	float sinT = sin(rad);
 	for (size_t j = 0; j < s.size(); j++) {
 		for (size_t i = 0; i < s[j].p.size(); i++) {
 			s[j].p[i].x -= s[0].c.x; s[j].p[i].y -= s[0].c.y; s[j].p[i].z -= s[0].c.z;
-			s[j].p[i].rotxOpt(cosT, sinT);
+			s[j].p[i].rotXopt(cosT, sinT);
 			s[j].p[i].x += s[0].c.x; s[j].p[i].y += s[0].c.y; s[j].p[i].z += s[0].c.z;
 		}
 		if (j >= 1) {
 			s[j].c.x -= s[0].c.x; s[j].c.y -= s[0].c.y; s[j].c.z -= s[0].c.z;
-			s[j].c.rotxOpt(cosT, sinT);
+			s[j].c.rotXopt(cosT, sinT);
 			s[j].c.x += s[0].c.x; s[j].c.y += s[0].c.y; s[j].c.z += s[0].c.z;
 		}
 	}
 }
-void Object3D::rotyFromC(float rad) {
+void Object3D::rotYfromC(float rad) {
 	float cosT = cos(rad);
 	float sinT = sin(rad);
 	for (size_t j = 0; j < s.size(); j++) {
 		for (size_t i = 0; i < s[j].p.size(); i++) {
 			s[j].p[i].x -= s[0].c.x; s[j].p[i].y -= s[0].c.y; s[j].p[i].z -= s[0].c.z;
-			s[j].p[i].rotyOpt(cosT, sinT);
+			s[j].p[i].rotYopt(cosT, sinT);
 			s[j].p[i].x += s[0].c.x; s[j].p[i].y += s[0].c.y; s[j].p[i].z += s[0].c.z;
 		}
 		if (j >= 1) {
 			s[j].c.x -= s[0].c.x; s[j].c.y -= s[0].c.y; s[j].c.z -= s[0].c.z;
-			s[j].c.rotyOpt(cosT, sinT);
+			s[j].c.rotYopt(cosT, sinT);
 			s[j].c.x += s[0].c.x; s[j].c.y += s[0].c.y; s[j].c.z += s[0].c.z;
 		}
 	}
@@ -1866,12 +2095,12 @@ void Object3D::rotzFromC(float rad) {
 	for (size_t j = 0; j < s.size(); j++) {
 		for (size_t i = 0; i < s[j].p.size(); i++) {
 			s[j].p[i].x -= s[0].c.x; s[j].p[i].y -= s[0].c.y; s[j].p[i].z -= s[0].c.z;
-			s[j].p[i].rotzOpt(cosT, sinT);
+			s[j].p[i].rotZopt(cosT, sinT);
 			s[j].p[i].x += s[0].c.x; s[j].p[i].y += s[0].c.y; s[j].p[i].z += s[0].c.z;
 		}
 		if (j >= 1) {
 			s[j].c.x -= s[0].c.x; s[j].c.y -= s[0].c.y; s[j].c.z -= s[0].c.z;
-			s[j].c.rotzOpt(cosT, sinT);
+			s[j].c.rotZopt(cosT, sinT);
 			s[j].c.x += s[0].c.x; s[j].c.y += s[0].c.y; s[j].c.z += s[0].c.z;
 		}
 	}
@@ -1880,13 +2109,16 @@ void Object3D::rotzFromC(float rad) {
 void Object3D::rotDegFromC(Point & axisN, float deg) {
 	rotFromC(axisN, deg * PI / 180.0f);
 }
-void Object3D::rotxDegFromC(float deg) {
-	rotxFromC(deg * PI / 180.0f);
+void Object3D::rotXYZdegFromC(float degX, float degY, float degZ, bool inverted) {
+	rotXYZfromC(degX * PI / 180.0f, degY * PI / 180.0f, degZ * PI / 180.0f, inverted);
 }
-void Object3D::rotyDegFromC(float deg) {
-	rotyFromC(deg * PI / 180.0f);
+void Object3D::rotXdegFromC(float deg) {
+	rotXfromC(deg * PI / 180.0f);
 }
-void Object3D::rotzDegFromC(float deg) {
+void Object3D::rotYdegFromC(float deg) {
+	rotYfromC(deg * PI / 180.0f);
+}
+void Object3D::rotZdegFromC(float deg) {
 	rotzFromC(deg * PI / 180.0f);
 }
 
@@ -1987,8 +2219,9 @@ void Scene::setScene_DirectVision(PixStoring ps, bool pSim_) {
 
 	// CAMERA (0)
 	Point camPosC(0.0f, 0.763f, 0.0f);	// pos of the center of the camera
-	Point camAxisN(0.0f, 1.0f, 0.0f);	// normal axis of rotation from the center of the camera (axis Y in this case)
-	float camDeg = 180.0f;				// degrees of rotation of the camera around axis normal axis of rotaiton
+	float camDegPhi = 180.0f;			// phi degrees of rotation of the camera.
+	float camDegTheta = 0.0f;			// theta degrees of rotation of the camera.
+	float camDegRoll = 0.0f;			// roll degrees of rotation of the camera.
 	Point camS(0.074f, 0.075f, 0.03f);	// size of the main box of the camera
 	Point camC_relToP0(camS.x / 2.0f, camS.y / 2.0f, 0.0f);	// pos of the centre, relative to the first point of the main box before transformations
 	//std::vector<std::vector<float>> camAlbedoVV(0), camRVV(0), camGVV(0), camBVV(0), camAVV(0);
@@ -2007,13 +2240,14 @@ void Scene::setScene_DirectVision(PixStoring ps, bool pSim_) {
 			camAlbedoVV[b][s] = 1.0f;
 			camAVV[b][s] = 1.0f;
 	}	}
-	o[CAMERA].setCamera(camPosC, camAxisN, camDeg, camS, camC_relToP0, camAlbedoVV, camRVV, camGVV, camBVV, camAVV);
+	o[CAMERA].setCamera(camPosC, camDegPhi, camDegTheta, camDegRoll, camS, camC_relToP0, camAlbedoVV, camRVV, camGVV, camBVV, camAVV);
 
 	// LASER (1)
 	Point lasPosCrelToCam(-0.140f, 0.0f, -0.05f);
 	Point lasPosC = camPosC + lasPosCrelToCam;
-	Point lasAxisN(0.0f, 1.0f, 0.0f);
-	float lasDeg = 180.0f;
+	float lasDegPhi = 180.0f;
+	float lasDegTheta = 0.0f;
+	float lasDegRoll = 0.0f;
 	Point lasS(0.102f, 0.064f, 0.097f);
 	Point lasC_relToP0(lasS.x / 2.0f, lasS.y / 2.0f, 0.0f);
 	//std::vector<std::vector<float>> lasAlbedoVV(0), lasRVV(0), lasGVV(0), lasBVV(0), lasAVV(0);
@@ -2032,7 +2266,7 @@ void Scene::setScene_DirectVision(PixStoring ps, bool pSim_) {
 			lasAlbedoVV[b][s] = 1.0f;
 			lasAVV[b][s] = 1.0f;
 	}	}
-	o[LASER].setLaser(lasPosC, lasAxisN, lasDeg, lasS, lasC_relToP0, lasAlbedoVV, lasRVV, lasGVV, lasBVV, lasAVV);
+	o[LASER].setLaser(lasPosC, lasDegPhi, lasDegTheta, lasDegRoll, lasS, lasC_relToP0, lasAlbedoVV, lasRVV, lasGVV, lasBVV, lasAVV);
 
 	// WALL (2)
 	/*
@@ -2103,8 +2337,9 @@ void Scene::setScene_Occlusion(std::vector<int> & rowsPerFaceV, std::vector<int>
 
 	// CAMERA (0)
 	Point camPosC(0.0f, 0.763f, 0.0f);	// pos of the center of the camera
-	Point camAxisN(0.0f, 1.0f, 0.0f);	// normal axis of rotation from the center of the camera (axis Y in this case)
-	float camDeg = 180.0f;				// degrees of rotation of the camera around axis normal axis of rotaiton (135.0f)
+	float camDegPhi = 180.0f;			// phi degrees of rotation of the camera.
+	float camDegTheta = 0.0f;			// theta degrees of rotation of the camera.
+	float camDegRoll = 0.0f;			// roll degrees of rotation of the camera.
 	Point camS(0.074f, 0.075f, 0.03f);	// size of the main box of the camera
 	Point camC_relToP0(camS.x / 2.0f, camS.y / 2.0f, 0.0f);	// pos of the centre, relative to the first point of the main box before transformations
 	//std::vector<std::vector<float>> camAlbedoVV(0), camRVV(0), camGVV(0), camBVV(0), camAVV(0);
@@ -2124,7 +2359,7 @@ void Scene::setScene_Occlusion(std::vector<int> & rowsPerFaceV, std::vector<int>
 			camAVV[b][s] = 1.0f;
 		}
 	}
-	o[CAMERA].setCamera(camPosC, camAxisN, camDeg, camS, camC_relToP0, camAlbedoVV, camRVV, camGVV, camBVV, camAVV);
+	o[CAMERA].setCamera(camPosC, camDegPhi, camDegTheta, camDegRoll, camS, camC_relToP0, camAlbedoVV, camRVV, camGVV, camBVV, camAVV);
 
 	// WALL (2)		// before LASER, because LASER lasAxisN, lasDeg are WALL-dependent
 	Point walPosC(-1.0f, 0.0f, -2.00f);
@@ -2155,11 +2390,12 @@ void Scene::setScene_Occlusion(std::vector<int> & rowsPerFaceV, std::vector<int>
 	// measurements WALL-dependent for lasAxisN, lasDeg
 	Point walN = o[WALL].normalQUAD();	// this must be (0,0,1);
 	Point walCamFloor(camPosC.x, 0.0f, walPosC.z);
-	Point lasPosLPrelTowalCamFloor(0.945f, 0.795f, 0.0f);	// manual measurement
+	Point lasPosLPrelTowalCamFloor(0.945f, 0.795f, 0.0f);	// manual measurement (0.945f, 0.795f, 0.0f)
 	Point lasPosLP = walCamFloor + lasPosLPrelTowalCamFloor;
 	Point lasV = lasPosLP - lasPosC;
-	Point lasAxisN = axisNVV(walN, lasV);
-	float lasDeg = deg(walN, lasV);
+	float lasDegPhi = degP(lasV);
+	float lasDegTheta = degT(lasV);
+	float lasDegRoll = 0.0f;
 	Point lasS(0.102f, 0.064f, 0.097f);
 	Point lasC_relToP0(lasS.x / 2.0f, lasS.y / 2.0f, 0.0f);
 	// print for testing
@@ -2191,7 +2427,7 @@ void Scene::setScene_Occlusion(std::vector<int> & rowsPerFaceV, std::vector<int>
 			lasAVV[b][s] = 1.0f;
 		}
 	}
-	o[LASER].setLaser(lasPosC, lasAxisN, lasDeg, lasS, lasC_relToP0, lasAlbedoVV, lasRVV, lasGVV, lasBVV, lasAVV);
+	o[LASER].setLaser(lasPosC, lasDegPhi, lasDegTheta, lasDegRoll, lasS, lasC_relToP0, lasAlbedoVV, lasRVV, lasGVV, lasBVV, lasAVV);
 
 	// OCCLUDER (3)
 	Point occPosC(0.6f, 0.0f, 0.7f);
@@ -2285,8 +2521,9 @@ void Scene::setScene_CalibrationMatrix(float laser_to_cam_offset_x, float laser_
 	
 	// CAMERA (0)
 	Point camPosC(0.0f, 0.763f, 0.0f);	// pos of the center of the camera
-	Point camAxisN(0.0f, 1.0f, 0.0f);	// normal axis of rotation from the center of the camera (axis Y in this case)
-	float camDeg = 180.0f;				// degrees of rotation of the camera around axis normal axis of rotaiton
+	float camDegPhi = 180.0f;			// phi degrees of rotation of the camera.
+	float camDegTheta = 0.0f;			// theta degrees of rotation of the camera.
+	float camDegRoll = 0.0f;			// roll degrees of rotation of the camera.
 	Point camS(0.074f, 0.075f, 0.03f);	// size of the main box of the camera
 	Point camC_relToP0(camS.x / 2.0f, camS.y / 2.0f, 0.0f);	// pos of the centre, relative to the first point of the main box before transformations
 	//std::vector<std::vector<float>> camAlbedoVV(0), camRVV(0), camGVV(0), camBVV(0), camAVV(0);
@@ -2305,13 +2542,14 @@ void Scene::setScene_CalibrationMatrix(float laser_to_cam_offset_x, float laser_
 			camAlbedoVV[b][s] = 1.0f;
 			camAVV[b][s] = 1.0f;
 	}	}
-	o[CAMERA].setCamera(camPosC, camAxisN, camDeg, camS, camC_relToP0, camAlbedoVV, camRVV, camGVV, camBVV, camAVV);
+	o[CAMERA].setCamera(camPosC, camDegPhi, camDegTheta, camDegRoll, camS, camC_relToP0, camAlbedoVV, camRVV, camGVV, camBVV, camAVV);
 
 	// LASER (1)
 	Point lasPosCrelToCam(laser_to_cam_offset_x, laser_to_cam_offset_y, laser_to_cam_offset_z);
 	Point lasPosC = camPosC + lasPosCrelToCam;
-	Point lasAxisN = camAxisN;
-	float lasDeg = camDeg;
+	float lasDegPhi = 180.0f;
+	float lasDegTheta = 0.0f;
+	float lasDegRoll = 0.0f;
 	Point lasS(0.102f, 0.064f, 0.097f);
 	Point lasC_relToP0(lasS.x / 2.0f, lasS.y / 2.0f, 0.0f);
 	//std::vector<std::vector<float>> lasAlbedoVV(0), lasRVV(0), lasGVV(0), lasBVV(0), lasAVV(0);
@@ -2330,7 +2568,7 @@ void Scene::setScene_CalibrationMatrix(float laser_to_cam_offset_x, float laser_
 			lasAlbedoVV[b][s] = 1.0f;
 			lasAVV[b][s] = 1.0f;
 	}	}
-	o[LASER].setLaser(lasPosC, lasAxisN, lasDeg, lasS, lasC_relToP0, lasAlbedoVV, lasRVV, lasGVV, lasBVV, lasAVV);
+	o[LASER].setLaser(lasPosC, lasDegPhi, lasDegTheta, lasDegRoll, lasS, lasC_relToP0, lasAlbedoVV, lasRVV, lasGVV, lasBVV, lasAVV);
 
 	// WALL (2)
 	Point walPosC(0.375f,0.95f, camPosC.z - dist_wall_cam);
@@ -2417,41 +2655,48 @@ void setRotationMatrix(float & r11, float & r12, float & r13,
 	r31 = -wy * sinT + wx * wz * l_cosT;	r32 = wx * sinT + wy * wz * l_cosT;		r33 = cosT + wz * wz * l_cosT;
 }
 // dist
-float dist(Point & p0, Point & p1) {
-	Point dif = p1 - p0;
+float dist(Point & v0, Point & v1) {
+	Point dif = v1 - v0;
 	return dif.mod();
 }
-float distPow2(Point & p0, Point & p1) {
-	Point dif = p1 - p0;
+float distPow2(Point & v0, Point & v1) {
+	Point dif = v1 - v0;
 	return dif.modPow2();
 }
-// normal / degrees
-float radN(Point & p0N, Point & p1N) {
-	return acos(p0N.dot(p1N));
+// dot, cross
+Point cross(Point & v0, Point & v1) {
+	return v0.cross(v1);
 }
-float degN(Point & p0N, Point & p1N) {
-	return radN(p0N,p1N) * PI / 180.0f;
+float dot(Point & v0, Point & v1) {
+	return v0.dot(v1);
 }
-Point cross(Point & p0, Point & p1) {
-	return p0.cross(p1);
-}
-float dot(Point & p0, Point & p1) {
-	return p0.dot(p1);
-}
-float rad(Point & p0, Point & p1) {
-	return radN(p0.normal(), p1.normal());
-}
-float deg(Point & p0, Point & p1) {
-	return radN(p0.normal(), p1.normal()) * 180.0f / PI;
-}
-float cosNN(Point & n0, Point & n1) {
-	return n0.dot(n1);
+// cos / rad / deg (rad, deg are dependent of the corresponding cos functions)
+float cosVV(Point & v0, Point & v1) {
+	return (v0.normal()).dot(v1.normal());
 }
 float cosVN(Point & v, Point & n) {
 	return (v.normal()).dot(n);
 }
-float cosVV(Point & v0, Point & v1) {
-	return (v0.normal()).dot(v1.normal());
+float cosNN(Point & n0, Point & n1) {
+	return n0.dot(n1);
+}
+float radVV(Point & v0, Point & v1) {
+	return acos(cosVV(v0,v1));
+}
+float radVN(Point & v, Point & n) {
+	return acos(cosVN(v,n));
+}
+float radNN(Point & n0, Point & n1) {
+	return acos(cosNN(n0,n1));
+}
+float degV(Point & v0, Point & v1) {
+	return radVV(v0, v1) * 180.0f / PI;
+}
+float degVN(Point & v, Point & n) {
+	return radVN(v, n) * 180.0f / PI;
+}
+float degNN(Point & n0, Point & n1) {
+	return radNN(n0, n1) * 180.0f / PI;
 }
 Point axisNVV(Point & v0, Point & v1) {
 	Point axisN = v0.cross(v1);
@@ -2460,6 +2705,61 @@ Point axisNVV(Point & v0, Point & v1) {
 		return (axisN / sqrt(modPow2_));
 	else					// v0 and v1 are parallel
 		return Point(0.0f, 1.0f, 0.0f);	// (0,1,0) is the arbitrary axisN vector when v0 and v1 are parallel
+}
+// cos / rad / deg, with the XYZ/PhiTheta rotation system. (rad, deg are dependent of the corresponding cos functions)
+// Note that a rotation in Phi and Theta has the same effect as a rotation in rotX(-Theta) and rotY(Phi) IN THIS ORDER.
+// Phi (P) is rotation around axis OY, CW starting at OZ.
+// Theta (T) is roation around axis OX', which is the axis OX rotated Phi previously. CW starting at OZ'
+float cosP(Point & v) {
+	float aux = v.x * v.x + v.z * v.z;
+	if (aux == 0.0f)
+		return 1.0f;
+	return v.z / sqrt(aux);
+}
+float cosPN(Point & vN) {	// does the same as cosP
+	return cosP(vN);
+}
+float cosT(Point & v) {
+	float aux = v.x * v.x + v.z * v.z;
+	float aux2 = aux + v.y * v.y;
+	if (aux2 == 0.0f)
+		return 1.0f;
+	return sqrt(aux / aux2);
+}
+float cosTN(Point & vN) {
+	return sqrt(vN.x * vN.x + vN.z * vN.z);
+}
+float radP(Point & v) {	
+	if (v.x < 0.0f)
+		return -acos(cosP(v));
+	return acos(cosP(v));
+}
+float radPN(Point & vN) {
+	if (vN.x < 0.0f)
+		return -acos(cosPN(vN));
+	return acos(cosPN(vN));
+}
+float radT(Point & v) {
+	if (v.y < 0.0f)
+		return -acos(cosT(v));
+	return acos(cosT(v));
+}
+float radTN(Point & vN) {
+	if (vN.y < 0.0f)
+		return -acos(cosT(vN));
+	return acos(cosTN(vN));
+}
+float degP(Point & v) {
+	return radP(v) * 180.0f / PI;
+}
+float degPN(Point & vN) {
+	return radPN(vN) * 180.0f / PI;
+}
+float degT(Point & v) {
+	return radT(v) * 180.0f / PI;
+}
+float degTN(Point & vN) {
+	return radTN(vN) * 180.0f / PI;
 }
 // set depth map
 void setDepthMap(std::vector<float> & depthMap, Frame & frame00, Frame & frame90) {
@@ -2505,3 +2805,5 @@ float distPath4(Point & p0, Point & p1, Point & p2, Point & p3) {
 float distPath5(Point & p0, Point & p1, Point & p2, Point & p3, Point & p4) {
 	return dist(p0, p1) + dist(p1, p2) + dist(p2, p3) + dist(p3, p4);
 }
+
+
