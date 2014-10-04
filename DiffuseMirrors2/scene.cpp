@@ -1314,8 +1314,6 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	std::vector<std::vector<float>> transientImageDist (numPix, std::vector<float>(numShapes));
 	std::vector<std::vector<float>> transientImageAmpl (numPix, std::vector<float>(numShapes));
 	Point traV(0.0f, 0.0f, 0.0f);
-	Point axisN(0.0f, 0.0f, 0.0f);
-	float rad = 0.0f;
 
 	// OCCLUSION_ADATA storing additional data in struct
 	struct OCCLUSION_ADATA adata;
@@ -1351,20 +1349,18 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	adata.transientImageDist = &transientImageDist;
 	adata.transientImageAmpl = &transientImageAmpl;
 	adata.traV = &traV;
-	adata.axisN = &axisN;
-	adata.rad = rad;
 
 	// LEVMAR function parameters
 
 	// set the initial parameters (p) and values (x)
-	const int p_size = 7;								// x, y, z, phi, theta, roll (rel)albedo
-	const int x_size = numPix * info.phasV.size();		// rows*cols*phases = rows*cols*2
-	float* p = new float[p_size];								// p[0],p[1],p[2],p[3],p[4],p[5],p[6] = x,y,z,phi,theta,roll,(rel)albedo
-	float* x = new float[x_size];								// x[i]: value of simulated pixel i
-	p[0] = 0.8f; p[1] = 0.75f; p[2] = -1.2f;					// initial parameters estimate (x,y,z)
-	p[3] = 0.0f; p[4] = 0.0f; p[5] = 0.0f;						// initial parameters estimate (phi,theta,roll)
-	p[6] = 1.0f;												// initial parameters estimate (albedo) / (relative albedo)
-	bool resetP = true;									// resets p in each iteration to its initial value
+	const int p_size = 7;							// x, y, z, phi[-PI,+PI], theta[-PI/2,+PI/2], roll[-PI,+PI] (rel)albedo
+	const int x_size = numPix * info.phasV.size();	// rows*cols*phases = rows*cols*2
+	float* p = new float[p_size];						// p[0],p[1],p[2],p[3],p[4],p[5],p[6] = x,y,z,phi,theta,roll,(rel)albedo
+	float* x = new float[x_size];						// x[i]: value of simulated pixel i
+	p[0] = 0.8f; p[1] = 0.75f; p[2] = -1.2f;			// initial parameters estimate (x,y,z)
+	p[3] = 0.0f; p[4] = 0.0f; p[5] = 0.0f;				// initial parameters estimate (phi,theta,roll)
+	p[6] = 1.0f;										// initial parameters estimate (albedo) / (relative albedo)
+	bool resetP = true;							// resets p in each iteration to its initial value
 	// optimization control parameters; passing to levmar NULL instead of opts reverts to defaults
 	float opts[LM_OPTS_SZ];
 	opts[0] = LM_INIT_MU;
@@ -1378,18 +1374,14 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	float* work = NULL;
 	float* covar = NULL;
 	// invoke the optimization function (returns the number of iterations, -1 if failed)
-	int maxIters = 1000;
+	int maxIters = 5000;
 	int numIters = 0;
 	int numCaptures = 0;
 	
-
-	// CONTINUE HERE !!!!!!!!!!!!!!!!!!!!!!!
-
-
 	// OCCLUSION_ADATA variable parameters p bounds
-	const float rb = sqrt(PI) * 1.2f;	// rads are calculated as p[3]*p[3] + p[4]*p[4] + p[5]*p[5]. So the a good bound would be +-sqrt(PI). *1.2f to avoid bound problems
-	std::vector<float> pL(p_size);	pL[0]=p[0]-0.4f;	pL[1]=p[1]-0.5f;	pL[2]=p[2]-0.5f;	pL[3]=p[3]-rb;	pL[4]=p[4]-rb;	pL[5]=p[5]-rb;	pL[6]=0.1f;	
-	std::vector<float> pU(p_size);	pU[0]=p[0]+1.0f;	pU[1]=p[1]+1.0f;	pU[2]=p[2]+1.5f;	pU[3]=p[3]+rb;	pU[4]=p[4]+rb;	pU[5]=p[5]+rb;	pU[6]=10.0f;	
+	const float aso = 1.01f;		// angle scale offset to the angular limits, to avoid problems around the bounds of these limits
+	std::vector<float> pL(p_size);	pL[0]=p[0]-0.4f;	pL[1]=p[1]-0.5f;	pL[2]=p[2]-0.5f;	pL[3]=-aso*PI;	pL[4]=-aso*PI/2.0f;	pL[5]=-aso*PI;	pL[6]=p[6]*0.01f;	
+	std::vector<float> pU(p_size);	pU[0]=p[0]+1.0f;	pU[1]=p[1]+1.0f;	pU[2]=p[2]+1.5f;	pU[3]= aso*PI;	pU[4]= aso*PI/2.0f;	pU[5]= aso*PI;	pU[6]=p[6]*100.0f;	
 	adata.pL = &pL;
 	adata.pU = &pU;
 
@@ -1398,42 +1390,25 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	locker_frame_object = std::unique_lock<std::mutex>(mutex_frame_object, std::defer_lock);
 
 	// printing actual parameters
-	const bool print_p_info = true;
-	const bool actual_p_known = false;
+	const bool print_p_info = true;		// enables the parameter printing
+	const bool actual_p_known = false;	// enables the actual and erro parameter printing (if print_p_info is also enabled)
 	float* pA = new float[p_size];
 	pA[0] = 2.5f;	pA[1] = 0.75f;	pA[2] = -0.5f;	pA[3] = 0.0f;	pA[4] = 0.0;	pA[5] = 0.0f;	pA[6] = 1.0f;
-	Point posA(pA[0], pA[1], pA[2]);
-	Point axisNA;
-	float radA;
-	set_axisNrad_fromP (axisNA, radA, pA);
-	float degA = radA * 180.0f / PI;
 	if (print_p_info && actual_p_known) {
-		std::cout << "\n\nActual parameters : pA\n"
-			"  pA = [" << pA[0] << ", " << pA[1] << ", " << pA[2] << ", " << pA[3] << ", " << pA[4] << ", " << pA[5] <<  ", " << pA[6] << "]";
-		posA.print  ("\n  posA    = ", "");
-		axisNA.print("\n  axisA   = ", "");
-		std::cout << "\n  rad/deg = " << radA << " / " << degA;
-		std::cout << "\n  albedoA = " << pA[6];
+		std::cout << "\n\nActual parameters : pA"
+			"\npos = (x,y,z)    = (" << pA[0] << ", " << pA[1] << ", " << pA[2] << ") (meters)"
+			"\n(phi,theta,roll) = (" << pA[3] * 180.0f / PI << ", " << pA[4] * 180.0f / PI << ", " << pA[5] * 180.0f / PI << ") (degrees)"
+			"\nrelAlbedo        = " << pA[6];
 	}
 	// printing initial parameters
 	float* p0 = new float[p_size];
 	p0[0] = p[0];	p0[1] = p[1];	p0[2] = p[2];	p0[3] = p[3];	p0[4] = p[4];	p0[5] = p[5];	p0[6] = p[6];
-	Point pos0(p0[0], p0[1], p0[2]);
-	Point axisN0;
-	float rad0;
-	set_axisNrad_fromP (axisN0, rad0, p0);
-	float deg0 = rad0 * 180.0f / PI;
 	if (print_p_info) {
-		std::cout << "\n\nInitial parameters: p0\n"
-			"  p0 = [" << p0[0] << ", " << p0[1] << ", " << p0[2] << ", " << p0[3] << ", " << p0[4] << ", " << p0[5] <<  ", " << p0[6] << "]";
-		pos0.print("\n  pos0      = ", "");
-		axisN0.print("\n  axis0     = ", "");
-		std::cout << "\n  rad0/deg0 = " << rad0 << " / " << deg0;
-		std::cout << "\n  albedo0   = " << p0[6];
+		std::cout << "\n\nInitial parameters : p0"
+			"\npos = (x,y,z)    = (" << p0[0] << ", " << p0[1] << ", " << p0[2] << ") (meters)"
+			"\n(phi,theta,roll) = (" << p0[3] * 180.0f / PI << ", " << p0[4] * 180.0f / PI << ", " << p0[5] * 180.0f / PI << ") (degrees)"
+			"\nrelAlbedo        = " << p0[6];
 	}
-	// final, error parameters
-	Point posF, axisNF, posE;
-	float radF, degF, axisNradE, axisNdegE, radE, degE;
 
 	// openCV, plotting
 	float scale = -1.0f;
@@ -1472,9 +1447,10 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 
 		// plotting simulated frames
 		frameSim00.plot(1, false, "S00", scale);
-		frameSim00.plot(1, false, "S90", scale);
+		frameSim90.plot(1, false, "S90", scale);
 		// plotting rows values. This takes around 30ms
-		plot_rowcol2(frame00, frameSim00, "Real", "Sim", frameSim00.rows/2, -1, epExtStarted, epExtUsing, epExt);
+		plot_rowcol4(frame00, frameSim00, frame90, frameSim90, "Real00", "Sim00", "Real90", "Sim90", 0, -1, true, epExtStarted, epExtUsing, epExt);
+		//plot_rowcol2(frame00, frameSim00, "Real", "Sim", 8, -1, false, epExtStarted, epExtUsing, epExt);
 		//plot_rowcol(frame00, "Real Frame", frame00.rows/2, -1, epExtStarted, epExtUsing, epExt);
 		//plot_rowcol(frameSim00, "Simulated Frame", frameSim00.rows/2, -1, epExtStarted, epExtUsing, epExt);
 
@@ -1486,29 +1462,17 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 		
 		// printing final parameters
 		if (print_p_info) {
-			posF.set(p[0], p[1], p[2]);
-			set_axisNrad_fromP(axisNF, radF, p);
-			degF = radF * 180.0f / PI;
-			std::cout << "\n\nFinal parameters: pF\n"
-				"  pF = [" << p[0] << ", " << p[1] << ", " << p[2] << ", " << p[3] << ", " << p[4] << ", " << p[5] <<  ", " << p[6] << "]";
-			posF.print("\n  posF      = ", "");
-			axisNF.print("\n  axisF     = ", "");
-			std::cout << "\n  radF/degF = " << radF << " / " << degF;
-			std::cout << "\n  albedoF   = " << p[6] << "\n";
+			std::cout << "\n\nFinal parameters : pF"
+				"\npos = (x,y,z)    = (" << p[0] << ", " << p[1] << ", " << p[2] << ") (meters)"
+				"\n(phi,theta,roll) = (" << p[3] * 180.0f / PI << ", " << p[4] * 180.0f / PI << ", " << p[5] * 180.0f / PI << ") (degrees)"
+				"\nrelAlbedo        = " << p[6];
 		}
 		// printing error parameters
 		if (print_p_info && actual_p_known) {
-			posE = posF - posA;
-			axisNradE = radNN(axisNF, axisNA);
-			axisNdegE = axisNradE * 180.0f / PI;
-			radE = radF - radA;
-			degE = radE * 180.0f / PI;
-			std::cout << "\nError parameters: pE = p - pA\n"
-				"  pE = [" << p[0] - pA[0] << ", " << p[1] - pA[1] << ", " << p[2] - pA[2] << ", " << p[3] - pA[3] << ", " << p[4] - pA[4] << ", " << p[5] - pA[5] <<  ", " << p[6] - pA[6]<< "]";
-			posE.print("\n  posE      = ", "");
-			std::cout << "\n  axisN Error rad/deg = " << axisNradE << " / " << axisNdegE;
-			std::cout << "\n  radE/degE = " << radE << " / " << degE;
-			std::cout << "\n  albedoE   = " << p[6] - pA[6] << "\n";
+			std::cout << "\n\nError parameters : pE"
+				"\npos = (x,y,z)    = (" << p[0] - pA[0] << ", " << p[1] - pA[1] << ", " << p[2] - pA[2] << ") (meters)"
+				"\n(phi,theta,roll) = (" << (p[3] - pA[3]) * 180.0f / PI << ", " << (p[4] - pA[4]) * 180.0f / PI << ", " << (p[5] - pA[5]) * 180.0f / PI << ") (degrees)"
+				"\nrelAlbedo        = " << p[6] - pA[6];
 		}
 
 		// reset p
@@ -1520,7 +1484,7 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 		end_time = clock();
 		ms_time = 1000.0f * float(end_time - begin_time) / (float)CLOCKS_PER_SEC;
 		fps_time = 1000.0f / ms_time;
-		std::cout << "\nCapture#: " << numCaptures++ << ",    levmarIters: " << numIters << ",    time: " << ms_time << " ms,    fps = " << fps_time;
+		std::cout << "\n\nCapture#: " << numCaptures++ << ",    levmarIters: " << numIters << ",    time: " << ms_time << " ms,    fps = " << fps_time;
 	}
 	// --- END OF LOOP -----------------------------------------------------------------------------------------
 	

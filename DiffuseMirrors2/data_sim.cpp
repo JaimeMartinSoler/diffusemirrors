@@ -449,20 +449,35 @@ bool pInBounds(float* p, float* x, int p_size, int x_size, struct OCCLUSION_ADAT
 // updates the current scene with the values of the given parameters p
 void updateSceneOcclusion(float* p, struct OCCLUSION_ADATA* ad) {
 
+	// traslation parameters
 	ad->traV->set(p[0], p[1], p[2]);
-	set_axisNrad_fromP (*ad->axisN, ad->rad, p);
-	float r11, r12, r13, r21, r22, r23, r31, r32, r33;
-	setRotationMatrix(r11, r12, r13, r21, r22, r23, r31, r32, r33, ad->axisN->x, ad->axisN->y, ad->axisN->z, ad->rad);
+	// rotX parameters (Theta)
+	float cosX = cos(p[4]);
+	float sinX = sqrt(1.0f-cosX*cosX);
+	if (p[4] > 0.0f)
+		sinX = -sinX;	// Theta > 0.0f means a negative rotation around X
+	// rotY parameters (Phi)
+	float cosY = cos(p[3]); 
+	float sinY = sqrt(1.0f-cosY*cosY);
+	if (p[3] < 0.0f)
+		sinY = -sinY;	// Phi < 0.0f means a negative rotation around Y
+	// rotZ parameters (Roll)
+	float cosZ = cos(p[5]); 
+	float sinZ = sqrt(1.0f-cosZ*cosZ);
+	if (p[5] < 0.0f)
+		sinZ = -sinZ;	// Roll < 0.0f means a negative rotation around Z
+
+	// apply transformations from the reference object
 	for (int si = 0; si < ad->numShapes; ++si) {
-		ad->sceneCopy->o[VOLUME_PATCHES].s[si].c.rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33, ad->volPatchesRef->s[si].c);	// useful for meas
-		ad->sceneCopy->o[VOLUME_PATCHES].s[si].c.tra(*ad->traV);																	// useful for meas
-		ad->sceneCopy->o[VOLUME_PATCHES].s[si].albedo = p[6];																		// useful for meas
+		ad->sceneCopy->o[VOLUME_PATCHES].s[si].c.rotXYZopt(cosX, sinX, cosY, sinY, cosZ, sinZ, ad->volPatchesRef->s[si].c);	// useful for meas (the volPatchesRef is already centered in origin)
+		ad->sceneCopy->o[VOLUME_PATCHES].s[si].c.tra(*ad->traV);															// useful for meas
+		ad->sceneCopy->o[VOLUME_PATCHES].s[si].albedo = p[6];																// useful for meas
 		for (size_t pi = 0; pi < ad->volPatchesRef->s[si].p.size(); ++pi) {
-			ad->sceneCopy->o[VOLUME_PATCHES].s[si].p[pi].rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33, ad->volPatchesRef->s[si].p[pi]);	// useless for meas, just for rendering
-			ad->sceneCopy->o[VOLUME_PATCHES].s[si].p[pi].tra(*ad->traV);																		// useless for meas, just for rendering
+			ad->sceneCopy->o[VOLUME_PATCHES].s[si].p[pi].rotXYZopt(cosX, sinX, cosY, sinY, cosZ, sinZ, ad->volPatchesRef->s[si].p[pi]);	// useless for meas, just for rendering
+			ad->sceneCopy->o[VOLUME_PATCHES].s[si].p[pi].tra(*ad->traV);																// useless for meas, just for rendering
 	}	}
 	for (int fi = 0; fi < ad->numFaces; ++fi)
-		(*ad->faceN)[fi].rotOpt(r11, r12, r13, r21, r22, r23, r31, r32, r33, (*ad->faceNRef)[fi]);	// useful for meas
+		(*ad->faceN)[fi].rotXYZopt(cosX, sinX, cosY, sinY, cosZ, sinZ, (*ad->faceNRef)[fi]);	// useful for meas
 }
 
 // For set_Occlusion_Simulation_Frame(...)
