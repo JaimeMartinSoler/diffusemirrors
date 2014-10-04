@@ -369,8 +369,21 @@ void plot_frame(Frame & frame_00, Frame & frame_90, int delay_ms = 1000, bool de
 void plot_frame_fov_measurement(Frame & frame_00, Frame & frame_90, bool loop = false, bool destroyWindow_ = false, char* windowName = NULL);
 // Plots a row (if >=0) or a col (otherwise and if >= 0) of a Frame using MATALAB engine
 void plot_rowcol(Frame & frame, char* text, int row, int col, bool & epExtStarted, bool epExtUsing = false, Engine *epExt = NULL);
-// Plots a row (if >=0) or a col (otherwise and if >= 0) of 2 Frames using MATALAB engine
-void plot_rowcol2(Frame & frame0, Frame & frame1, char* text0, char* text1, int row, int col, bool & epExtStarted, bool epExtUsing = false, Engine *epExt = NULL);
+// Plots a row, a colum, the average of every row or the average every columns of 2 Frames using MATALAB engine
+//   (row >= 0) && (col <  0) && (avg == false): Plots the raw
+//   (row <  0) && (col >= 0) && (avg == false): Plots the col
+//   (row >= 0) && (col <  0) && (avg == true ): Plots the average of every raw
+//   (row <  0) && (col >= 0) && (avg == true ): Plots the average of every col
+//   else: undefined behavior
+void plot_rowcol2(Frame & frame0, Frame & frame1, char* text0, char* text1, int row, int col, bool avg, bool & epExtStarted, bool epExtUsing = false, Engine *epExt = NULL);
+// Plots a row, a colum, the average of every row or the average every columns of 4 Frames using MATALAB engine
+//   (row >= 0) && (col <  0) && (avg == false): Plots the raw
+//   (row <  0) && (col >= 0) && (avg == false): Plots the col
+//   (row >= 0) && (col <  0) && (avg == true ): Plots the average of every raw
+//   (row <  0) && (col >= 0) && (avg == true ): Plots the average of every col
+//   else: undefined behavior
+void plot_rowcol4(Frame & frameR00, Frame & frameS00, Frame & frameR90, Frame & frameS90, char* textR00, char* textS00, char* textR90, char* textS90, int row, int col, bool avg, bool & epExtStarted, bool epExtUsing, Engine *epExt);
+
 
 
 

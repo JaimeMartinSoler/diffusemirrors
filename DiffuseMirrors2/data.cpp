@@ -1379,8 +1379,8 @@ void plot_rowcol(Frame & frame, char* text, int row, int col, bool & epExtStarte
 		size = frame.rows;
 	else
 		return;
-	double* x = new double[size];	// need to convert to double to deal with MATLAB
-	double* value = new double[size];	// need to convert to double to deal with MATLAB
+	double* x = new double[size];		// need to convert to double to deal with MATLAB
+	double* value = new double[size];
 	// Fill with the ampls of the Transient Pixel
 	for (int i = 0; i < size; ++i) {
 		x[i] = (double)i;
@@ -1438,39 +1438,66 @@ void plot_rowcol(Frame & frame, char* text, int row, int col, bool & epExtStarte
 	delete [] x;
 	delete [] value;
 }
-
-// Plots a row (if >=0) or a col (otherwise and if >= 0) of 2 Frames using MATALAB engine
-void plot_rowcol2(Frame & frame0, Frame & frame1, char* text0, char* text1, int row, int col, bool & epExtStarted, bool epExtUsing, Engine *epExt) {
+// Plots a row, a colum, the average of every row or the average every columns of 2 Frames using MATALAB engine
+//   (row >= 0) && (col <  0) && (avg == false): Plots the raw
+//   (row <  0) && (col >= 0) && (avg == false): Plots the col
+//   (row >= 0) && (col <  0) && (avg == true ): Plots the average of every raw
+//   (row <  0) && (col >= 0) && (avg == true ): Plots the average of every col
+//   else: undefined behavior
+void plot_rowcol2(Frame & frameR, Frame & frameS, char* textR, char* textS, int row, int col, bool avg, bool & epExtStarted, bool epExtUsing, Engine *epExt) {
 	
 	// MATLAB variables
 	Engine *ep;
 	mxArray *X = NULL;
-	mxArray *V0 = NULL;
-	mxArray *V1 = NULL;
+	mxArray *VR = NULL;
+	mxArray *VS = NULL;
 	if (epExtUsing)
 		ep = epExt;
 
 	// Variables. Array structure needed to deal with MATLAB functions
-	int rc, size;
-	if (row >= 0)
-		size = frame0.cols;
-	else if (col >= 0)
-		size = frame0.rows;
-	else
-		return;
+	int size = frameR.cols;
+	if (row < 0)
+		size = frameR.rows;
 	double* x = new double[size];		// need to convert to double to deal with MATLAB
-	double* value0 = new double[size];	// need to convert to double to deal with MATLAB
-	double* value1 = new double[size];	// need to convert to double to deal with MATLAB
-	// Fill with the ampls of the Transient Pixel
-	for (int i = 0; i < size; ++i) {
-		x[i] = (double)i;
-		if (row >= 0) {
-			value0[i] = (double)(frame0.at(row, i));
-			value1[i] = (double)(frame1.at(row, i));
-		} else {
-			value0[i] = (double)(frame0.at(i, col)); 
-			value1[i] = (double)(frame1.at(i, col)); 
-	}	}
+	double* valueR = new double[size];
+	double* valueS = new double[size];
+	
+	// Fill the corresponding values arrays
+	if (avg) {
+		if (row >= 0) {	// row, avg
+			for (int c = 0; c < frameR.cols; ++c) {
+				x[c] = (double)c;
+				valueR[c] = 0.0;
+				valueS[c] = 0.0;
+				for (int r = 0; r < frameR.rows; ++r) {
+					valueR[c] += (double)(frameR.at(r, c));
+					valueS[c] += (double)(frameS.at(r, c));
+				}
+				valueR[c] /= (double)(frameR.rows);
+				valueS[c] /= (double)(frameR.rows);
+		}	} else {	// col, avg
+			for (int r = 0; r < frameR.rows; ++r) {
+				x[r] = (double)r;
+				valueR[r] = 0.0; 
+				valueS[r] = 0.0;
+				for (int c = 0; c < frameR.cols; ++c) {
+					valueR[r] += (double)(frameR.at(r, c));
+					valueS[r] += (double)(frameS.at(r, c));
+				}
+				valueR[r] /= (double)(frameR.cols);
+				valueS[r] /= (double)(frameR.cols);
+	}	}	} else {
+		if (row >= 0) {	// row, non-avg
+			for (int c = 0; c < frameR.cols; ++c) {
+				x[c] = (double)c;
+				valueR[c] = (double)(frameR.at(row, c));
+				valueS[c] = (double)(frameS.at(row, c));
+		}	} else {	// col, non-avg
+			for (int r = 0; r < frameR.rows; ++r) {
+				x[r] = (double)r;
+				valueR[r] = (double)(frameR.at(r, col)); 
+				valueS[r] = (double)(frameS.at(r, col));
+	}	}	}
 	
 	// Call engOpen(""). This starts a MATLAB process on the current host using the command "matlab"
 	if (!(ep = engOpen("")))
@@ -1478,33 +1505,41 @@ void plot_rowcol2(Frame & frame0, Frame & frame1, char* text0, char* text1, int 
 	
 	// Create MATLAB variables from C++ variables
 	X = mxCreateDoubleMatrix(1, size, mxREAL);
-	V0 = mxCreateDoubleMatrix(1, size, mxREAL);
-	V1 = mxCreateDoubleMatrix(1, size, mxREAL);
+	VR = mxCreateDoubleMatrix(1, size, mxREAL);
+	VS = mxCreateDoubleMatrix(1, size, mxREAL);
 	memcpy((void *)mxGetPr(X), (void *)x, size*sizeof(x));
-	memcpy((void *)mxGetPr(V0), (void *)value0, size*sizeof(value0));
-	memcpy((void *)mxGetPr(V1), (void *)value1, size*sizeof(value1));
+	memcpy((void *)mxGetPr(VR), (void *)valueR, size*sizeof(valueR));
+	memcpy((void *)mxGetPr(VS), (void *)valueS, size*sizeof(valueS));
 	
 	// Place MATLAB variables into the MATLAB workspace
 	engPutVariable(ep, "X", X);
-	engPutVariable(ep, "V0", V0);
-	engPutVariable(ep, "V1", V1);
+	engPutVariable(ep, "VR", VR);
+	engPutVariable(ep, "VS", VS);
 	
 	// Plot the result
-	engEvalString(ep, "plot(X, V0, 'b', X, V1, 'r');");
+	engEvalString(ep, "plot(X, VR, 'b', X, VS, 'r');");
 	char titleTxt[1024];
 	char xTxt[1024];
-	if (row >= 0) {
-		sprintf(titleTxt,"title('Values of each %s of the %s #%d.   Blue=%s, Red=%s');", "col", "row", row, text0, text1);
-		sprintf(xTxt,"xlabel('%s of the %s #%d');", "cols", "row", row);
-	} else {
-		sprintf(titleTxt,"title('Values of each %s of the %s #%d.   Blue=%s, Red=%s');", "row", "col", col, row, text0, text1);
-		sprintf(xTxt,"xlabel('%s of the %s #%d');", "rows", "col", col);
-	}
+	if (avg) {
+		if (row >= 0) {
+			sprintf(titleTxt,"title('Values of the averaged rows.   Blue=%s, Red=%s');", textR, textS);
+			sprintf(xTxt,"xlabel('cols of the averaged rows');");
+		} else {
+			sprintf(titleTxt,"title('Values of the averaged cols.   Blue=%s, Red=%s');", textR, textS);
+			sprintf(xTxt,"xlabel('rows of the averaged cols');");
+	}	} else {
+		if (row >= 0) {
+			sprintf(titleTxt,"title('Values of each col of the row #%d.   Blue=%s, Red=%s');", row, textR, textS);
+			sprintf(xTxt,"xlabel('cols of the row #%d');", row);
+		} else {
+			sprintf(titleTxt,"title('Values of each row of the col #%d.   Blue=%s, Red=%s');", col, textR, textS);
+			sprintf(xTxt,"xlabel('rows of the col #%d');", col);
+	}	}
 	engEvalString(ep, titleTxt);
 	engEvalString(ep, xTxt);
 	engEvalString(ep, "ylabel('values');");
 	//char legendTxt[1024];
-	//sprintf(legendTxt,"legend('%s','%s');", text0, text1);
+	//sprintf(legendTxt,"legend('%s','%s');", textR, textS);
 	//engEvalString(ep, legendTxt);		// the legend blinks iterating through an external ep
 
 	// use std::cin freeze the plot
@@ -1516,8 +1551,8 @@ void plot_rowcol2(Frame & frame0, Frame & frame1, char* text0, char* text1, int 
 	
 	// Free memory, close MATLAB figure.
 	mxDestroyArray(X);
-	mxDestroyArray(V0);
-	mxDestroyArray(V1);
+	mxDestroyArray(VR);
+	mxDestroyArray(VS);
 	if (!epExtUsing) {
 		engEvalString(ep, "close;");
 		engClose(ep);
@@ -1525,11 +1560,197 @@ void plot_rowcol2(Frame & frame0, Frame & frame1, char* text0, char* text1, int 
 		epExtStarted = true;
 	}
 	delete [] x;
-	delete [] value0;
-	delete [] value1;
+	delete [] valueR;
+	delete [] valueS;
 }
+// Plots a row, a colum, the average of every row or the average every columns of 4 Frames using MATALAB engine
+//   (row >= 0) && (col <  0) && (avg == false): Plots the raw
+//   (row <  0) && (col >= 0) && (avg == false): Plots the col
+//   (row >= 0) && (col <  0) && (avg == true ): Plots the average of every raw
+//   (row <  0) && (col >= 0) && (avg == true ): Plots the average of every col
+//   else: undefined behavior
+void plot_rowcol4(Frame & frameR00, Frame & frameS00, Frame & frameR90, Frame & frameS90, char* textR00, char* textS00, char* textR90, char* textS90, int row, int col, bool avg, bool & epExtStarted, bool epExtUsing, Engine *epExt) {
+	
+	// MATLAB variables
+	Engine *ep;
+	mxArray *X = NULL;
+	mxArray *VR00 = NULL;
+	mxArray *VS00 = NULL;
+	mxArray *VR90 = NULL;
+	mxArray *VS90 = NULL;
+	if (epExtUsing)
+		ep = epExt;
 
+	// Variables. Array structure needed to deal with MATLAB functions
+	int size = frameR00.cols;
+	if (row < 0)
+		size = frameR00.rows;
+	double* x = new double[size];			// need to convert to double to deal with MATLAB
+	double* valueR00 = new double[size];
+	double* valueS00 = new double[size];
+	double* valueR90 = new double[size];
+	double* valueS90 = new double[size];
+	
+	// Fill the corresponding values arrays
+	if (avg) {
+		if (row >= 0) {	// row, avg
+			for (int c = 0; c < frameR00.cols; ++c) {
+				x[c] = (double)c;
+				valueR00[c] = 0.0;
+				valueS00[c] = 0.0;
+				valueR90[c] = 0.0;
+				valueS90[c] = 0.0;
+				for (int r = 0; r < frameR00.rows; ++r) {
+					valueR00[c] += (double)(frameR00.at(r, c));
+					valueS00[c] += (double)(frameS00.at(r, c));
+					valueR90[c] += (double)(frameR90.at(r, c));
+					valueS90[c] += (double)(frameS90.at(r, c));
+				}
+				valueR00[c] /= (double)(frameR00.rows);
+				valueS00[c] /= (double)(frameR00.rows);
+				valueR90[c] /= (double)(frameR00.rows);
+				valueS90[c] /= (double)(frameR00.rows);
+		}	} else {	// col, avg
+			for (int r = 0; r < frameR00.rows; ++r) {
+				x[r] = (double)r;
+				valueR00[r] = 0.0; 
+				valueS00[r] = 0.0;
+				valueR90[r] = 0.0;
+				valueS90[r] = 0.0;
+				for (int c = 0; c < frameR00.cols; ++c) {
+					valueR00[r] += (double)(frameR00.at(r, c));
+					valueS00[r] += (double)(frameS00.at(r, c));
+					valueR90[r] += (double)(frameR90.at(r, c));
+					valueS90[r] += (double)(frameS90.at(r, c));
+				}
+				valueR00[r] /= (double)(frameR00.cols);
+				valueS00[r] /= (double)(frameR00.cols);
+				valueR90[r] /= (double)(frameR00.cols);
+				valueS90[r] /= (double)(frameR00.cols);
+	}	}	} else {
+		if (row >= 0) {	// row, non-avg
+			for (int c = 0; c < frameR00.cols; ++c) {
+				x[c] = (double)c;
+				valueR00[c] = (double)(frameR00.at(row, c));
+				valueS00[c] = (double)(frameS00.at(row, c));
+				valueR90[c] = (double)(frameR90.at(row, c));
+				valueS90[c] = (double)(frameS90.at(row, c));
+		}	} else {	// col, non-avg
+			for (int r = 0; r < frameR00.rows; ++r) {
+				x[r] = (double)r;
+				valueR00[r] = (double)(frameR00.at(r, col)); 
+				valueS00[r] = (double)(frameS00.at(r, col));
+				valueR90[r] = (double)(frameR90.at(r, col)); 
+				valueS90[r] = (double)(frameS90.at(r, col));
+	}	}	}
+	
+	// Call engOpen(""). This starts a MATLAB process on the current host using the command "matlab"
+	if (!(ep = engOpen("")))
+		fprintf(stderr, "\nCan't start MATLAB engine\n");
+	
+	// Create MATLAB variables from C++ variables
+	X = mxCreateDoubleMatrix(1, size, mxREAL);
+	VR00 = mxCreateDoubleMatrix(1, size, mxREAL);
+	VS00 = mxCreateDoubleMatrix(1, size, mxREAL);
+	VR90 = mxCreateDoubleMatrix(1, size, mxREAL);
+	VS90 = mxCreateDoubleMatrix(1, size, mxREAL);
+	memcpy((void *)mxGetPr(X), (void *)x, size*sizeof(x));
+	memcpy((void *)mxGetPr(VR00), (void *)valueR00, size*sizeof(valueR00));
+	memcpy((void *)mxGetPr(VS00), (void *)valueS00, size*sizeof(valueS00));
+	memcpy((void *)mxGetPr(VR90), (void *)valueR90, size*sizeof(valueR90));
+	memcpy((void *)mxGetPr(VS90), (void *)valueS90, size*sizeof(valueS90));
+	
+	// Place MATLAB variables into the MATLAB workspace
+	engPutVariable(ep, "X", X);
+	engPutVariable(ep, "VR00", VR00);
+	engPutVariable(ep, "VS00", VS00);
+	engPutVariable(ep, "VR90", VR90);
+	engPutVariable(ep, "VS90", VS90);
+	
+	// Plot the results of the figure 1 (00)
+	engEvalString(ep, "figure(1);");
+	engEvalString(ep, "plot(X, VR00, 'b', X, VS00, 'r');");
+	char titleTxt00[1024];
+	char xTxt00[1024];
+	if (avg) {
+		if (row >= 0) {
+			sprintf(titleTxt00,"title('Values of the averaged rows.   Blue=%s, Red=%s');", textR00, textS00);
+			sprintf(xTxt00,"xlabel('cols of the averaged rows');");
+		} else {
+			sprintf(titleTxt00,"title('Values of the averaged cols.   Blue=%s, Red=%s');", textR00, textS00);
+			sprintf(xTxt00,"xlabel('rows of the averaged cols');");
+	}	} else {
+		if (row >= 0) {
+			sprintf(titleTxt00,"title('Values of each col of the row #%d.   Blue=%s, Red=%s');", row, textR00, textS00);
+			sprintf(xTxt00,"xlabel('cols of the row #%d');", row);
+		} else {
+			sprintf(titleTxt00,"title('Values of each row of the col #%d.   Blue=%s, Red=%s');", col, textR00, textS00);
+			sprintf(xTxt00,"xlabel('rows of the col #%d');", col);
+	}	}
+	engEvalString(ep, titleTxt00);
+	engEvalString(ep, xTxt00);
+	engEvalString(ep, "ylabel('values');");
+	if (!epExtUsing) {
+		char legendTxt[1024];
+		sprintf(legendTxt,"legend('%s','%s');", textR00, textS00);
+		engEvalString(ep, legendTxt);		// the legend blinks iterating through an external ep
+	}
 
+	
+	// Plot the results of the figure 2 (90)
+	engEvalString(ep, "figure(2);");
+	engEvalString(ep, "plot(X, VR90, 'b', X, VS90, 'r');");
+	char titleTxt90[1024];
+	char xTxt90[1024];
+	if (avg) {
+		if (row >= 0) {
+			sprintf(titleTxt90,"title('Values of the averaged rows.   Blue=%s, Red=%s');", textR90, textS90);
+			sprintf(xTxt90,"xlabel('cols of the averaged rows');");
+		} else {
+			sprintf(titleTxt90,"title('Values of the averaged cols.   Blue=%s, Red=%s');", textR90, textS90);
+			sprintf(xTxt90,"xlabel('rows of the averaged cols');");
+	}	} else {
+		if (row >= 0) {
+			sprintf(titleTxt90,"title('Values of each col of the row #%d.   Blue=%s, Red=%s');", row, textR90, textS90);
+			sprintf(xTxt90,"xlabel('cols of the row #%d');", row);
+		} else {
+			sprintf(titleTxt90,"title('Values of each row of the col #%d.   Blue=%s, Red=%s');", col, textR90, textS90);
+			sprintf(xTxt90,"xlabel('rows of the col #%d');", col);
+	}	}
+	engEvalString(ep, titleTxt90);
+	engEvalString(ep, xTxt90);
+	engEvalString(ep, "ylabel('values');");
+	if (!epExtUsing) {
+		char legendTxt[1024];
+		sprintf(legendTxt,"legend('%s','%s');", textR90, textS90);
+		engEvalString(ep, legendTxt);		// the legend blinks iterating through an external ep
+	}
+
+	// use std::cin freeze the plot
+	if (!epExtUsing) {
+		std::cout << "\nWrite any std::string and click ENTER to continue\n";
+		std::string answer;
+		std::cin >> answer;
+	}
+	
+	// Free memory, close MATLAB figure.
+	mxDestroyArray(X);
+	mxDestroyArray(VR00);
+	mxDestroyArray(VS00);
+	mxDestroyArray(VR90);
+	mxDestroyArray(VS90);
+	if (!epExtUsing) {
+		engEvalString(ep, "close;");
+		engClose(ep);
+	} else {
+		epExtStarted = true;
+	}
+	delete [] x;
+	delete [] valueR00;
+	delete [] valueS00;
+	delete [] valueR90;
+	delete [] valueS90;
+}
 
 
 // ----------------------------------------------------------------------------------------------------------------------------------------

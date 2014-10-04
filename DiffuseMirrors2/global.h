@@ -66,8 +66,6 @@ struct OCCLUSION_ADATA {
 	std::vector<std::vector<float>>* transientImageDist;
 	std::vector<std::vector<float>>* transientImageAmpl;
 	Point* traV;
-	Point* axisN;
-	float rad;
 };
 
 
