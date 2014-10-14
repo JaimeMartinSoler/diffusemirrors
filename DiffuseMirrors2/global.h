@@ -131,8 +131,8 @@ const int CAMERA_PIX_Y_BAD_BOTTOM = 0;	// = 0
 const int CAMERA_PIX_Y_BAD = CAMERA_PIX_Y_BAD_TOP + CAMERA_PIX_Y_BAD_BOTTOM;
 const int CAMERA_PIX_Y_VALID = CAMERA_PIX_Y - CAMERA_PIX_Y_BAD;
 // Measuring the FoV of the camera
-const float CAMERA_DIST_FOV_MEAS = 2.0f;	// distance from camera center and screen (with same normal)
-const float CAMERA_FOV_X_METERS = 0.855f;
+const float CAMERA_DIST_FOV_MEAS = 1.5f;	// distance from camera center and screen (with same normal)
+const float CAMERA_FOV_X_METERS = 0.653f;
 const float CAMERA_FOV_Y_METERS = CAMERA_FOV_X_METERS * (((float)CAMERA_PIX_Y) / ((float)CAMERA_PIX_X));	// square pixels assumption
 
 // VOLUME PATCHES CONFIGURATION

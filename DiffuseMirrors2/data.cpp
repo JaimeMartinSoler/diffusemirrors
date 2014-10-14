@@ -1060,8 +1060,8 @@ void Frame::set(unsigned short int* data_, int rowsPT, int colsPT, float freq_, 
 		cols = CAMERA_PIX_X_VALID;
 	}
 	else if (ps == PIXELS_TOTAL) {
-		rows = RawData_src->info->rows;
-		cols = RawData_src->info->cols;
+		rows = CAMERA_PIX_Y;
+		cols = CAMERA_PIX_X;
 	}
 	pSim = pSim_;
 	freq = freq_;
@@ -1292,7 +1292,7 @@ void plot_frame(Frame & frame_00, Frame & frame_90, int delay_ms, bool destroyWi
 		cv::destroyWindow(windowName);
 }
 // For FoV measurement scene. Plot frame with opencv with syncronization
-void plot_frame_fov_measurement(Frame & frame_00, Frame & frame_90, bool loop, bool destroyWindow_, char* windowName) { // by default: loop = false, destroyWindow = false, windowName = NULL
+void plot_frame_fov_measurement(Frame & frame_00, Frame & frame_90, bool loop, bool destroyWindow_, char* windowName, bool line_center, int lines_grid) { // by default: (see data.h)
 
 	// Syncronization
 	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
@@ -1302,6 +1302,10 @@ void plot_frame_fov_measurement(Frame & frame_00, Frame & frame_90, bool loop, b
 	cv::Mat M_00, M_90;
 	int scale = 10;
 	bool first_iter = true;
+	bool frame_00_empty = false;
+	bool frame_90_empty = false;
+	// check empty frames. The non-empty frame is rendered. If both are non-empty the amplitude is rendered
+	
 	if (windowName == NULL)
 		windowName = "plot_frame_fov_measurement(Frame,Frame)";
 	cv::namedWindow(windowName, cv::WINDOW_AUTOSIZE);	// WINDOW_NORMAL, WINDOW_AUTOSIZE
@@ -1311,27 +1315,36 @@ void plot_frame_fov_measurement(Frame & frame_00, Frame & frame_90, bool loop, b
 
 		if (!PMD_LOOP_ENABLE && !first_iter)
 			break;
-		first_iter = false;
 		
 		// Syncronization
 		locker_frame_object.lock();		// Lock mutex_frame_object, any thread which used mutex_frame_object can NOT continue until unlock()
 		while (!UPDATED_NEW_FRAME) {
 			cv_frame_object.wait(locker_frame_object);
 		}
-
-		// this 6 lines are the only critical zone
-		/*
-		if ((FRAME_90_CAPTURE.width <= 0) || (FRAME_90_CAPTURE.heigth <= 0)) {
-			return;
+		
+		// check empty frames. The non-empty frame is rendered. If both are non-empty the amplitude is rendered
+		if (first_iter) {
+			if ((frame_00.rows <= 0) || (frame_00.cols <= 0))
+				frame_00_empty = true;
+			if ((frame_90.rows <= 0) || (frame_90.cols <= 0))
+				frame_90_empty = true;
+			if (frame_00_empty && frame_90_empty)
+				return;
 		}
-		M_norm = FRAME_90_CAPTURE.matrix.clone();
-		*/
-		if ((frame_00.rows <= 0) || (frame_00.cols <= 0) || (frame_90.rows <= 0) || (frame_90.cols <= 0))
-			return;
-		M_00 = cv::Mat(frame_00.rows, frame_00.cols, cv::DataType<float>::type); // M_00 will also store the module: M_00 * M_00 + M_90 * M_90
-		M_90 = cv::Mat(frame_90.rows, frame_90.cols, cv::DataType<float>::type);
-		memcpy(M_00.data, frame_00.data.data(), frame_00.data.size()*sizeof(float));
-		memcpy(M_90.data, frame_90.data.data(), frame_90.data.size()*sizeof(float));
+		first_iter = false;
+
+		// these lines are the only critical zone
+		if (!frame_00_empty) {
+			M_00 = cv::Mat(frame_00.rows, frame_00.cols, cv::DataType<float>::type);	// M_00 will also store the module: M_00 * M_00 + M_90 * M_90
+			memcpy(M_00.data, frame_00.data.data(), frame_00.data.size()*sizeof(float));
+			if (!frame_90_empty) {
+				M_90 = cv::Mat(frame_90.rows, frame_90.cols, cv::DataType<float>::type);
+				memcpy(M_90.data, frame_90.data.data(), frame_90.data.size()*sizeof(float));
+			}
+		} else {
+			M_00 = cv::Mat(frame_90.rows, frame_90.cols, cv::DataType<float>::type);	// M_00 stores frame90 in this case, and M_90 does nothing
+			memcpy(M_00.data, frame_90.data.data(), frame_90.data.size()*sizeof(float));
+		}
 		
 		// Syncronization
 		UPDATED_NEW_FRAME = false;
@@ -1340,10 +1353,11 @@ void plot_frame_fov_measurement(Frame & frame_00, Frame & frame_90, bool loop, b
 		locker_frame_object.unlock();	// Unlock mutex_frame_object, now threads which used mutex_frame_object can continue
 		
 		// Get a the module matrix
-		for(int r = 0; r < M_00.rows; r++) {
-			for(int c = 0; c < M_00.cols; c++) {
-				M_00.at<float>(r,c) = (M_00.at<float>(r,c) * M_00.at<float>(r,c)) + (M_90.at<float>(r,c) * M_90.at<float>(r,c));
-		}	}
+		if (!frame_00_empty && !frame_90_empty) {
+			for(int r = 0; r < M_00.rows; r++) {
+				for(int c = 0; c < M_00.cols; c++) {
+					M_00.at<float>(r,c) = (M_00.at<float>(r,c) * M_00.at<float>(r,c)) + (M_90.at<float>(r,c) * M_90.at<float>(r,c));
+		}	}	}
 		
 		// Get a normalized matrix (min=0.0, max=1.0)
 		double min, max, new_value;
@@ -1353,6 +1367,21 @@ void plot_frame_fov_measurement(Frame & frame_00, Frame & frame_90, bool loop, b
 		for(it = M_00.begin<float>(), end = M_00.end<float>(); it != end; ++it)
 			(*it) = ((*it)-min) / max;
 		cv::resize(M_00, M_00, cv::Size(), scale, scale, cv::INTER_NEAREST);
+
+		// draw additional guide lines
+		if (lines_grid >= 2) {
+			for (int ri = 1; ri < lines_grid; ri++) {	// row lines
+				int r = ri * (M_00.rows / lines_grid);
+				cv::line(M_00, cv::Point2f(0, r), cv::Point2f(M_00.cols-1, r), cv::Scalar(0, 0, 0), 1, 8);
+			}
+			for (int ci = 1; ci < lines_grid; ci++) {	// column lines
+				int c = ci * (M_00.cols / lines_grid);
+				cv::line(M_00, cv::Point2f(c, 0), cv::Point2f(c, M_00.rows-1), cv::Scalar(0, 0, 0), 1, 8);
+		}	}
+		if (line_center) {
+			cv::line(M_00, cv::Point2f(M_00.cols/2, 0), cv::Point2f(M_00.cols/2, M_00.rows-1), cv::Scalar(0, 0, 0), 2, 8);
+			cv::line(M_00, cv::Point2f(0, M_00.rows/2), cv::Point2f(M_00.cols-1, M_00.rows/2), cv::Scalar(0, 0, 0), 2, 8);
+		}
 
 		// show window
 		cv::imshow(windowName, M_00);

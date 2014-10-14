@@ -1357,12 +1357,13 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	const int x_size = numPix * info.phasV.size();	// rows*cols*phases = rows*cols*2
 	float* p = new float[p_size];						// p[0],p[1],p[2],p[3],p[4],p[5],p[6] = x,y,z,phi,theta,roll,(rel)albedo
 	float* x = new float[x_size];						// x[i]: value of simulated pixel i
-	p[0] = 0.8f; p[1] = 0.75f; p[2] = -1.2f;			// initial parameters estimate (x,y,z)
-	p[3] = 0.0f; p[4] = 0.0f; p[5] = 0.0f;				// initial parameters estimate (phi,theta,roll)
-	p[6] = 1.0f;										// initial parameters estimate (albedo) / (relative albedo)
-	bool resetP = true;							// resets p in each iteration to its initial value
+	p[0] = 1.10f; p[1] = 0.80f; p[2] = -0.61f;			// initial parameters estimate (x,y,z)
+	p[3] = 0.0f * PI / 180.0f; p[4] = 0.0f; p[5] = 0.0f;				// initial parameters estimate (phi,theta,roll) (in radians)
+	p[6] = 0.01f;										// initial parameters estimate (albedo) / (relative albedo)
+	bool resetP = false;							// resets p in each iteration to its initial value
 	// optimization control parameters; passing to levmar NULL instead of opts reverts to defaults
 	float opts[LM_OPTS_SZ];
+	float* optsNULL = NULL;	// in case we decide to pass NULL
 	opts[0] = LM_INIT_MU;
 	opts[1] = 1E-15;  // 1E-15
 	opts[2] = 1E-15;  // 1E-15
@@ -1380,8 +1381,8 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	
 	// OCCLUSION_ADATA variable parameters p bounds
 	const float aso = 1.01f;		// angle scale offset to the angular limits, to avoid problems around the bounds of these limits
-	std::vector<float> pL(p_size);	pL[0]=p[0]-0.4f;	pL[1]=p[1]-0.5f;	pL[2]=p[2]-0.5f;	pL[3]=-aso*PI;	pL[4]=-aso*PI/2.0f;	pL[5]=-aso*PI;	pL[6]=p[6]*0.01f;	
-	std::vector<float> pU(p_size);	pU[0]=p[0]+1.0f;	pU[1]=p[1]+1.0f;	pU[2]=p[2]+1.5f;	pU[3]= aso*PI;	pU[4]= aso*PI/2.0f;	pU[5]= aso*PI;	pU[6]=p[6]*100.0f;	
+	std::vector<float> pL(p_size);	pL[0]=p[0]-0.5f;	pL[1]=p[1]-0.5f;	pL[2]=p[2]-0.4f;	pL[3]=-aso*PI;	pL[4]=-aso*PI/2.0f;	pL[5]=-aso*PI;	pL[6]=p[6]*0.001f;	
+	std::vector<float> pU(p_size);	pU[0]=p[0]+0.5f;	pU[1]=p[1]+0.5f;	pU[2]=p[2]+0.4f;	pU[3]= aso*PI;	pU[4]= aso*PI/2.0f;	pU[5]= aso*PI;	pU[6]=p[6]*1000.0f;	
 	adata.pL = &pL;
 	adata.pU = &pU;
 
@@ -2298,35 +2299,9 @@ void Scene::setScene_DirectVision(PixStoring ps, bool pSim_) {
 }
 // Setter Scene Occlusion
 void Scene::setScene_Occlusion(std::vector<int> & rowsPerFaceV, std::vector<int> & colsPerFaceV, PixStoring ps, bool pSim_) {
-
-	// CAMERA (0)
-	Point camPosC(0.0f, 0.763f, 0.0f);	// pos of the center of the camera
-	float camDegPhi = 180.0f;			// phi degrees of rotation of the camera.
-	float camDegTheta = 0.0f;			// theta degrees of rotation of the camera.
-	float camDegRoll = 0.0f;			// roll degrees of rotation of the camera.
-	Point camS(0.074f, 0.075f, 0.03f);	// size of the main box of the camera
-	Point camC_relToP0(camS.x / 2.0f, camS.y / 2.0f, 0.0f);	// pos of the centre, relative to the first point of the main box before transformations
-	//std::vector<std::vector<float>> camAlbedoVV(0), camRVV(0), camGVV(0), camBVV(0), camAVV(0);
-	int cam_s_per_box = 6;
-	int cam_boxes = 4;
-	std::vector<std::vector<float>> camAlbedoVV(cam_boxes, std::vector<float>(cam_s_per_box));
-	std::vector<std::vector<float>> camRVV(cam_boxes, std::vector<float>(cam_s_per_box));
-	std::vector<std::vector<float>> camGVV(cam_boxes, std::vector<float>(cam_s_per_box));
-	std::vector<std::vector<float>> camBVV(cam_boxes, std::vector<float>(cam_s_per_box));
-	std::vector<std::vector<float>> camAVV(cam_boxes, std::vector<float>(cam_s_per_box));
-	for (int b = 0; b < cam_boxes; b++) {
-		camRVV[b][FRONT] = 0.5f;  camRVV[b][RIGHT] = 0.8f;  camRVV[b][BACK] = 0.4f;  camRVV[b][LEFT] = 0.3f;  camRVV[b][BOTTOM] = 0.25f;  camRVV[b][TOP] = 0.65f;
-		camGVV[b][FRONT] = 0.5f;  camGVV[b][RIGHT] = 0.8f;  camGVV[b][BACK] = 0.4f;  camGVV[b][LEFT] = 0.3f;  camGVV[b][BOTTOM] = 0.25f;  camGVV[b][TOP] = 0.65f;
-		camBVV[b][FRONT] = 0.5f;  camBVV[b][RIGHT] = 0.8f;  camBVV[b][BACK] = 0.4f;  camBVV[b][LEFT] = 0.3f;  camBVV[b][BOTTOM] = 0.25f;  camBVV[b][TOP] = 0.65f;
-		for (int s = FRONT; s <= TOP; s++) {
-			camAlbedoVV[b][s] = 1.0f;
-			camAVV[b][s] = 1.0f;
-		}
-	}
-	o[CAMERA].setCamera(camPosC, camDegPhi, camDegTheta, camDegRoll, camS, camC_relToP0, camAlbedoVV, camRVV, camGVV, camBVV, camAVV);
-
-	// WALL (2)		// before LASER, because LASER lasAxisN, lasDeg are WALL-dependent
-	Point walPosC(-1.0f, 0.0f, -2.00f);
+	
+	// WALL (2)		// before CAMERA and LASER, because CAMERA camDegPhi, camDegTheta and LASER lasAxisN, lasDeg are WALL-dependent
+	Point walPosC(-1.0f, 0.0f, -1.50f);
 	Point walS(6.0f, 3.0f, 0.2f);
 	Point walAxisN(0.0f, 1.0f, 0.0f);
 	float walDeg = 0.0f;
@@ -2347,16 +2322,45 @@ void Scene::setScene_Occlusion(std::vector<int> & rowsPerFaceV, std::vector<int>
 	}
 	o[WALL].setBox(walPosC, walAxisN, walDeg, walS, walC_relToP0, walAlbedoV, walRV, walGV, walBV, walAV);
 	o[WALL].ot = WALL;
+
+	// CAMERA (0)
+	Point camPosC(0.0f, 0.763f, 0.0f);	// pos of the center of the camera
+	Point walN = o[WALL].normalQUAD();	// this must be (0,0,1) (unused)
+	Point walCamFloor(camPosC.x, 0.0f, walPosC.z);				// projection of the base of the camera into the wall, used for both CAMERA and LASER
+	Point camPosPCrelTowalCamFloor(0.000f, camPosC.y, 0.0f);	// manual measurement (0.000f, camPosC.y, 0.0f), relative position of the projection of the normal of the camera into the wall from the projection of the base of the camera into the wall
+	Point camPosPC = walCamFloor + camPosPCrelTowalCamFloor;	// position of the projection of the normal of the camera into the wall
+	Point camV = camPosPC - camPosC;
+	float camDegPhi = degP(camV);		// phi degrees of rotation of the camera. (usually = 180.0f)
+	float camDegTheta = degT(camV);		// theta degrees of rotation of the camera. (usually = 0.0f)
+	float camDegRoll = 0.0f;			// roll degrees of rotation of the camera. (usually = 0.0f)
+	Point camS(0.074f, 0.075f, 0.03f);	// size of the main box of the camera
+	Point camC_relToP0(camS.x / 2.0f, camS.y / 2.0f, 0.0f);	// pos of the centre, relative to the first point of the main box before transformations
+	//std::vector<std::vector<float>> camAlbedoVV(0), camRVV(0), camGVV(0), camBVV(0), camAVV(0);
+	int cam_s_per_box = 6;
+	int cam_boxes = 4;
+	std::vector<std::vector<float>> camAlbedoVV(cam_boxes, std::vector<float>(cam_s_per_box));
+	std::vector<std::vector<float>> camRVV(cam_boxes, std::vector<float>(cam_s_per_box));
+	std::vector<std::vector<float>> camGVV(cam_boxes, std::vector<float>(cam_s_per_box));
+	std::vector<std::vector<float>> camBVV(cam_boxes, std::vector<float>(cam_s_per_box));
+	std::vector<std::vector<float>> camAVV(cam_boxes, std::vector<float>(cam_s_per_box));
+	for (int b = 0; b < cam_boxes; b++) {
+		camRVV[b][FRONT] = 0.5f;  camRVV[b][RIGHT] = 0.8f;  camRVV[b][BACK] = 0.4f;  camRVV[b][LEFT] = 0.3f;  camRVV[b][BOTTOM] = 0.25f;  camRVV[b][TOP] = 0.65f;
+		camGVV[b][FRONT] = 0.5f;  camGVV[b][RIGHT] = 0.8f;  camGVV[b][BACK] = 0.4f;  camGVV[b][LEFT] = 0.3f;  camGVV[b][BOTTOM] = 0.25f;  camGVV[b][TOP] = 0.65f;
+		camBVV[b][FRONT] = 0.5f;  camBVV[b][RIGHT] = 0.8f;  camBVV[b][BACK] = 0.4f;  camBVV[b][LEFT] = 0.3f;  camBVV[b][BOTTOM] = 0.25f;  camBVV[b][TOP] = 0.65f;
+		for (int s = FRONT; s <= TOP; s++) {
+			camAlbedoVV[b][s] = 1.0f;
+			camAVV[b][s] = 1.0f;
+		}
+	}
+	o[CAMERA].setCamera(camPosC, camDegPhi, camDegTheta, camDegRoll, camS, camC_relToP0, camAlbedoVV, camRVV, camGVV, camBVV, camAVV);
 	
 	// LASER (1)	// after WALL, because LASER lasAxisN, lasDeg are WALL-dependent
-	Point lasPosCrelToCam(0.335f, 0.0f, -0.05f);			// manual measurement
+	Point lasPosCrelToCam(0.405f, 0.0f, -0.05f);				// manual measurement
 	Point lasPosC = camPosC + lasPosCrelToCam;
 	// measurements WALL-dependent for lasAxisN, lasDeg
-	Point walN = o[WALL].normalQUAD();	// this must be (0,0,1);
-	Point walCamFloor(camPosC.x, 0.0f, walPosC.z);
-	Point lasPosLPrelTowalCamFloor(0.945f, 0.795f, 0.0f);	// manual measurement (0.945f, 0.795f, 0.0f)
-	Point lasPosLP = walCamFloor + lasPosLPrelTowalCamFloor;
-	Point lasV = lasPosLP - lasPosC;
+	Point lasPosWLrelTowalCamFloor(0.763f, 0.797f, 0.0f);		// manual measurement (0.763f, 0.797f, 0.0f), relative position of WL from the projection of the base of the camera into the wall
+	Point lasPosWL = walCamFloor + lasPosWLrelTowalCamFloor;	// WL position of the projection of the normal of the laser into the wall
+	Point lasV = lasPosWL - lasPosC;
 	float lasDegPhi = degP(lasV);
 	float lasDegTheta = degT(lasV);
 	float lasDegRoll = 0.0f;
