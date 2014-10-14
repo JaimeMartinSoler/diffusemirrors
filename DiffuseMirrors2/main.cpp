@@ -163,7 +163,7 @@ int main_Occlusion(char* dir_name_, char* file_name_) {
 	Info info(dir_name_, file_name_);
 
 	// capture data directly from PMD to Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE)
-	float frequency = 100.0f;
+	float frequency = 75.0f;
 	float distance = 0.0f;
 	float shutter = 1920.0f;
 	char comport[128] = "COM6";
@@ -284,23 +284,29 @@ int main_RawData(char* dir_name_, char* file_name_) {
 	float laser_to_cam_offset_x = -0.140f;
 	float laser_to_cam_offset_y = 0.00f;
 	float laser_to_cam_offset_z = -0.05;
-	float dist_wall_cam = 2.0f;
+	float dist_wall_cam = 1.5f;
 	float cmx_params[4] = {laser_to_cam_offset_x, laser_to_cam_offset_y, laser_to_cam_offset_z, dist_wall_cam};
 
 	// create the .raw file, capturing data from the PMD
 
 	// FREQUENCIES
 	std::vector<float> frequencies;	// (MHz)
-	float freq_res = 5.0f;
-	float freq_min = 5.0f;
-	float freq_max = 120.0f + freq_res/2.0f;	// (+ freq_res/2.0f) is due to avoid rounding problems
-	for (float fi = freq_min; fi <= freq_max; fi += freq_res)
-		frequencies.push_back(fi);
+	frequencies.push_back(5.0f);
+	frequencies.push_back(10.0f);
+	frequencies.push_back(25.0f);
+	frequencies.push_back(50.0f);
+	frequencies.push_back(75.0f);
+	frequencies.push_back(100.0f);
+	float freq_res = 10.0f;
+	float freq_min = 10.0f;
+	float freq_max = 100.0f + freq_res/2.0f;	// (+ freq_res/2.0f) is due to avoid rounding problems
+	//for (float fi = freq_min; fi <= freq_max; fi += freq_res)
+	//	frequencies.push_back(fi);
 	// DISTANCES
 	std::vector<float> delays;		// (m)
 	float delay_res = 0.1f;
-	float delay_min = 0.0f;
-	float delay_max = 0.0f + delay_res/2.0f;	// (+ delay_res/2.0f) is due to avoid rounding problems
+	float delay_min = -2.0f;
+	float delay_max = 20.0f + delay_res/2.0f;	// (+ delay_res/2.0f) is due to avoid rounding problems
 	for (float di = delay_min; di <= delay_max; di += delay_res)
 		delays.push_back(di);
 	// SUTTERS	//std::vector<float> shutters_float(1, 1920.0f);	// (us)
@@ -311,7 +317,7 @@ int main_RawData(char* dir_name_, char* file_name_) {
 	for (float si = shutters_float_min; si <= shutters_float_max; si *= shutters_float_mul)
 		shutters_float.push_back(si);
 	// NUMTAKES
-	int numtakes = 20;
+	int numtakes = 50;
 	// OTHER
 	char comport[128] = "COM6";
 	std::thread thread_PMD_params_to_file (PMD_params_to_file_anti_bug_thread, frequencies, delays, shutters_float, dir_name_, file_name_, comport, numtakes, cmx_info, cmx_params);
@@ -331,16 +337,19 @@ int main_FoVmeas() {
 	// capture data directly from PMD to Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE)
 	float frequency = 25.0f;
 	float distance = 0.0f;
-	float shutter = 1920.0f / 8.0f; // 1920.0f;
+	float shutter = 1920.0f / 32.0f; // 1920.0f;
 	char comport[128] = "COM6";
 	bool loop = true;
-	PixStoring ps = PIXELS_STORING_GLOBAL;
+	PixStoring ps = PIXELS_TOTAL;
 	bool pSim = false;
 	std::thread thread_PMD_params_to_Frame(PMD_params_to_Frame_anti_bug_thread, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), frequency, distance, shutter, comport, loop, ps, pSim);
 	
 	// plot the Frame (combining frame00 and frame90)
 	char windowName[128] = "Frame FoV";
-	std::thread thread_plot_frame_fov_measurement (plot_frame_fov_measurement, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), loop, false, windowName);//(char*)NULL);
+	bool line_center = true;
+	int lines_grid = 16;
+	Frame frameStub;	frameStub.set();
+	std::thread thread_plot_frame_fov_measurement (plot_frame_fov_measurement, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), loop, false, windowName, line_center, lines_grid);//(char*)NULL);
 
 	// pause in main to allow control when the loops will finish
 	control_loop_pause();
@@ -402,12 +411,13 @@ int main_CalibrationMatrix (char* dir_name_, char* file_name_) {
 int main(int argc, char** argv) {
 	
 	// Set RAW_DATA
-	SceneType sceneType = OCCLUSION;
+	SceneType sceneType = RAW_DATA;
 	SCENEMAIN.set(sceneType);
 	//char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\cmx_01";
-	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\cmx_02";
+	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\cmx_03";
 	char file_name[1024] = "PMD";
 	
+
 	// Main Switcher
 	switch (sceneType) {
 		case DIRECT_VISION_SINUSOID:		 main_DirectVision_Sinusoid();								break;

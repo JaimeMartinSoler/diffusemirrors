@@ -366,7 +366,7 @@ public:
 // plot frame amplitude with sinusoidal assumption
 void plot_frame(Frame & frame_00, Frame & frame_90, int delay_ms = 1000, bool destroyWindow_ = false, char* windowName = NULL, float scale = -1.0f);
 // For FoV measurement scene. Plot frame with opencv with syncronization
-void plot_frame_fov_measurement(Frame & frame_00, Frame & frame_90, bool loop = false, bool destroyWindow_ = false, char* windowName = NULL);
+void plot_frame_fov_measurement(Frame & frame_00, Frame & frame_90, bool loop = false, bool destroyWindow_ = false, char* windowName = NULL, bool line_center = false, int lines_grid = 0);
 // Plots a row (if >=0) or a col (otherwise and if >= 0) of a Frame using MATALAB engine
 void plot_rowcol(Frame & frame, char* text, int row, int col, bool & epExtStarted, bool epExtUsing = false, Engine *epExt = NULL);
 // Plots a row, a colum, the average of every row or the average every columns of 2 Frames using MATALAB engine
