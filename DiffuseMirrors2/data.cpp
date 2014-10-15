@@ -392,10 +392,12 @@ void RawData::set (Info & info_, int take_) { // by default: take = -1
 
 	// expected file size (in number of elements)
 	int file_data_size_expected = info->freqV.size() * info->distV.size() * info->shutV.size() * info->phasV.size() * info->rows * info->cols;
+	/*
 	std::cout << "\nfreqV.size() = "<< info->freqV.size();
 	std::cout << "\ndistV.size() = "<< info->distV.size();
 	std::cout << "\nshutV.size() = "<< info->shutV.size();
 	std::cout << "\nphasV.size() = "<< info->phasV.size() << "\n";
+	*/
 
 	// DATA FILE. Open with read permissions
 	FILE* raw_file = fopen(raw_fn, "rb");	// open in binary/raw mode

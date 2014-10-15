@@ -36,9 +36,9 @@ struct OCCLUSION_ADATA {
 	Object3D* volPatchesRef;
 	int numFaces;
 	int numShapes;
-	std::vector<int>* shapesPerFace;
-	std::vector<int>* firstShapeIdx_of_face;
-	std::vector<Point>* faceNRef;
+	std::vector<int>* shapesPerFace;			// shapesPerFace[i] = number of shpes in the face[i]
+	std::vector<int>* firstShapeIdx_of_face;	// firstShapeIdx_of_face[i] = index of the volPatch j, first volPatch of the face[i]
+	std::vector<Point>* faceNRef;	// faceNRef[i] = normal vector of the face[i]
 	std::vector<Point*>* shapeN;	// unnused
 	std::vector<float>* area;
 	Point* walN;
@@ -56,12 +56,12 @@ struct OCCLUSION_ADATA {
 	Frame* frameSim00;
 	Frame* frameSim90;
 	std::vector<Point>* faceN;
-	int facesFacing_size;
-	std::vector<int>* facesFacingIdx;
-	std::vector<int>* firstShapeIdx_in_volPatchesRadiance_of_facesFacingIdx;
-	int volPatchesRadiance_size;
-	std::vector<int>* volPatchesRadianceIdx;
-	std::vector<float>* volPatchesRadiance;
+	int facesFacing_size;														// number of faces of the vol facing the wall
+	std::vector<int>* facesFacingIdx;											// facesFacingIdx[i] = index of the face j, which faces the wall
+	std::vector<int>* firstShapeIdx_in_volPatchesRadiance_of_facesFacingIdx;	// (...)[i] = index such that the volPatch volPatchesRadianceIdx[(...)[i]] is the first volPatch of the face[j] facing the wall
+	int volPatchesRadiance_size;				// number of volPatches facing the wall
+	std::vector<int>* volPatchesRadianceIdx;	// volPatchesRadianceIdx[i] = index of the volPatch j, which faces the wall
+	std::vector<float>* volPatchesRadiance;		// volPatchesRadiance[i] = radiance/att of the volPatch j, which faces the wall
 	std::vector<int>* transientImage_size;
 	std::vector<std::vector<float>>* transientImageDist;
 	std::vector<std::vector<float>>* transientImageAmpl;
