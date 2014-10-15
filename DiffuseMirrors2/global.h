@@ -34,11 +34,16 @@ struct OCCLUSION_ADATA {
 	Info* info;
 	CalibrationMatrix* cmx;
 	Object3D* volPatchesRef;
-	int numFaces;
-	int numShapes;
-	std::vector<int>* shapesPerFace;			// shapesPerFace[i] = number of shpes in the face[i]
-	std::vector<int>* firstShapeIdx_of_face;	// firstShapeIdx_of_face[i] = index of the volPatch j, first volPatch of the face[i]
-	std::vector<Point>* faceNRef;	// faceNRef[i] = normal vector of the face[i]
+	int numFaces;	// number of faces 
+	int numShapes;	// total number of shapes
+
+	// new parameters
+	std::vector<int>* numShapesInFace;	// numShapesInFace[i] = number of shapes in the face[i]
+	std::vector<int>* idxS0ofF;			// idxS0ofF[i] = index of the volPatch j, first volPatch of the face[i], idxS0ofF[faces] = total number of shapes
+	std::vector<bool>* facingWallFace;	// facingWallFace[i] = true if face[i] is facing the wall
+	std::vector<float>* attTermV;		// attTermV[i] = AreaVolPatch[i] * G(wl,vi)
+
+	std::vector<Point>* faceNRef;		// faceNRef[i] = normal vector of the face[i]
 	std::vector<Point*>* shapeN;	// unnused
 	std::vector<float>* area;
 	Point* walN;
@@ -56,15 +61,19 @@ struct OCCLUSION_ADATA {
 	Frame* frameSim00;
 	Frame* frameSim90;
 	std::vector<Point>* faceN;
+
+	// old parameters
+	/*
 	int facesFacing_size;														// number of faces of the vol facing the wall
 	std::vector<int>* facesFacingIdx;											// facesFacingIdx[i] = index of the face j, which faces the wall
 	std::vector<int>* firstShapeIdx_in_volPatchesRadiance_of_facesFacingIdx;	// (...)[i] = index such that the volPatch volPatchesRadianceIdx[(...)[i]] is the first volPatch of the face[j] facing the wall
 	int volPatchesRadiance_size;				// number of volPatches facing the wall
 	std::vector<int>* volPatchesRadianceIdx;	// volPatchesRadianceIdx[i] = index of the volPatch j, which faces the wall
 	std::vector<float>* volPatchesRadiance;		// volPatchesRadiance[i] = radiance/att of the volPatch j, which faces the wall
-	std::vector<int>* transientImage_size;
+	*/
+	std::vector<int>* transientImagePix_size;
 	std::vector<std::vector<float>>* transientImageDist;
-	std::vector<std::vector<float>>* transientImageAmpl;
+	std::vector<std::vector<float>>* transientImageAttTerm;
 	Point* traV;
 };
 

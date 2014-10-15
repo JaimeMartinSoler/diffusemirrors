@@ -1263,21 +1263,28 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 			vopC += scene.o[VOLUME_PATCHES].s[si].c;
 		vopC /= numShapes;
 		volPatchesRef.tra(vopC * (-1.0f));	// set the reference centered in the origin to optimize rotation
-	std::vector<int> shapesPerFace(numFaces);
-	std::vector<int> firstShapeIdx_of_face(numFaces);
+	
+	// new parameters
+	std::vector<int> numShapesInFace(numFaces);
+	std::vector<int> idxS0ofF(numFaces + 1);
 		int siAccum = 0;
 		for (int fi = FRONT; fi < numFaces; ++fi) {
-			shapesPerFace[fi] = rowsPerFaceV[fi] * colsPerFaceV[fi];
-			firstShapeIdx_of_face[fi] = siAccum;
+			numShapesInFace[fi] = rowsPerFaceV[fi] * colsPerFaceV[fi];
+			idxS0ofF[fi] = siAccum;
 			siAccum += rowsPerFaceV[fi] * colsPerFaceV[fi];
 		}
+		idxS0ofF[numFaces] = numShapes;
+	std::vector<bool> facingWallFace(numFaces, false);
+	std::vector<float> attTermV(numShapes, 0.0f);
+	
+		
 	std::vector<Point> faceNRef(numFaces);
 		for (int fi = FRONT; fi < numFaces; ++fi)
-			faceNRef[fi] = volPatchesRef.s[firstShapeIdx_of_face[fi]].normalQUAD();
+			faceNRef[fi] = volPatchesRef.s[idxS0ofF[fi]].normalQUAD();
 	std::vector<Point*> shapeN(numShapes);
 		int fi = -1;
 		for (int si = 0; si < numShapes; ++si) {
-			if (si >= firstShapeIdx_of_face[fi])
+			if (si >= idxS0ofF[fi])
 				fi++;
 			shapeN[si] = &(faceNRef[fi]);
 		}
@@ -1304,15 +1311,20 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 		frameSim00.set(frameSim00_data, frame00.rows,  frame00.cols, info.freqV[freq_idx], 0.0f, info.shutV[info.shutV.size()-1], info.phasV[0], ps_, pSim_);
 		frameSim90.set(frameSim90_data, frame90.rows,  frame90.cols, info.freqV[freq_idx], 0.0f, info.shutV[info.shutV.size()-1], info.phasV[1], ps_, pSim_);
 	std::vector<Point> faceN(numFaces);
+
+	// old parameters
+	/*
 	int facesFacing_size = 0;
 	std::vector<int> facesFacingIdx(numFaces, 0);
 	std::vector<int> firstShapeIdx_in_volPatchesRadiance_of_facesFacingIdx(numFaces, 0);
 	int volPatchesRadiance_size = 0;
 	std::vector<int> volPatchesRadianceIdx (numShapes, 0);
 	std::vector<float> volPatchesRadiance (numShapes, 0.0f);
-	std::vector<int> transientImage_size (numPix, 0);
+	*/
+
+	std::vector<int> transientImagePix_size (numPix, 0);
 	std::vector<std::vector<float>> transientImageDist (numPix, std::vector<float>(numShapes));
-	std::vector<std::vector<float>> transientImageAmpl (numPix, std::vector<float>(numShapes));
+	std::vector<std::vector<float>> transientImageAttTerm (numPix, std::vector<float>(numShapes));
 	Point traV(0.0f, 0.0f, 0.0f);
 
 	// OCCLUSION_ADATA storing additional data in struct
@@ -1322,8 +1334,13 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	adata.volPatchesRef = &volPatchesRef;		// this 2nd copy is the reference volPatches centered in the origin and should not be modified
 	adata.numFaces = numFaces;
 	adata.numShapes = numShapes;
-	adata.shapesPerFace = &shapesPerFace;
-	adata.firstShapeIdx_of_face = &firstShapeIdx_of_face;
+	
+	// new parameters
+	adata.numShapesInFace = &numShapesInFace;
+	adata.idxS0ofF = &idxS0ofF;
+	adata.facingWallFace = &facingWallFace;
+	adata.attTermV = &attTermV;
+
 	adata.faceNRef = &faceNRef;
 	adata.shapeN = &shapeN;						// unnused
 	adata.area = &area;
@@ -1339,15 +1356,20 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	adata.frameSim00 = &frameSim00;
 	adata.frameSim90 = &frameSim90;
 	adata.faceN = &faceN;
+	
+	// old parameters
+	/*
 	adata.facesFacing_size = facesFacing_size;
 	adata.facesFacingIdx = &facesFacingIdx;
 	adata.firstShapeIdx_in_volPatchesRadiance_of_facesFacingIdx = &firstShapeIdx_in_volPatchesRadiance_of_facesFacingIdx;
 	adata.volPatchesRadiance_size = volPatchesRadiance_size;
 	adata.volPatchesRadianceIdx = &volPatchesRadianceIdx;
 	adata.volPatchesRadiance = &volPatchesRadiance;
-	adata.transientImage_size = &transientImage_size;
+	*/
+
+	adata.transientImagePix_size = &transientImagePix_size;
 	adata.transientImageDist = &transientImageDist;
-	adata.transientImageAmpl = &transientImageAmpl;
+	adata.transientImageAttTerm = &transientImageAttTerm;
 	adata.traV = &traV;
 
 	// LEVMAR function parameters
@@ -1375,7 +1397,7 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	float* work = NULL;
 	float* covar = NULL;
 	// invoke the optimization function (returns the number of iterations, -1 if failed)
-	int maxIters = 5000;
+	int maxIters = 0;
 	int numIters = 0;
 	int numCaptures = 0;
 	
@@ -2466,15 +2488,15 @@ void Scene::setScene_Occlusion(std::vector<int> & rowsPerFaceV, std::vector<int>
 	std::vector<std::vector<float>> vopGVV(vop_faces);
 	std::vector<std::vector<float>> vopBVV(vop_faces);
 	std::vector<std::vector<float>> vopAVV(vop_faces);
-	int shapesPerFace;
+	int numShapesInFace;
 	for (int f = FRONT; f < vop_faces; ++f) {
-		shapesPerFace = rowsPerFaceV[f] * colsPerFaceV[f];
-		vopAlbedoVV[f].resize(shapesPerFace);
-		vopRVV[f].resize(shapesPerFace);
-		vopGVV[f].resize(shapesPerFace);
-		vopBVV[f].resize(shapesPerFace);
-		vopAVV[f].resize(shapesPerFace);
-		for (int i = 0; i < shapesPerFace; ++i) {
+		numShapesInFace = rowsPerFaceV[f] * colsPerFaceV[f];
+		vopAlbedoVV[f].resize(numShapesInFace);
+		vopRVV[f].resize(numShapesInFace);
+		vopGVV[f].resize(numShapesInFace);
+		vopBVV[f].resize(numShapesInFace);
+		vopAVV[f].resize(numShapesInFace);
+		for (int i = 0; i < numShapesInFace; ++i) {
 			vopAlbedoVV[f][i] = 1.0f;
 			vopRVV[f][i] = 1.0f;
 			vopGVV[f][i] = 1.0f;

@@ -163,13 +163,13 @@ int main_Occlusion(char* dir_name_, char* file_name_) {
 	Info info(dir_name_, file_name_);
 
 	// capture data directly from PMD to Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE)
-	float frequency = 75.0f;
+	float frequency = 25.0f;
 	float distance = 0.0f;
 	float shutter = 1920.0f;
 	char comport[128] = "COM6";
 	bool loop = true;
 	PixStoring ps = PIXELS_STORING_GLOBAL;
-	bool pSim = true;
+	bool pSim = false;
 	std::thread thread_PMD_params_to_Frame(PMD_params_to_Frame_anti_bug_thread, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), frequency, distance, shutter, comport, loop, ps, pSim);
 
 	// Set all the corresponding scene and start updating
