@@ -497,7 +497,7 @@ void set_volPatchesRadiance(struct OCCLUSION_ADATA* ad) {
 		for (int si = (*ad->firstShapeIdx_of_face)[fi]; si < (*ad->firstShapeIdx_of_face)[fi] + (*ad->shapesPerFace)[fi]; ++si) {
 			(*ad->volPatchesRadianceIdx)[ad->volPatchesRadiance_size] = si;
 			(*ad->volPatchesRadiance)[ad->volPatchesRadiance_size] = L_E * ad->sceneCopy->o[VOLUME_PATCHES].s[si].albedo *
-				geometryTerm(*ad->walL, *ad->walN, ad->sceneCopy->o[VOLUME_PATCHES].s[si].c, (*ad->faceN)[fi]) * (*ad->area)[si]; // normalize with the Area of the volume patch (if so)
+				geometryTerm(*ad->walL, *ad->walN, ad->sceneCopy->o[VOLUME_PATCHES].s[si].c, (*ad->faceN)[fi]) * (*ad->area)[si]; 
 			ad->volPatchesRadiance_size++;
 		}
 		(*ad->facesFacingIdx)[ad->facesFacing_size] = fi;

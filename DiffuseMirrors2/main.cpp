@@ -411,7 +411,7 @@ int main_CalibrationMatrix (char* dir_name_, char* file_name_) {
 int main(int argc, char** argv) {
 	
 	// Set RAW_DATA
-	SceneType sceneType = RAW_DATA;
+	SceneType sceneType = OCCLUSION;
 	SCENEMAIN.set(sceneType);
 	//char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\cmx_01";
 	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\cmx_03";
