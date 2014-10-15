@@ -61,19 +61,26 @@ void updateSceneOcclusion(float* p, struct OCCLUSION_ADATA* ad);
 // For set_Occlusion_Simulation_Frame(...)
 // gets the Radiance from each volume patch (radiance from each volume patch). L(x) in the paper. 
 // It deals with patches backing (not facing) the wall (they are considered ALWAYS facing the wall)
-void set_volPatchesRadiance(struct OCCLUSION_ADATA* ad);
+void setAttTermV(struct OCCLUSION_ADATA* ad);
 
 // For set_Occlusion_Simulation_Frame(...)
 // gets the Transient pixel = Impulse response of the scene. alpha_r in Ref08
 // vector of maps. One map for pixel representing:
 //   x axis = key   = path length (r) in m
 //   y axis = value = amplitude of the impulse response
-void set_TransientImage(struct OCCLUSION_ADATA* ad);
+void setTransientImage(struct OCCLUSION_ADATA* ad);
 
 // For set_Occlusion_Simulation_Frame(...)
 // sets a Simulated Frame for the Occlusion case, from a Transient Image and a Calibration Matrix. This does NOT do any calculations
 void set_FrameSim(struct OCCLUSION_ADATA* ad);
 
+/*
+// Auxiliar (add-hoc) function for setAttTermV and setAttTermV
+// returns the actual index of the shape s of the face f, where:
+// idxS0ofF[i] = index of the volPatch j, first volPatch of the face[i], 
+// idxS0ofF[faces] = total number of shapes
+int idxFS(int fi, int si, std::vector<int> & idxS0ofF);
+*/
 
 // Auxiliar function for updateSceneOcclusion(...)
 // sets the axisN and the rad from the parameters
