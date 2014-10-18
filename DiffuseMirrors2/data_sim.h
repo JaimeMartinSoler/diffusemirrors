@@ -72,7 +72,7 @@ void setTransientImage(struct OCCLUSION_ADATA* ad);
 
 // For set_Occlusion_Simulation_Frame(...)
 // sets a Simulated Frame for the Occlusion case, from a Transient Image and a Calibration Matrix. This does NOT do any calculations
-void set_FrameSim(struct OCCLUSION_ADATA* ad);
+void set_FrameSim(float* p, struct OCCLUSION_ADATA* ad);
 
 /*
 // Auxiliar (add-hoc) function for setAttTermV and setAttTermV

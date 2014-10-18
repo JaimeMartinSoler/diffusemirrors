@@ -1254,7 +1254,11 @@ int PMD_params_to_file_anti_bug_thread (std::vector<float> & freqV, std::vector<
 
 // Author: Jaime Martin (modification of previous function)
 // PMD_params_to_Frame
-int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_, float dist_, float shut_, char* comport, bool loop, PixStoring ps, bool pSim) {
+int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_, float dist_, float shut_, char* comport, bool loop, PixStoring ps, bool pSim, int* opt) {
+	
+	// Syncronization
+	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
+	locker_frame_object = std::unique_lock<std::mutex>(mutex_frame_object,std::defer_lock);
 
 	// Checking input data
 	if (check_input_data(freq_, dist_, shut_, comport, loop, false, false) == 0)
@@ -1285,20 +1289,28 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_
 	float scale = -1.0f;
 	if (pSim)
 		scale = (int)(CAMERA_PIX_X / (float)PMD_SIM_COLS);
-
-	// Syncronization
-	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
-	locker_frame_object = std::unique_lock<std::mutex>(mutex_frame_object,std::defer_lock);
+	
+	// create the vector of frames, for averaging
+	int avg_size = 1;
+	bool contAvg = true;
+	if (opt != NULL) {
+		avg_size = opt[0];
+		contAvg = (opt[1] != 0);
+	}
+	std::vector<Frame> Frame_00_v(avg_size);
+	std::vector<Frame> Frame_90_v(avg_size);
+	int frameIdx = 0;
+	int avg_size_enable = avg_size;	// different for contAvg
+	bool first_cap_iter = true;
+	bool first_v_iter = true;
 
 	// --- CAPTURE LOOP --------------------------------------------------------------------------------------
-	bool first_iter = true;
-	while(loop || first_iter) {
+	while(loop || first_v_iter) {
 
 		begin_time_loop = clock();	// begin_time_loop for DUTYCYCLE Sleep 
 
-		if (!PMD_LOOP_ENABLE && !first_iter)
+		if (!PMD_LOOP_ENABLE && !first_cap_iter)
 			break;
-		first_iter = false;
 		
 		// PMD CAPTURE
 				//const clock_t begin_time_pmd_capture = clock();
@@ -1313,30 +1325,53 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_
 				//const clock_t end_time_process_data_to_buffer = clock();
 				//float ms_time_process_data_to_buffer = 1000.0f * float(end_time_process_data_to_buffer - begin_time_process_data_to_buffer) / (float)CLOCKS_PER_SEC;
 				//std::cout << "data_to_buffer : time = " << ms_time_process_data_to_buffer << " ms\n";
-			
-		// Save buffer to Frames. The frames construction takes: < 1 ms. Deals with Syncronization.
+		
+		// store frames in the vector of frames 
 				//const clock_t begin_time_buffer_to_frame = clock();
-		locker_frame_object.lock();		// Lock mutex_frame_object, any thread which used mutex_frame_object can NOT continue untill unlock()
-		while (!UPDATED_NEW_SCENE) {
-			std::cout << "\n\nWaiting in Frame to finish the UPDATED_NEW_SCENE. This should never happen!\n\n";
-			cv_frame_object.wait(locker_frame_object);
-		}
 		if (&Frame_00_cap != NULL)
-			Frame_00_cap.set(ushort_img[0], rowsPT, colsPT, freq_, dist_, shut_, phases[0], 0, ps, pSim);
+			Frame_00_v[frameIdx].set(ushort_img[0], rowsPT, colsPT, freq_, dist_, shut_, phases[0], 0, ps, pSim, first_v_iter);
 		if (&Frame_90_cap != NULL)
-			Frame_90_cap.set(ushort_img[0], rowsPT, colsPT, freq_, dist_, shut_, phases[1], 1, ps, pSim);
-		//plot_frame(Frame_00_cap, Frame_90_cap, 1, false, "Frame RT");
-		Frame_00_cap.plot(1, false, "R00", scale);
-		Frame_90_cap.plot(1, false, "R90", scale);
-		//std::cout << "UPDATED_NEW_FRAME";
-		UPDATED_NEW_FRAME = true;
-		UPDATED_NEW_SCENE = false;
-		cv_frame_object.notify_all();	// Notify all cv_frame_object. All threads waiting for cv_frame_object will break the wait after waking up
-		locker_frame_object.unlock();	// Unlock mutex_frame_object, now threads which used mutex_frame_object can continue
+			Frame_90_v[frameIdx].set(ushort_img[0], rowsPT, colsPT, freq_, dist_, shut_, phases[1], 1, ps, pSim, first_v_iter);
+		frameIdx++;
 				//const clock_t end_time_buffer_to_frame = clock();
 				//float ms_time_buffer_to_frame = 1000.0f * float(end_time_buffer_to_frame - begin_time_buffer_to_frame) / (float)CLOCKS_PER_SEC;
 				//std::cout << "buffer_to_frame: time = " << ms_time_buffer_to_frame << " ms\n";
 
+		// proceed averaging if we captured to the last frame
+		if (contAvg || (frameIdx >= avg_size)) {
+			// Save buffer to Frames. The frames construction takes: < 1 ms. Deals with Syncronization.
+			locker_frame_object.lock();		// Lock mutex_frame_object, any thread which used mutex_frame_object can NOT continue untill unlock()
+			while (!UPDATED_NEW_SCENE) {
+				std::cout << "\n\nWaiting in Frame to finish the UPDATED_NEW_SCENE. This should never happen!\n\n";
+				cv_frame_object.wait(locker_frame_object);
+			}
+			if (contAvg && first_v_iter)
+				avg_size_enable = frameIdx;
+			else
+				avg_size_enable = avg_size;
+			if (&Frame_00_cap != NULL)
+				Frame_00_cap.set(Frame_00_v, avg_size_enable, first_cap_iter);
+			if (&Frame_90_cap != NULL)
+				Frame_90_cap.set(Frame_90_v, avg_size_enable, first_cap_iter);
+			//std::cout << "UPDATED_NEW_FRAME";
+			UPDATED_NEW_FRAME = true;
+			UPDATED_NEW_SCENE = false;
+			cv_frame_object.notify_all();	// Notify all cv_frame_object. All threads waiting for cv_frame_object will break the wait after waking up
+			locker_frame_object.unlock();	// Unlock mutex_frame_object, now threads which used mutex_frame_object can continue
+		
+			//plot_frame(Frame_00_cap, Frame_90_cap, 1, false, "Frame RT");
+			Frame_00_cap.plot(1, false, "R00", scale);
+			Frame_90_cap.plot(1, false, "R90", scale);
+
+			// update frameIdx, first_iter
+			first_cap_iter = false;
+			if (frameIdx >= avg_size) {
+				first_v_iter = false;
+				frameIdx = 0;
+			}
+		}
+
+		// wait to complete the Duty Cyle
 		end_time_loop = clock();		// end_time_loop for DUTYCYCLE Sleep
 		ms_time_loop = 1000.0f * float(end_time_loop - begin_time_loop) / (float)CLOCKS_PER_SEC;
 		ms_extra_delay = (TAKES_PER_CAPTURE * ((float)shutV[0].first)/(DUTYCYCLE*1000.0f)) - ms_time_loop + 1.0f;
@@ -1362,8 +1397,8 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_
 	return 0;
 }
 // there's a weird bug when calling directly to PMD_params_to_Frame from thread constructor. With this re-calling functtion the bug is avoided
-int PMD_params_to_Frame_anti_bug_thread (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_, float dist_, float shut_, char* comport, bool loop, PixStoring ps, bool pSim) {
-	return PMD_params_to_Frame (Frame_00_cap, Frame_90_cap, freq_, dist_, shut_, comport, loop, ps, pSim);
+int PMD_params_to_Frame_anti_bug_thread (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_, float dist_, float shut_, char* comport, bool loop, PixStoring ps, bool pSim, int* opt) {
+	return PMD_params_to_Frame (Frame_00_cap, Frame_90_cap, freq_, dist_, shut_, comport, loop, ps, pSim, opt);
 }
 
 // Author: Jaime Martin

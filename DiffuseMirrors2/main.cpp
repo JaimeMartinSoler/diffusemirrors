@@ -57,7 +57,11 @@ int main_DirectVision_Sinusoid() {
 	bool loop = true;
 	PixStoring ps = PIXELS_STORING_GLOBAL;
 	bool pSim = false;
-	std::thread thread_PMD_params_to_Frame(PMD_params_to_Frame_anti_bug_thread, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), frequency, distance, shutter, comport, loop, ps, pSim);
+	//int* opt = NULL;
+	int opt[2];
+	opt[0] = 10;	// avg_size
+	opt[1] = 1;		// contAvg: 0=false, !0=true
+	std::thread thread_PMD_params_to_Frame(PMD_params_to_Frame_anti_bug_thread, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), frequency, distance, shutter, comport, loop, ps, pSim, opt);
 
 	// Set all the object3D of the corresponding scene
 	SCENEMAIN.setScene_DirectVision(ps, pSim);
@@ -94,7 +98,11 @@ int main_DirectVision_Simulation(char* dir_name_, char* file_name_) {
 	bool loop = true;
 	PixStoring ps = PIXELS_STORING_GLOBAL;
 	bool pSim = true;
-	std::thread thread_PMD_params_to_Frame(PMD_params_to_Frame_anti_bug_thread, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), frequency, distance, shutter, comport, loop, ps, pSim);
+	int* opt = NULL;
+	//int opt[2];
+	//opt[0] = 10;	// avg_size
+	//opt[1] = 1;	// contAvg: 0=false, !0=true
+	std::thread thread_PMD_params_to_Frame(PMD_params_to_Frame_anti_bug_thread, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), frequency, distance, shutter, comport, loop, ps, pSim, opt);
 
 	// Set all the corresponding scene and start updating
 	SCENEMAIN.setScene_DirectVision(ps, pSim);
@@ -163,14 +171,18 @@ int main_Occlusion(char* dir_name_, char* file_name_) {
 	Info info(dir_name_, file_name_);
 
 	// capture data directly from PMD to Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE)
-	float frequency = 25.0f;
+	float frequency = 50.0f;
 	float distance = 0.0f;
 	float shutter = 1920.0f;
 	char comport[128] = "COM6";
 	bool loop = true;
 	PixStoring ps = PIXELS_STORING_GLOBAL;
-	bool pSim = false;
-	std::thread thread_PMD_params_to_Frame(PMD_params_to_Frame_anti_bug_thread, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), frequency, distance, shutter, comport, loop, ps, pSim);
+	bool pSim = true;
+	//int* opt = NULL;
+	int opt[2];
+	opt[0] = 10;	// avg_size
+	opt[1] = 1;		// contAvg: 0=false, !0=true
+	std::thread thread_PMD_params_to_Frame(PMD_params_to_Frame_anti_bug_thread, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), frequency, distance, shutter, comport, loop, ps, pSim, opt);
 
 	// Set all the corresponding scene and start updating
 	// faces
@@ -182,12 +194,13 @@ int main_Occlusion(char* dir_name_, char* file_name_) {
 		colsPerFaceV[f] = 4;
 	}*/
 	// Point vopS(0.584f, 0.505f, 0.399f);	// manual measurement
-	rowsPerFaceV[FRONT]  = 5;	colsPerFaceV[FRONT]  = 6;
-	rowsPerFaceV[BACK]   = 5;	colsPerFaceV[BACK]   = 6;
-	rowsPerFaceV[RIGHT]  = 5;	colsPerFaceV[RIGHT]  = 4;
-	rowsPerFaceV[LEFT]   = 5;	colsPerFaceV[LEFT]   = 4;
-	rowsPerFaceV[BOTTOM] = 4;	colsPerFaceV[BOTTOM] = 6;
-	rowsPerFaceV[TOP]    = 4;	colsPerFaceV[TOP]    = 6;
+	int mul = 1;
+	rowsPerFaceV[FRONT]  = 5 * mul;	colsPerFaceV[FRONT]  = 6 * mul;
+	rowsPerFaceV[BACK]   = 5 * mul;	colsPerFaceV[BACK]   = 6 * mul;
+	rowsPerFaceV[RIGHT]  = 5 * mul;	colsPerFaceV[RIGHT]  = 4 * mul;
+	rowsPerFaceV[LEFT]   = 5 * mul;	colsPerFaceV[LEFT]   = 4 * mul;
+	rowsPerFaceV[BOTTOM] = 4 * mul;	colsPerFaceV[BOTTOM] = 6 * mul;
+	rowsPerFaceV[TOP]    = 4 * mul;	colsPerFaceV[TOP]    = 6 * mul;
 	SCENEMAIN.setScene_Occlusion(rowsPerFaceV, colsPerFaceV, ps, pSim);
 	std::thread thread_updateVolumePatches_Occlusion(updateVolumePatches_Occlusion_antiBugThread, std::ref(info), std::ref(SCENEMAIN), std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), std::ref(rowsPerFaceV), std::ref(colsPerFaceV), loop, ps, pSim);
 	//std::thread thread_updateVolumePatches_Occlusion(updateVolumePatches_Occlusion_OLD_antiBugThread, std::ref(info), std::ref(SCENEMAIN), std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), loop, ps, pSim);
@@ -342,7 +355,11 @@ int main_FoVmeas() {
 	bool loop = true;
 	PixStoring ps = PIXELS_TOTAL;
 	bool pSim = false;
-	std::thread thread_PMD_params_to_Frame(PMD_params_to_Frame_anti_bug_thread, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), frequency, distance, shutter, comport, loop, ps, pSim);
+	int* opt = NULL;
+	//int opt[2];
+	//opt[0] = 10;	// avg_size
+	//opt[1] = 1;	// contAvg: 0=false, !0=true
+	std::thread thread_PMD_params_to_Frame(PMD_params_to_Frame_anti_bug_thread, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), frequency, distance, shutter, comport, loop, ps, pSim, opt);
 	
 	// plot the Frame (combining frame00 and frame90)
 	char windowName[128] = "Frame FoV";

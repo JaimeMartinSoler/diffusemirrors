@@ -40,7 +40,7 @@ struct OCCLUSION_ADATA {
 	// new parameters
 	std::vector<int>* numShapesInFace;	// numShapesInFace[i] = number of shapes in the face[i]
 	std::vector<int>* idxS0ofF;			// idxS0ofF[i] = index of the volPatch j, first volPatch of the face[i], idxS0ofF[faces] = total number of shapes
-	std::vector<bool>* facingWallFace;	// facingWallFace[i] = true if face[i] is facing the wall
+	std::vector<bool>* facingWLFace;	// facingWLFace[i] = true if face[i] is facing the wall in WL
 	std::vector<float>* attTermV;		// attTermV[i] = AreaVolPatch[i] * G(wl,vi)
 
 	std::vector<Point>* faceNRef;		// faceNRef[i] = normal vector of the face[i]
@@ -58,6 +58,8 @@ struct OCCLUSION_ADATA {
 	std::vector<float>* pU;	// upper bound
 	// variable parameters
 	Scene* sceneCopy;			// semi-constant: sceneCopy.o[VOLUME_PATHCES] is modified in each iteration of levmar
+	Frame* frame00;
+	Frame* frame90;
 	Frame* frameSim00;
 	Frame* frameSim90;
 	std::vector<Point>* faceN;
