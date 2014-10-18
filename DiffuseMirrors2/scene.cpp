@@ -1253,6 +1253,10 @@ void Object3D::setVolumePatchesBox(Point & boxPC, Point & boxRaxisN, float deg, 
 }
 void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame & frame00, Frame & frame90, std::vector<int> & rowsPerFaceV, std::vector<int> & colsPerFaceV, bool loop, PixStoring ps_, bool pSim_) {
 	
+	// Syncronization
+	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
+	locker_frame_object = std::unique_lock<std::mutex>(mutex_frame_object, std::defer_lock);
+
 	// OCCLUSION_ADATA constant parameters
 	CalibrationMatrix cmx(info);
 	Object3D volPatchesRef(scene.o[VOLUME_PATCHES]);
@@ -1274,7 +1278,7 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 			siAccum += rowsPerFaceV[fi] * colsPerFaceV[fi];
 		}
 		idxS0ofF[numFaces] = numShapes;
-	std::vector<bool> facingWallFace(numFaces, false);
+	std::vector<bool> facingWLFace(numFaces, false);
 	std::vector<float> attTermV(numShapes, 0.0f);
 	
 		
@@ -1295,8 +1299,9 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	Point walL = int_linePN_object3D(scene.o[LASER].s[0].c, scene.o[LASER].normalQUAD(), scene.o[WALL]);
 	int freq_idx = get_freq_idx(info, frame00.freq);	// returns -1 if no idx correspondance was found
 		if (freq_idx < 0) {
-			std::cout << "\nWarning: Frame freq = " << frame00.freq << " is not a freq in .cmx freqV = ";
+			std::cout << "\nWarning (in updateVolumePatches_Occlusion):\n  Frame freq = " << frame00.freq << " is not a freq in .cmx freqV = ";
 			print(info.freqV);
+			std::cout << "\nending...";
 			return;
 		}
 	int numPix = frame00.data.size();
@@ -1338,7 +1343,7 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	// new parameters
 	adata.numShapesInFace = &numShapesInFace;
 	adata.idxS0ofF = &idxS0ofF;
-	adata.facingWallFace = &facingWallFace;
+	adata.facingWLFace = &facingWLFace;
 	adata.attTermV = &attTermV;
 
 	adata.faceNRef = &faceNRef;
@@ -1353,6 +1358,8 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	adata.sizeofFrameData = sizeofFrameData;	// rows*cols*sizeof(float) = rows*cols*4
 	adata.sceneCopy = &sceneCopy;				// semi-constant: sceneCopy.o[VOLUME_PATHCES] is modified in each iteration of levmar
 	//adata.sceneCopy = &scene;					// original scene, for debugging
+	adata.frame00 = &frame00;
+	adata.frame90 = &frame90;
 	adata.frameSim00 = &frameSim00;
 	adata.frameSim90 = &frameSim90;
 	adata.faceN = &faceN;
@@ -1371,18 +1378,18 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	adata.transientImageDist = &transientImageDist;
 	adata.transientImageAttTerm = &transientImageAttTerm;
 	adata.traV = &traV;
-
+	
 	// LEVMAR function parameters
 
 	// set the initial parameters (p) and values (x)
-	const int p_size = 7;							// x, y, z, phi[-PI,+PI], theta[-PI/2,+PI/2], roll[-PI,+PI] (rel)albedo
+	const int p_size = 7;							// x, y, z, phi[-PI,+PI], theta[-PI/2,+PI/2], roll[-PI,+PI] kTS
 	const int x_size = numPix * info.phasV.size();	// rows*cols*phases = rows*cols*2
-	float* p = new float[p_size];						// p[0],p[1],p[2],p[3],p[4],p[5],p[6] = x,y,z,phi,theta,roll,(rel)albedo
-	float* x = new float[x_size];						// x[i]: value of simulated pixel i
-	p[0] = 1.10f; p[1] = 0.80f; p[2] = -0.61f;			// initial parameters estimate (x,y,z)
-	p[3] = 0.0f * PI / 180.0f; p[4] = 0.0f; p[5] = 0.0f;				// initial parameters estimate (phi,theta,roll) (in radians)
-	p[6] = 0.01f;										// initial parameters estimate (albedo) / (relative albedo)
-	bool resetP = false;							// resets p in each iteration to its initial value
+	float* p = new float[p_size];							// p[0],p[1],p[2],p[3],p[4],p[5],p[6] = x,y,z,phi,theta,roll,kTS
+	float* x = new float[x_size];							// x[i]: value of simulated pixel i
+	p[0] = 1.4f; p[1] = 0.9f; p[2] = -0.9f;				// initial parameters estimate (x,y,z) (p[0] = 1.10f; p[1] = 0.79f; p[2] = -0.55f;)
+	p[3] = 0.0f * PI / 180.0f; p[4] = 0.0f; p[5] = 0.0f;	// initial parameters estimate (phi,theta,roll) (in radians)
+	p[6] = 0.01f;											// initial parameters estimate kTS
+	bool resetP = true;							// resets p in each iteration to its initial value
 	// optimization control parameters; passing to levmar NULL instead of opts reverts to defaults
 	float opts[LM_OPTS_SZ];
 	float* optsNULL = NULL;	// in case we decide to pass NULL
@@ -1397,31 +1404,27 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	float* work = NULL;
 	float* covar = NULL;
 	// invoke the optimization function (returns the number of iterations, -1 if failed)
-	int maxIters = 0;
+	int maxIters = 5000;
 	int numIters = 0;
 	int numCaptures = 0;
 	
 	// OCCLUSION_ADATA variable parameters p bounds
 	const float aso = 1.01f;		// angle scale offset to the angular limits, to avoid problems around the bounds of these limits
-	std::vector<float> pL(p_size);	pL[0]=p[0]-0.5f;	pL[1]=p[1]-0.5f;	pL[2]=p[2]-0.4f;	pL[3]=-aso*PI;	pL[4]=-aso*PI/2.0f;	pL[5]=-aso*PI;	pL[6]=p[6]*0.001f;	
-	std::vector<float> pU(p_size);	pU[0]=p[0]+0.5f;	pU[1]=p[1]+0.5f;	pU[2]=p[2]+0.4f;	pU[3]= aso*PI;	pU[4]= aso*PI/2.0f;	pU[5]= aso*PI;	pU[6]=p[6]*1000.0f;	
+	std::vector<float> pL(p_size);	pL[0]=p[0]-0.5f;	pL[1]=p[1]-0.5f;	pL[2]=p[2]-0.5f;	pL[3]=-aso*PI;	pL[4]=-aso*PI/2.0f;	pL[5]=-aso*PI;	pL[6]=p[6]*0.001f;	
+	std::vector<float> pU(p_size);	pU[0]=p[0]+0.5f;	pU[1]=p[1]+0.5f;	pU[2]=p[2]+0.5f;	pU[3]= aso*PI;	pU[4]= aso*PI/2.0f;	pU[5]= aso*PI;	pU[6]=p[6]*1000.0f;	
 	adata.pL = &pL;
 	adata.pU = &pU;
-
-	// Syncronization
-	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
-	locker_frame_object = std::unique_lock<std::mutex>(mutex_frame_object, std::defer_lock);
-
+	
 	// printing actual parameters
 	const bool print_p_info = true;		// enables the parameter printing
 	const bool actual_p_known = false;	// enables the actual and erro parameter printing (if print_p_info is also enabled)
 	float* pA = new float[p_size];
-	pA[0] = 2.5f;	pA[1] = 0.75f;	pA[2] = -0.5f;	pA[3] = 0.0f;	pA[4] = 0.0;	pA[5] = 0.0f;	pA[6] = 1.0f;
+	pA[0] = 2.5f;	pA[1] = 0.75f;	pA[2] = -0.5f;	pA[3] = 0.0f;	pA[4] = 0.0;	pA[5] = 0.0f;	pA[6] = 0.01f;
 	if (print_p_info && actual_p_known) {
 		std::cout << "\n\nActual parameters : pA"
 			"\npos = (x,y,z)    = (" << pA[0] << ", " << pA[1] << ", " << pA[2] << ") (meters)"
 			"\n(phi,theta,roll) = (" << pA[3] * 180.0f / PI << ", " << pA[4] * 180.0f / PI << ", " << pA[5] * 180.0f / PI << ") (degrees)"
-			"\nrelAlbedo        = " << pA[6];
+			"\nkTs              = " << pA[6];
 	}
 	// printing initial parameters
 	float* p0 = new float[p_size];
@@ -1430,7 +1433,7 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 		std::cout << "\n\nInitial parameters : p0"
 			"\npos = (x,y,z)    = (" << p0[0] << ", " << p0[1] << ", " << p0[2] << ") (meters)"
 			"\n(phi,theta,roll) = (" << p0[3] * 180.0f / PI << ", " << p0[4] * 180.0f / PI << ", " << p0[5] * 180.0f / PI << ") (degrees)"
-			"\nrelAlbedo        = " << p0[6];
+			"\nkTs              = " << p0[6];
 	}
 
 	// openCV, plotting
@@ -1444,7 +1447,7 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	// Timing
 	clock_t begin_time, end_time;
 	float ms_time, fps_time;
-
+	
 	// --- LOOP ------------------------------------------------------------------------------------------------
 	bool first_iter = true;
 	while (loop || first_iter) {
@@ -1455,7 +1458,7 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 		first_iter = false;
 
 		// Syncronization
-		locker_frame_object.lock();		// Lock mutex_frame_object, any thread which used mutex_frame_object can NOT continue until unlock()
+		locker_frame_object.lock();	// Lock mutex_frame_object, any thread which used mutex_frame_object can NOT continue until unlock()
 		while (!UPDATED_NEW_FRAME)	//std::cout << "Waiting in Object to finish the UPDATED_NEW_Frame. This is OK!\n";
 			cv_frame_object.wait(locker_frame_object);
 		
@@ -1488,14 +1491,14 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 			std::cout << "\n\nFinal parameters : pF"
 				"\npos = (x,y,z)    = (" << p[0] << ", " << p[1] << ", " << p[2] << ") (meters)"
 				"\n(phi,theta,roll) = (" << p[3] * 180.0f / PI << ", " << p[4] * 180.0f / PI << ", " << p[5] * 180.0f / PI << ") (degrees)"
-				"\nrelAlbedo        = " << p[6];
+				"\nkTs              = " << p[6];
 		}
 		// printing error parameters
 		if (print_p_info && actual_p_known) {
 			std::cout << "\n\nError parameters : pE"
 				"\npos = (x,y,z)    = (" << p[0] - pA[0] << ", " << p[1] - pA[1] << ", " << p[2] - pA[2] << ") (meters)"
 				"\n(phi,theta,roll) = (" << (p[3] - pA[3]) * 180.0f / PI << ", " << (p[4] - pA[4]) * 180.0f / PI << ", " << (p[5] - pA[5]) * 180.0f / PI << ") (degrees)"
-				"\nrelAlbedo        = " << p[6] - pA[6];
+				"\nkTs              = " << p[6] - pA[6];
 		}
 
 		// reset p

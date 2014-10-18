@@ -327,9 +327,10 @@ public:
 	// If rows_ and cols_ are > 0, they will be the new rows and cols (interesting while simulating arbitrary rows and cols. Otherwise rows and cols are made from ps_)
 	Frame::Frame(std::vector<float> & data_, int rows_ = 0, int cols_ = 0, float freq_ = 0.0f, float dist_ = 0.0f, float shut_ = 0.0f, float phas_ = 0.0f, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	// Constructor from ushort int*. Real Time capture oriented. rows_ and cols_ must be refered to the sizes of the total frame, regerdingless to the PixStoring
-	Frame::Frame(unsigned short int* data_, int rowsPT, int colsPT, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
-	
-	
+	Frame::Frame(unsigned short int* data_, int rowsPT, int colsPT, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false, bool first_iter = true);
+	// Constructor from std::vector<Frame>. Real Time capture oriented. Average of the vector of Frames
+	Frame::Frame(std::vector<Frame> & Frame_v, int Frame_v_size, bool first_iter = true);
+
 	// ----- SETTERS --------------------------------- // Note that each Constructor just contains its corresponding Setter
 
 	// Setter Default
@@ -346,7 +347,9 @@ public:
 	// If rows_ and cols_ are > 0, they will be the new rows and cols (interesting while simulating arbitrary rows and cols. Otherwise rows and cols are made from ps_
 	void Frame::set(std::vector<float> & data_, int rows_ = 0, int cols_ = 0, float freq_ = 0.0f, float dist_ = 0.0f, float shut_ = 0.0f, float phas_ = 0.0f, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	// Setter from ushort int*. Real Time capture oriented. rowsPT and colsPT must be refered to the sizes of the total frame, regerdingless to the PixStoring
-	void Frame::set(unsigned short int* data_, int rowsPT, int colsPT, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
+	void Frame::set(unsigned short int* data_, int rowsPT, int colsPT, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false, bool first_iter = true);
+	// Setter from std::vector<Frame>. Real Time capture oriented. Average of the vector of Frames
+	void Frame::set(std::vector<Frame> & Frame_v, int Frame_v_size, bool first_iter = true);
 	
 
 	// ----- FUNCTIONS -------------------------------

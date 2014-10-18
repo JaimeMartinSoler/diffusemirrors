@@ -802,7 +802,8 @@ float CalibrationMatrix::C_atX (int freq_idx, float pathDist, int phas_idx, int 
 	float pathDist_res = (info->distV[1] - info->distV[0]);	// dist of info store actually path distances as well
 
 	// pathDist Indices
-	int pathDist_idx_floor = (pathDist_offset - info->distV[0]) / pathDist_res;
+	float pathDist_idx_float = (pathDist_offset - info->distV[0]) / pathDist_res;
+	int pathDist_idx_floor = (int)pathDist_idx_float;
 	int pathDist_idx_ceil = pathDist_idx_floor + 1;
 	// checking if out of bounds
 	if (pathDist_idx_floor < 0) {
@@ -814,7 +815,7 @@ float CalibrationMatrix::C_atX (int freq_idx, float pathDist, int phas_idx, int 
 	}
 
 	// pathDist Scales
-	float pathDist_scale_ceil = fmodf(pathDist_offset-info->distV[0], pathDist_res) / pathDist_res;	// -info->distances[0] to avoid bad negative behaviour of fmodf(...)
+	float pathDist_scale_ceil = pathDist_idx_float - (float)pathDist_idx_floor;
 	float pathDist_scale_floor = 1.0f - pathDist_scale_ceil;
 	/*
 	std::cout << "\n\ndist_offset      = " << dist_offset;
@@ -907,10 +908,13 @@ Frame::Frame(std::vector<float> & data_, int rows_, int cols_, float freq_, floa
 	set (data_, rows_, cols_, freq_, dist_ , shut_, phas_, ps_, pSim_);
 }
 // Constructor from ushort int*. Real Time capture oriented. rows_ and cols_ must be refered to the sizes of the total frame, regerdingless to the PixStoring
-Frame::Frame(unsigned short int* data_, int rowsPT, int colsPT, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_, bool pSim_) { // by default: ps_ = PIXELS_STORING_GLOBAL
-	set (data_, rowsPT, colsPT, freq_, dist_, shut_, phas_, phas_idx_, ps_, pSim_);
+Frame::Frame(unsigned short int* data_, int rowsPT, int colsPT, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_, bool pSim_, bool first_iter) {
+	set (data_, rowsPT, colsPT, freq_, dist_, shut_, phas_, phas_idx_, ps_, pSim_, first_iter);
 }
-
+// Constructor from std::vector<Frame>. Real Time capture oriented. Average of the vector of Frames
+Frame::Frame(std::vector<Frame> & Frame_v, int Frame_v_size, bool first_iter) {
+	set(Frame_v, Frame_v_size, first_iter);
+}
 
 // ----- SETTERS --------------------------------- // Note that each Constructor just contains its corresponding
 
@@ -1046,31 +1050,33 @@ void Frame::set(std::vector<float> & data_, int rows_, int cols_, float freq_, f
 	phas = phas_;
 }
 // Setter from ushort int*. Real Time capture oriented. rowsPT and colsPT must be refered to the sizes of the total frame, regerdingless to the PixStoring
-void Frame::set(unsigned short int* data_, int rowsPT, int colsPT, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_, bool pSim_) { // by default: ps_ = PIXELS_STORING_GLOBAL
+void Frame::set(unsigned short int* data_, int rowsPT, int colsPT, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_, bool pSim_, bool first_iter) { 
 	
-	// External Parameters (RawData, indices)
-	RawData_src = NULL;
-	freq_idx = 0;
-	dist_idx = 0;
-	shut_idx = 0;
-	phas_idx = phas_idx_;
+	if (first_iter) {
+		// External Parameters (RawData, indices)
+		RawData_src = NULL;
+		freq_idx = 0;
+		dist_idx = 0;
+		shut_idx = 0;
+		phas_idx = phas_idx_;
 
-	// Frame Parameters
-	ps = ps_;
-	if (ps == PIXELS_VALID) {
-		rows = CAMERA_PIX_Y_VALID;
-		cols = CAMERA_PIX_X_VALID;
+		// Frame Parameters
+		ps = ps_;
+		if (ps == PIXELS_VALID) {
+			rows = CAMERA_PIX_Y_VALID;
+			cols = CAMERA_PIX_X_VALID;
+		}
+		else if (ps == PIXELS_TOTAL) {
+			rows = CAMERA_PIX_Y;
+			cols = CAMERA_PIX_X;
+		}
+		pSim = pSim_;
+		freq = freq_;
+		dist = dist_;
+		shut = shut_;
+		phas = phas_;
+		data.resize(rows*cols);
 	}
-	else if (ps == PIXELS_TOTAL) {
-		rows = CAMERA_PIX_Y;
-		cols = CAMERA_PIX_X;
-	}
-	pSim = pSim_;
-	freq = freq_;
-	dist = dist_;
-	shut = shut_;
-	phas = phas_;
-	data.resize(rows*cols);
 	int idx_in_data;
 	if (ps == PIXELS_VALID) {
 		for (int r = 0; r < rows; r++) {
@@ -1089,7 +1095,37 @@ void Frame::set(unsigned short int* data_, int rowsPT, int colsPT, float freq_, 
 	if (pSim_)
 		toPixSim();
 }
+// Setter from std::vector<Frame>. Real Time capture oriented. Average of the vector of Frames
+void Frame::set(std::vector<Frame> & Frame_v, int Frame_v_size, bool first_iter) {
 
+	if (first_iter) {
+		// External Parameters (RawData, idices)
+		RawData_src = Frame_v[0].RawData_src;
+		freq_idx = Frame_v[0].freq_idx;
+		dist_idx = Frame_v[0].dist_idx;
+		shut_idx = Frame_v[0].shut_idx;
+		phas_idx = Frame_v[0].phas_idx;
+	
+		// Frame Parameters
+		ps = Frame_v[0].ps;
+		pSim = Frame_v[0].pSim;
+		rows = Frame_v[0].rows;
+		cols = Frame_v[0].cols;
+		freq = Frame_v[0].freq;
+		dist = Frame_v[0].dist;
+		shut = Frame_v[0].shut;
+		phas = Frame_v[0].phas;
+		data.resize(rows*cols);
+	}
+
+	// Fill the Frame with the averaged frames
+	for (int i = 0; i < data.size(); ++i) {
+		data[i] = 0.0f;
+		for (int f = 0; f < Frame_v_size; ++f)
+			data[i] += Frame_v[f].data[i];
+		data[i] /= (float)Frame_v_size;
+	}
+}
 
 // ----- FUNCTIONS -------------------------------
 
