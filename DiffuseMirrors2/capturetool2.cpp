@@ -1291,25 +1291,26 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_
 		scale = (int)(CAMERA_PIX_X / (float)PMD_SIM_COLS);
 	
 	// create the vector of frames, for averaging
-	int avg_size = 1;
-	bool contAvg = true;
+	int avg_size = 1;		// avg_size: output frame is the average of the last avg_size frames
+	int update_size = 1;	// update_size: output frame is updated each update_size frames
+	int avgIdx = 0;			// avgIdx: idx of the frame of the vectors Frame_00_v, Frame_90_v
+	int updateCount = 0;	// updateCount: frame number in the set of frames of this step
+	bool avgNotFilled = true;	// avgNotFilled: the average vectos Frame_00_v, Frame_90_v have not been filled yet
+	bool first_Outframe = true;	// first_Outframe: first time that the output frames are setted
 	if (opt != NULL) {
 		avg_size = opt[0];
-		contAvg = (opt[1] != 0);
+		update_size = opt[1];
 	}
 	std::vector<Frame> Frame_00_v(avg_size);
 	std::vector<Frame> Frame_90_v(avg_size);
-	int frameIdx = 0;
-	int avg_size_enable = avg_size;	// different for contAvg
-	bool first_cap_iter = true;
-	bool first_v_iter = true;
+
 
 	// --- CAPTURE LOOP --------------------------------------------------------------------------------------
-	while(loop || first_v_iter) {
+	while(loop || avgNotFilled) {
 
 		begin_time_loop = clock();	// begin_time_loop for DUTYCYCLE Sleep 
 
-		if (!PMD_LOOP_ENABLE && !first_cap_iter)
+		if (!PMD_LOOP_ENABLE && !avgNotFilled)
 			break;
 		
 		// PMD CAPTURE
@@ -1329,30 +1330,33 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_
 		// store frames in the vector of frames 
 				//const clock_t begin_time_buffer_to_frame = clock();
 		if (&Frame_00_cap != NULL)
-			Frame_00_v[frameIdx].set(ushort_img[0], rowsPT, colsPT, freq_, dist_, shut_, phases[0], 0, ps, pSim, first_v_iter);
+			Frame_00_v[avgIdx].set(ushort_img[0], rowsPT, colsPT, freq_, dist_, shut_, phases[0], 0, ps, pSim, avgNotFilled);
 		if (&Frame_90_cap != NULL)
-			Frame_90_v[frameIdx].set(ushort_img[0], rowsPT, colsPT, freq_, dist_, shut_, phases[1], 1, ps, pSim, first_v_iter);
-		frameIdx++;
+			Frame_90_v[avgIdx].set(ushort_img[0], rowsPT, colsPT, freq_, dist_, shut_, phases[1], 1, ps, pSim, avgNotFilled);
+		// update indices and counters
+		avgIdx++;
+		updateCount++;
+		if (avgIdx >= avg_size) {
+			avgIdx = 0;
+			avgNotFilled = false;
+		}
 				//const clock_t end_time_buffer_to_frame = clock();
 				//float ms_time_buffer_to_frame = 1000.0f * float(end_time_buffer_to_frame - begin_time_buffer_to_frame) / (float)CLOCKS_PER_SEC;
 				//std::cout << "buffer_to_frame: time = " << ms_time_buffer_to_frame << " ms\n";
 
 		// proceed averaging if we captured to the last frame
-		if (contAvg || (frameIdx >= avg_size)) {
+		if ((updateCount >= update_size) && (!avgNotFilled)) {
+
 			// Save buffer to Frames. The frames construction takes: < 1 ms. Deals with Syncronization.
 			locker_frame_object.lock();		// Lock mutex_frame_object, any thread which used mutex_frame_object can NOT continue untill unlock()
 			while (!UPDATED_NEW_SCENE) {
 				std::cout << "\n\nWaiting in Frame to finish the UPDATED_NEW_SCENE. This should never happen!\n\n";
 				cv_frame_object.wait(locker_frame_object);
 			}
-			if (contAvg && first_v_iter)
-				avg_size_enable = frameIdx;
-			else
-				avg_size_enable = avg_size;
 			if (&Frame_00_cap != NULL)
-				Frame_00_cap.set(Frame_00_v, avg_size_enable, first_cap_iter);
+				Frame_00_cap.set(Frame_00_v, avg_size, first_Outframe);
 			if (&Frame_90_cap != NULL)
-				Frame_90_cap.set(Frame_90_v, avg_size_enable, first_cap_iter);
+				Frame_90_cap.set(Frame_90_v, avg_size, first_Outframe);
 			//std::cout << "UPDATED_NEW_FRAME";
 			UPDATED_NEW_FRAME = true;
 			UPDATED_NEW_SCENE = false;
@@ -1363,12 +1367,9 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_
 			Frame_00_cap.plot(1, false, "R00", scale);
 			Frame_90_cap.plot(1, false, "R90", scale);
 
-			// update frameIdx, first_iter
-			first_cap_iter = false;
-			if (frameIdx >= avg_size) {
-				first_v_iter = false;
-				frameIdx = 0;
-			}
+			// update indices and counters
+			updateCount = 0;
+			first_Outframe = false;
 		}
 
 		// wait to complete the Duty Cyle

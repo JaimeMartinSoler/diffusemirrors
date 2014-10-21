@@ -107,8 +107,8 @@ struct OCCLUSION_ADATA {
 #define CMD_FILENAME_SUFFIX ".cmd"	// Calibration Matrix Direct Vision file
 
 
-#define PMD_WIDTH 165	// (MHz)
-#define PMD_HEIGTH 120	// (MHz)
+#define PMD_WIDTH 165	
+#define PMD_HEIGTH 120	
 
 #define FREQUENCY_MIN 1.0f		// (MHz)
 #define FREQUENCY_MAX 180.0f	// (MHz)
