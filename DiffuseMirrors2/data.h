@@ -330,6 +330,8 @@ public:
 	Frame::Frame(unsigned short int* data_, int rowsPT, int colsPT, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false, bool first_iter = true);
 	// Constructor from std::vector<Frame>. Real Time capture oriented. Average of the vector of Frames
 	Frame::Frame(std::vector<Frame> & Frame_v, int Frame_v_size, bool first_iter = true);
+	// Constructor stub from basic parameters
+	Frame::Frame(Info & info, PixStoring ps_, bool pSim_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_);
 
 	// ----- SETTERS --------------------------------- // Note that each Constructor just contains its corresponding Setter
 
@@ -350,6 +352,8 @@ public:
 	void Frame::set(unsigned short int* data_, int rowsPT, int colsPT, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false, bool first_iter = true);
 	// Setter from std::vector<Frame>. Real Time capture oriented. Average of the vector of Frames
 	void Frame::set(std::vector<Frame> & Frame_v, int Frame_v_size, bool first_iter = true);
+	// Setter stub from basic parameters
+	void Frame::set(Info & info, PixStoring ps_, bool pSim_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_);
 	
 
 	// ----- FUNCTIONS -------------------------------

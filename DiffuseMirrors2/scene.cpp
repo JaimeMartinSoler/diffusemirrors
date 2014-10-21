@@ -1256,6 +1256,12 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	// Syncronization
 	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
 	locker_frame_object = std::unique_lock<std::mutex>(mutex_frame_object, std::defer_lock);
+	
+	std::cout << "\nBefore while";
+	//while (!UPDATED_NEW_FRAME) {	//std::cout << "Waiting in Object to finish the UPDATED_NEW_Frame. This is OK!\n";
+	//	Sleep(1);
+	//}
+	std::cout << "\nAfter while";
 
 	// OCCLUSION_ADATA constant parameters
 	CalibrationMatrix cmx(info);
@@ -1386,10 +1392,10 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	const int x_size = numPix * info.phasV.size();	// rows*cols*phases = rows*cols*2
 	float* p = new float[p_size];							// p[0],p[1],p[2],p[3],p[4],p[5],p[6] = x,y,z,phi,theta,roll,kTS
 	float* x = new float[x_size];							// x[i]: value of simulated pixel i
-	p[0] = 1.4f; p[1] = 0.9f; p[2] = -0.9f;				// initial parameters estimate (x,y,z) (p[0] = 1.10f; p[1] = 0.79f; p[2] = -0.55f;)
+	p[0] = 0.8f; p[1] = 0.4f; p[2] = -0.2f;				// initial parameters estimate (x,y,z) (p[0] = 1.10f; p[1] = 0.79f; p[2] = -0.55f;)
 	p[3] = 0.0f * PI / 180.0f; p[4] = 0.0f; p[5] = 0.0f;	// initial parameters estimate (phi,theta,roll) (in radians)
 	p[6] = 0.01f;											// initial parameters estimate kTS
-	bool resetP = true;							// resets p in each iteration to its initial value
+	bool resetP = false;							// resets p in each iteration to its initial value
 	// optimization control parameters; passing to levmar NULL instead of opts reverts to defaults
 	float opts[LM_OPTS_SZ];
 	float* optsNULL = NULL;	// in case we decide to pass NULL
@@ -1447,7 +1453,7 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	// Timing
 	clock_t begin_time, end_time;
 	float ms_time, fps_time;
-	
+
 	// --- LOOP ------------------------------------------------------------------------------------------------
 	bool first_iter = true;
 	while (loop || first_iter) {
@@ -1476,15 +1482,21 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 		frameSim90.plot(1, false, "S90", scale);
 		// plotting rows values. This takes around 30ms
 		plot_rowcol4(frame00, frameSim00, frame90, frameSim90, "Real00", "Sim00", "Real90", "Sim90", 0, -1, true, epExtStarted, epExtUsing, epExt);
-		//plot_rowcol2(frame00, frameSim00, "Real", "Sim", 8, -1, false, epExtStarted, epExtUsing, epExt);
-		//plot_rowcol(frame00, "Real Frame", frame00.rows/2, -1, epExtStarted, epExtUsing, epExt);
-		//plot_rowcol(frameSim00, "Simulated Frame", frameSim00.rows/2, -1, epExtStarted, epExtUsing, epExt);
+			//plot_rowcol2(frame00, frameSim00, "Real", "Sim", 8, -1, false, epExtStarted, epExtUsing, epExt);
+			//plot_rowcol(frame00, "Real Frame", frame00.rows/2, -1, epExtStarted, epExtUsing, epExt);
+			//plot_rowcol(frameSim00, "Simulated Frame", frameSim00.rows/2, -1, epExtStarted, epExtUsing, epExt);
 
 		// Syncronization	//std::cout << ",    UPDATED_NEW_SCENE\n";
 		UPDATED_NEW_FRAME = false;
 		UPDATED_NEW_SCENE = true;
 		cv_frame_object.notify_all();	// Notify all cv_frame_object. All threads waiting for cv_frame_object will break the wait after waking up
 		locker_frame_object.unlock();	// Unlock mutex_frame_object, now threads which used mutex_frame_object can continue
+
+		// Timing and info
+		end_time = clock();
+		ms_time = 1000.0f * float(end_time - begin_time) / (float)CLOCKS_PER_SEC;
+		fps_time = 1000.0f / ms_time;
+		std::cout << "\n\n\nCapture#: " << numCaptures++ << ",    levmarIters: " << numIters << ",    time: " << ms_time << " ms,    fps = " << fps_time;
 		
 		// printing final parameters
 		if (print_p_info) {
@@ -1505,12 +1517,6 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 		if (resetP) {
 			p[0] = p0[0];	p[1] = p0[1];	p[2] = p0[2];	p[3] = p0[3];	p[4] = p0[4];	p[5] = p0[5];	p[6] = p0[6];
 		}
-
-		// Timing and info
-		end_time = clock();
-		ms_time = 1000.0f * float(end_time - begin_time) / (float)CLOCKS_PER_SEC;
-		fps_time = 1000.0f / ms_time;
-		std::cout << "\n\nCapture#: " << numCaptures++ << ",    levmarIters: " << numIters << ",    time: " << ms_time << " ms,    fps = " << fps_time;
 	}
 	// --- END OF LOOP -----------------------------------------------------------------------------------------
 	

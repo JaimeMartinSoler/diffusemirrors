@@ -915,6 +915,10 @@ Frame::Frame(unsigned short int* data_, int rowsPT, int colsPT, float freq_, flo
 Frame::Frame(std::vector<Frame> & Frame_v, int Frame_v_size, bool first_iter) {
 	set(Frame_v, Frame_v_size, first_iter);
 }
+// Constructor stub from basic parameters
+Frame::Frame(Info & info, PixStoring ps_, bool pSim_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_) {
+	set(info, ps_, pSim_, rows_,cols_, freq_, dist_, shut_, phas_);
+}
 
 // ----- SETTERS --------------------------------- // Note that each Constructor just contains its corresponding
 
@@ -1062,21 +1066,23 @@ void Frame::set(unsigned short int* data_, int rowsPT, int colsPT, float freq_, 
 
 		// Frame Parameters
 		ps = ps_;
-		if (ps == PIXELS_VALID) {
-			rows = CAMERA_PIX_Y_VALID;
-			cols = CAMERA_PIX_X_VALID;
-		}
-		else if (ps == PIXELS_TOTAL) {
-			rows = CAMERA_PIX_Y;
-			cols = CAMERA_PIX_X;
-		}
 		pSim = pSim_;
 		freq = freq_;
 		dist = dist_;
 		shut = shut_;
 		phas = phas_;
-		data.resize(rows*cols);
 	}
+	// Frame parameters out of first_iter
+	if (ps == PIXELS_VALID) {
+		rows = CAMERA_PIX_Y_VALID;
+		cols = CAMERA_PIX_X_VALID;
+	}
+	else if (ps == PIXELS_TOTAL) {
+		rows = CAMERA_PIX_Y;
+		cols = CAMERA_PIX_X;
+	}
+	data.resize(rows*cols);
+	// filling the data
 	int idx_in_data;
 	if (ps == PIXELS_VALID) {
 		for (int r = 0; r < rows; r++) {
@@ -1126,7 +1132,60 @@ void Frame::set(std::vector<Frame> & Frame_v, int Frame_v_size, bool first_iter)
 		data[i] /= (float)Frame_v_size;
 	}
 }
+// Setter stub from basic parameters
+void Frame::set(Info & info, PixStoring ps_, bool pSim_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_) {
 
+	// External Parameters (RawData, indices)
+	RawData_src = NULL;
+	freq_idx = get_freq_idx(info, freq_);	// returns -1 if no idx correspondance was found
+	dist_idx = get_dist_idx(info, dist_);
+	shut_idx = get_shut_idx(info, shut_);
+	phas_idx = get_phas_idx(info, phas_);
+	// check the parameters are correct
+	if (freq_idx < 0) {
+		std::cout << "\nWarning (in Frame::set):\n  Frame freq = " << freq_ << " is not a freq in .cmx freqV = ";
+		print(info.freqV);
+		std::cout << "\nending...";
+	}
+	if (dist_idx < 0) {
+		std::cout << "\nWarning (in Frame::set):\n  Frame dist = " << dist_ << " is not a dist in .cmx distV = ";
+		print(info.distV);
+		std::cout << "\nending...";
+	}
+	if (shut_idx < 0) {
+		std::cout << "\nWarning (in Frame::set):\n  Frame shut = " << shut_ << " is not a shut in .cmx shutV = ";
+		print(info.shutV);
+		std::cout << "\nending...";
+	}
+	if (phas_idx < 0) {
+		std::cout << "\nWarning (in Frame::set):\n  Frame phas = " << phas_ << " is not a phas in .cmx phasV = ";
+		print(info.phasV);
+		std::cout << "\nending...";
+	}
+	
+	// Frame Parameters
+	ps = ps_;
+	pSim = pSim_;
+	if ((rows_ > 0) && (cols_ > 0)) {
+		rows = rows_;
+		cols = cols_;
+	} else if (pSim_) {
+		rows = PMD_SIM_ROWS;
+		cols = PMD_SIM_COLS;
+	} else if (ps == PIXELS_VALID) {
+		rows = CAMERA_PIX_Y_VALID;
+		cols = CAMERA_PIX_X_VALID;
+	} else if (ps == PIXELS_TOTAL) {
+		rows = CAMERA_PIX_Y;
+		cols = CAMERA_PIX_X;
+	}
+	data = std::vector<float>(rows*cols, 0.0f);
+	freq = freq_;
+	dist = dist_;
+	shut = shut_;
+	phas = phas_;
+}
+	
 // ----- FUNCTIONS -------------------------------
 
 // r,c Matrix-like, 0-idx.
