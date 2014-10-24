@@ -1970,6 +1970,12 @@ float var(std::vector<float> & v) {
 	}
 	return var /= v.size();
 }
+float avgError(std::vector<float> & v0, std::vector<float> & v1) {
+	float avgErr = 0.0f;
+	for (size_t i = 0; i < v0.size(); ++i)
+		avgErr += abs(v0[i] - v1[i]);
+	return avgErr / v0.size();
+}
 
 // operates an element over a vector. Sizes must match, does not resizes
 void sumElemToVector(float x, std::vector<float> & vIn, std::vector<float> & vOut) {

@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <thread>  
 #include "engine.h"
 
 #include <string.h>
@@ -53,10 +54,274 @@
 // test function for testing
 void test(char* dir_name, char* file_name) {
 
-	test_cosXYZ();
+	testDiffSPGExt(dir_name, file_name);
 	
 	std::cout << "\n\nTest done...\n\n";
 }
+
+//void testDiffSPGExt(...)
+void testDiffSPGExt(char* dir_name, char* file_name) {
+	
+	// RENDERING -----------------------------------------------------------------------
+	// Render all the object3D of the SCENEMAIN
+	int argcStub = 0;
+	char** argvStub = NULL;
+	std::thread thread_render(render_anti_bug_thread, argcStub, argvStub);
+	std::cout << "\n\nDo NOT close the openGL window while the PMD loop is runnung.\n(it wouldn't be the end of the world, but it's better not to)\n\n";
+	
+	// FRAMES
+	Frame frameSim00;
+	Frame frameSim90;
+	Frame frameSim00err;
+	Frame frameSim90err;
+	PixStoring ps = PIXELS_STORING_GLOBAL;
+	bool pSim = false;
+	// plotting simulated frames
+	float scale = -1.0f;
+	if (pSim)
+		scale = (int)(CAMERA_PIX_X / (float)PMD_SIM_COLS);
+	
+	// PARAMETRS ------------------------------------------------------------------------------
+	const int p_size = 7;			// x, y, z, phi[-PI,+PI], theta[-PI/2,+PI/2], roll[-PI,+PI] kTS
+	float* p = new float[p_size];	// p[0],p[1],p[2],p[3],p[4],p[5],p[6] = x,y,z,phi,theta,roll,kTS
+	// capture data directly from PMD to Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE)
+	p[0] = 1.1f;	// initial parameters estimate (x,y,z) (p[0] = 1.10f; p[1] = 0.79f; p[2] = -0.55f;)
+	p[1] = 0.8f;
+	p[2] = -0.4f;
+	p[3] = 0.0f * PI / 180.0f;		// initial parameters estimate (phi,theta,roll) (in radians)
+	p[4] = 0.0f * PI / 180.0f;
+	p[5] = 0.0f * PI / 180.0f;	
+	p[6] = 0.0105f;					// initial parameters estimate kTS
+
+	// Error parameters
+	float avgErrTot = 0.0f;
+	float avgErr = 0.0f;
+	float iters = 10.0f - 0.5f;
+
+	float parVariation = 0.01;
+	
+	std::cout << "\n\nModifying p[6] with variation = " << parVariation << " (radians)";
+	std::cout << "\np[] = (" << p[0] << ", " << p[1] << ", " << p[2] << ", " << p[3] << ", " << p[4] << ", " << p[5] << ", " << p[6] << ")\n";
+
+	// loop over the distances
+	for (float i = 0.0f; i < iters; i+=1.0f) {
+
+		avgErr = 0.0f;
+
+		// FRAME PARAMETERS
+		float freq = 50.0f;	
+		float wavelenght = C_LIGHT_AIR / (freq * 1000000.0f);	// wavelenght = c / f;
+		float dist = 0.0f;
+		float distLaserOffset = ((float)((int)((i * wavelenght / iters) * 10.0f))) / 10.0f;
+		float shut = 1920.0f;
+		
+		// Update p to the correct p
+		p[6] = 0.0105f;
+	
+		// GET SIMULATED FRAME
+		testDiffSPG(dir_name, file_name, frameSim00, frameSim90, p, freq, distLaserOffset, shut, ps, pSim);
+		frameSim00.plot(1, false, "S00", scale);
+		frameSim90.plot(1, false, "S90", scale);
+
+		// Update p to compute error
+		p[6] += parVariation;
+
+		// GET SIMULATED FRAME OFFSETED WITH THE ERROR
+		testDiffSPG(dir_name, file_name, frameSim00err, frameSim90err, p, freq, distLaserOffset, shut, ps, pSim);
+		avgErr += avgError(frameSim00.data, frameSim00err.data);
+		avgErr += avgError(frameSim90.data, frameSim90err.data);
+		avgErr /= 2.0f;
+		avgErrTot += avgErr;
+		std::cout << "\ndist offset " << (int)(i+0.5) << " of " << (int)(iters) << " avgErr = " << avgErr;
+		frameSim00err.plot(1, false, "SE00", scale);
+		frameSim90err.plot(1, false, "SE90", scale);
+	}
+	avgErrTot /= (float)((int)iters + 1);
+	std::cout << "\n\navgErrTot = " << avgErrTot << "\n\n";
+
+	// joins
+	thread_render.join();
+
+}
+
+//void testDiffSPG(...)
+void testDiffSPG(char* dir_name, char* file_name, Frame & frameSim00, Frame & frameSim90, float* p, float frequency, float distLaserOffset, float shutter, PixStoring ps ,bool pSim) {
+	
+	// SCENE AND BASIC DATA STRUCTURES ------------------------------------------
+	// set scene
+	SceneType sceneType = OCCLUSION;
+	SCENEMAIN.set(sceneType);
+	Info info(dir_name, file_name);
+	
+	// FRAME AND BOX ------------------------------------------
+	// set frames with parameters and stub data:
+	float distance = 0.0f;
+	Frame frame_00_capture_stub(info, ps, pSim, 0, 0, frequency, distance, shutter, 0.0f);
+	Frame frame_90_capture_stub(info, ps, pSim, 0, 0, frequency, distance, shutter, 90.0f);
+
+	// Set all the corresponding scene and start updating
+	// faces
+	const int vop_faces = 6;	// 1:Plane, 6:Box
+	std::vector<int> rowsPerFaceV(vop_faces);
+	std::vector<int> colsPerFaceV(vop_faces);
+	/*for (int f = FRONT; f < vop_faces; ++f) {
+		rowsPerFaceV[f] = 4;
+		colsPerFaceV[f] = 4;
+	}*/
+	// Point vopS(0.584f, 0.505f, 0.399f);	// manual measurement
+	int mul = 1;
+	rowsPerFaceV[FRONT]  = 5 * mul;	colsPerFaceV[FRONT]  = 6 * mul;
+	rowsPerFaceV[BACK]   = 5 * mul;	colsPerFaceV[BACK]   = 6 * mul;
+	rowsPerFaceV[RIGHT]  = 5 * mul;	colsPerFaceV[RIGHT]  = 4 * mul;
+	rowsPerFaceV[LEFT]   = 5 * mul;	colsPerFaceV[LEFT]   = 4 * mul;
+	rowsPerFaceV[BOTTOM] = 4 * mul;	colsPerFaceV[BOTTOM] = 6 * mul;
+	rowsPerFaceV[TOP]    = 4 * mul;	colsPerFaceV[TOP]    = 6 * mul;
+	/*
+	rowsPerFaceV[FRONT]  = mul;	colsPerFaceV[FRONT]  = mul;
+	rowsPerFaceV[BACK]   = mul;	colsPerFaceV[BACK]   = mul;
+	rowsPerFaceV[RIGHT]  = mul;	colsPerFaceV[RIGHT]  = mul;
+	rowsPerFaceV[LEFT]   = mul;	colsPerFaceV[LEFT]   = mul;
+	rowsPerFaceV[BOTTOM] = mul;	colsPerFaceV[BOTTOM] = mul;
+	rowsPerFaceV[TOP]    = mul;	colsPerFaceV[TOP]    = mul;
+	*/
+	SCENEMAIN.setScene_Occlusion(rowsPerFaceV, colsPerFaceV, ps, pSim);
+	//std::cout << "\ndistLaserOffset = " << distLaserOffset;
+	SCENEMAIN.o[LASER].tra(SCENEMAIN.o[LASER].normalQUAD() * (-distLaserOffset));
+	
+	// ADDITIONAL DATA PARAMETERS -------------------------------------------------------------------------------------
+	// OCCLUSION_ADATA constant parameters
+	CalibrationMatrix cmx(info);
+	Object3D volPatchesRef(SCENEMAIN.o[VOLUME_PATCHES]);
+	int numFaces = (int)rowsPerFaceV.size();
+	int numShapes = SCENEMAIN.o[VOLUME_PATCHES].s.size();
+		Point vopC(0.0f, 0.0f, 0.0f);
+		for (int si = 0; si < numShapes; ++si)
+			vopC += SCENEMAIN.o[VOLUME_PATCHES].s[si].c;
+		vopC /= numShapes;
+		volPatchesRef.tra(vopC * (-1.0f));	// set the reference centered in the origin to optimize rotation
+	
+	// new parameters
+	std::vector<int> numShapesInFace(numFaces);
+	std::vector<int> idxS0ofF(numFaces + 1);
+		int siAccum = 0;
+		for (int fi = FRONT; fi < numFaces; ++fi) {
+			numShapesInFace[fi] = rowsPerFaceV[fi] * colsPerFaceV[fi];
+			idxS0ofF[fi] = siAccum;
+			siAccum += rowsPerFaceV[fi] * colsPerFaceV[fi];
+		}
+		idxS0ofF[numFaces] = numShapes;
+	std::vector<bool> facingWLFace(numFaces, false);
+	std::vector<float> attTermV(numShapes, 0.0f);
+	
+	std::vector<Point> faceNRef(numFaces);
+		for (int fi = FRONT; fi < numFaces; ++fi)
+			faceNRef[fi] = volPatchesRef.s[idxS0ofF[fi]].normalQUAD();
+	std::vector<Point*> shapeN(numShapes);
+		int fi = -1;
+		for (int si = 0; si < numShapes; ++si) {
+			if (si >= idxS0ofF[fi])
+				fi++;
+			shapeN[si] = &(faceNRef[fi]);
+		}
+	std::vector<float> area(numShapes);
+		for (int si = 0; si < numShapes; ++si)
+			area[si] = volPatchesRef.s[si].areaRECTANGLE();
+	Point walN = SCENEMAIN.o[WALL].normalQUAD();
+	Point walL = int_linePN_object3D(SCENEMAIN.o[LASER].s[0].c, SCENEMAIN.o[LASER].normalQUAD(), SCENEMAIN.o[WALL]);
+	int freq_idx = get_freq_idx(info, frame_00_capture_stub.freq);	// returns -1 if no idx correspondance was found
+		if (freq_idx < 0) {
+			std::cout << "\nWarning (in updateVolumePatches_Occlusion):\n  Frame freq = " << frame_00_capture_stub.freq << " is not a freq in .cmx freqV = ";
+			print(info.freqV);
+			std::cout << "\nending...";
+			return;
+		}
+	int numPix = frame_00_capture_stub.data.size();
+	int sizeofFrameData = numPix*sizeof(float);
+	
+	// OCCLUSION_ADATA variable parameters
+	Scene sceneCopy(SCENEMAIN);
+		std::vector<float> frameSim00_data(numPix, 0.0f);
+		std::vector<float> frameSim90_data(numPix, 0.0f);
+		frameSim00.set(frameSim00_data, frame_00_capture_stub.rows,  frame_00_capture_stub.cols, info.freqV[freq_idx], 0.0f, info.shutV[info.shutV.size()-1], info.phasV[0], ps, pSim);
+		frameSim90.set(frameSim90_data, frame_90_capture_stub.rows,  frame_90_capture_stub.cols, info.freqV[freq_idx], 0.0f, info.shutV[info.shutV.size()-1], info.phasV[1], ps, pSim);
+	std::vector<Point> faceN(numFaces);
+
+	// old parameters
+	/*
+	int facesFacing_size = 0;
+	std::vector<int> facesFacingIdx(numFaces, 0);
+	std::vector<int> firstShapeIdx_in_volPatchesRadiance_of_facesFacingIdx(numFaces, 0);
+	int volPatchesRadiance_size = 0;
+	std::vector<int> volPatchesRadianceIdx (numShapes, 0);
+	std::vector<float> volPatchesRadiance (numShapes, 0.0f);
+	*/
+	
+	std::vector<int> transientImagePix_size (numPix, 0);
+	std::vector<std::vector<float>> transientImageDist (numPix, std::vector<float>(numShapes));
+	std::vector<std::vector<float>> transientImageAttTerm (numPix, std::vector<float>(numShapes));
+	Point traV(0.0f, 0.0f, 0.0f);
+
+	// OCCLUSION_ADATA storing additional data in struct
+	struct OCCLUSION_ADATA adata;
+	adata.info = &info;
+	adata.cmx = &cmx;
+	adata.volPatchesRef = &volPatchesRef;		// this 2nd copy is the reference volPatches centered in the origin and should not be modified
+	adata.numFaces = numFaces;
+	adata.numShapes = numShapes;
+	
+	// new parameters
+	adata.numShapesInFace = &numShapesInFace;
+	adata.idxS0ofF = &idxS0ofF;
+	adata.facingWLFace = &facingWLFace;
+	adata.attTermV = &attTermV;
+
+	adata.faceNRef = &faceNRef;
+	adata.shapeN = &shapeN;						// unnused
+	adata.area = &area;
+	adata.walN = &walN;
+	adata.walL = &walL;
+	adata.freq_idx = freq_idx;
+	adata.ps_ = ps;
+	adata.pSim_ = pSim;
+	adata.numPix = numPix;						// rows*cols
+	adata.sizeofFrameData = sizeofFrameData;	// rows*cols*sizeof(float) = rows*cols*4
+	adata.sceneCopy = &sceneCopy;				// semi-constant: SCENEMAINCopy.o[VOLUME_PATHCES] is modified in each iteration of levmar
+	//adata.SCENEMAINCopy = &SCENEMAIN;					// original SCENEMAIN, for debugging
+	adata.frame00 = &frame_00_capture_stub;
+	adata.frame90 = &frame_90_capture_stub;
+	adata.frameSim00 = &frameSim00;
+	adata.frameSim90 = &frameSim90;
+	adata.faceN = &faceN;
+	
+	// old parameters
+	/*
+	adata.facesFacing_size = facesFacing_size;
+	adata.facesFacingIdx = &facesFacingIdx;
+	adata.firstShapeIdx_in_volPatchesRadiance_of_facesFacingIdx = &firstShapeIdx_in_volPatchesRadiance_of_facesFacingIdx;
+	adata.volPatchesRadiance_size = volPatchesRadiance_size;
+	adata.volPatchesRadianceIdx = &volPatchesRadianceIdx;
+	adata.volPatchesRadiance = &volPatchesRadiance;
+	*/
+
+	adata.transientImagePix_size = &transientImagePix_size;
+	adata.transientImageDist = &transientImageDist;
+	adata.transientImageAttTerm = &transientImageAttTerm;
+	adata.traV = &traV;
+	
+	// SIMULATE FRAME -----------------------------------------------------------------------
+	// Update Scene 
+	updateSceneOcclusion(p, &adata);
+	// Radiance from each volume patch. L(x) in the paper.
+	setAttTermV(&adata);
+	// Transient Image
+	setTransientImage(&adata);
+	// Pixels value. H(w,phi) in the paper
+	set_FrameSim(p, &adata);
+
+	// UPDATE SCENE ----------------------------------------------------------------------------
+	SCENEMAIN.o[VOLUME_PATCHES].set(sceneCopy.o[VOLUME_PATCHES]);	// we could also modify the original scene with the final parameters
+}
+
 
 // test_cosXYZ(...)
 void test_cosXYZ() {

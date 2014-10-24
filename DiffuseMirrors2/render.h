@@ -21,13 +21,13 @@ void transform_UI();
 
 
 
-void render_Scene(Scene & scene, bool renderEdges = false);
-void render_Object3D(Object3D & o, bool renderEdges = false);
-void render_Shape(Shape & s, bool renderEdges = false);
-void render_Rectangle(Point & p0, Point & p1, Point & p2, Point & p3, float R, float G, float B, float A, bool renderEdges = false);
-void render_Triangle(Point & p0, Point & p1, Point & p2, float R, float G, float B, float A, bool renderEdges = false);
-void render_Line(Point & p0, Point & p1, float R, float G, float B, float A);
-void render_Point(Point & p0, float R, float G, float B, float A);
+void render_Scene(Scene & scene);
+void render_Object3D(Object3D & o, bool renderShape = true, float lineWidth = 1.0f, float centerPointSize = 3.0f);
+void render_Shape(Shape & s, bool renderShape = true, float lineWidth = 1.0f, float pointSize = 3.0f);
+void render_Rectangle(Point & p0, Point & p1, Point & p2, Point & p3, float R, float G, float B, float A, bool renderShape = true, float lineWidth = 1.0f);
+void render_Triangle(Point & p0, Point & p1, Point & p2, float R, float G, float B, float A, bool renderShape = true, float lineWidth = 1.0f);
+void render_Line(Point & p0, Point & p1, float R, float G, float B, float A, float lineWidth = 1.0f);
+void render_Point(Point & p0, float R, float G, float B, float A, float pointSize = 3.0f);
 
 
 

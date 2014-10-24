@@ -409,6 +409,7 @@ float max(std::vector<float> & v, int & max_idx);
 float sum(std::vector<float> & v);
 float mean(std::vector<float> & v);
 float var(std::vector<float> & v);
+float avgError(std::vector<float> & v0, std::vector<float> & v1);
 
 // operates an element over a vector. Sizes must match, does not resizes
 void sumElemToVector(float x, std::vector<float> & vIn, std::vector<float> & vOut);
