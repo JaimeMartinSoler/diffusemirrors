@@ -1256,12 +1256,6 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	// Syncronization
 	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
 	locker_frame_object = std::unique_lock<std::mutex>(mutex_frame_object, std::defer_lock);
-	
-	std::cout << "\nBefore while";
-	//while (!UPDATED_NEW_FRAME) {	//std::cout << "Waiting in Object to finish the UPDATED_NEW_Frame. This is OK!\n";
-	//	Sleep(1);
-	//}
-	std::cout << "\nAfter while";
 
 	// OCCLUSION_ADATA constant parameters
 	CalibrationMatrix cmx(info);
@@ -1392,18 +1386,25 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	const int x_size = numPix * info.phasV.size();	// rows*cols*phases = rows*cols*2
 	float* p = new float[p_size];							// p[0],p[1],p[2],p[3],p[4],p[5],p[6] = x,y,z,phi,theta,roll,kTS
 	float* x = new float[x_size];							// x[i]: value of simulated pixel i
-	p[0] = 0.8f; p[1] = 0.4f; p[2] = -0.2f;				// initial parameters estimate (x,y,z) (p[0] = 1.10f; p[1] = 0.79f; p[2] = -0.55f;)
-	p[3] = 0.0f * PI / 180.0f; p[4] = 0.0f; p[5] = 0.0f;	// initial parameters estimate (phi,theta,roll) (in radians)
+	p[0] = 1.4f;				// initial parameters estimate (x,y,z) (p[0] = 1.10f; p[1] = 0.79f; p[2] = -0.55f;)
+	p[1] = 0.4f;
+	p[2] = -0.8f;				
+	//p[0] = (scene.o[CAMERA].s[0].c.x + scene.o[LASER].s[0].c.x) / 2.0f;	// for testing...
+	//p[1] = (scene.o[CAMERA].s[0].c.y + scene.o[LASER].s[0].c.y) / 2.0f;
+	//p[2] = (scene.o[CAMERA].s[0].c.z + scene.o[LASER].s[0].c.z) / 2.0f + 3.0f;
+	p[3] = 0.0f * PI / 180.0f;	// initial parameters estimate (phi,theta,roll) (in radians)
+	p[4] = 0.0f;
+	p[5] = 0.0f;	
 	p[6] = 0.01f;											// initial parameters estimate kTS
-	bool resetP = false;							// resets p in each iteration to its initial value
+	bool resetP = true;							// resets p in each iteration to its initial value
 	// optimization control parameters; passing to levmar NULL instead of opts reverts to defaults
 	float opts[LM_OPTS_SZ];
-	float* optsNULL = NULL;	// in case we decide to pass NULL
-	opts[0] = LM_INIT_MU;
-	opts[1] = 1E-15;  // 1E-15
-	opts[2] = 1E-15;  // 1E-15
-	opts[3] = 1E-20;  // 1E-20
-	opts[4] = LM_DIFF_DELTA; // relevant only if the finite difference Jacobian version is used (not this case)
+	//float* optsNULL = NULL;	// in case we decide to pass NULL
+	opts[0] = LM_INIT_MU;		// scale factor for initial \mu (def=LM_INIT_MU=1E-03)
+	opts[1] = 1E-06;			// stopping thresholds for ||J^T e||_inf (def=1E-15)
+	opts[2] = 1E-06;			// stopping thresholds for ||Dp||_2 (def=1E-15)
+	opts[3] = 1E-06;			// stopping thresholds for ||e||_2 (def=1E-20)
+	opts[4] = 1E-04;			// step used in difference approximation to the Jacobian (def=LM_DIFF_DELTA=1E-06)
 	// information parameters. Output of the optimization function about internal parameters such as number of iterations (inf[5]) etc
 	float inf[LM_INFO_SZ];
 	// other unused parameters (work, covar)
@@ -1416,11 +1417,28 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	
 	// OCCLUSION_ADATA variable parameters p bounds
 	const float aso = 1.01f;		// angle scale offset to the angular limits, to avoid problems around the bounds of these limits
-	std::vector<float> pL(p_size);	pL[0]=p[0]-0.5f;	pL[1]=p[1]-0.5f;	pL[2]=p[2]-0.5f;	pL[3]=-aso*PI;	pL[4]=-aso*PI/2.0f;	pL[5]=-aso*PI;	pL[6]=p[6]*0.001f;	
-	std::vector<float> pU(p_size);	pU[0]=p[0]+0.5f;	pU[1]=p[1]+0.5f;	pU[2]=p[2]+0.5f;	pU[3]= aso*PI;	pU[4]= aso*PI/2.0f;	pU[5]= aso*PI;	pU[6]=p[6]*1000.0f;	
+	const float boxSizeHalf = 0.3f;
+	std::vector<float> pL(p_size);
+	pL[0] = scene.o[LASER].s[0].c.x + 0.1f + boxSizeHalf;
+	pL[1] = 0.0f + boxSizeHalf;
+	pL[2] = scene.o[WALL].s[0].c.z + boxSizeHalf;
+	pL[3] = -aso*PI;
+	pL[4] = -aso*PI/2.0f;
+	pL[5] = -aso*PI;
+	pL[6] = p[6] * 0.001f;	
+	std::vector<float> pU(p_size);
+	pU[0] = scene.o[WALL].s[0].p[1].x - boxSizeHalf;
+	pU[1] = scene.o[WALL].s[0].p[2].y - boxSizeHalf;
+	if (scene.o[FLOOR].s.size() > 0)
+		pU[2] = scene.o[FLOOR].s[0].c.z - boxSizeHalf;
+	else
+		pU[2] = scene.o[LASER].s[0].c.z + 0.75f - boxSizeHalf;
+	pU[3] = aso*PI;
+	pU[4] = aso*PI/2.0f;
+	pU[5] = aso*PI;
+	pU[6] = p[6] * 1000.0f;	
 	adata.pL = &pL;
 	adata.pU = &pU;
-	
 	// printing actual parameters
 	const bool print_p_info = true;		// enables the parameter printing
 	const bool actual_p_known = false;	// enables the actual and erro parameter printing (if print_p_info is also enabled)
@@ -1474,6 +1492,7 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 		// ----- Update pixel patches, setting the Best Fit --------------------------------------------------------------------------------
 		memcpy(x, frame00.data.data(), sizeofFrameData);			// actual measurement values to be fitted with the model
 		memcpy(x + numPix, frame90.data.data(), sizeofFrameData);
+		// http://users.ics.forth.gr/~lourakis/levmar/
 		numIters = slevmar_dif(set_Occlusion_Simulation_Frame_Optim, p, x, p_size, x_size, maxIters, opts, inf, work, covar, (void*)&adata); // withOUT analytic Jacobian
 		scene.o[VOLUME_PATCHES].set(sceneCopy.o[VOLUME_PATCHES]);	// we could also modify the original scene with the final parameters
 
@@ -2332,8 +2351,8 @@ void Scene::setScene_DirectVision(PixStoring ps, bool pSim_) {
 void Scene::setScene_Occlusion(std::vector<int> & rowsPerFaceV, std::vector<int> & colsPerFaceV, PixStoring ps, bool pSim_) {
 	
 	// WALL (2)		// before CAMERA and LASER, because CAMERA camDegPhi, camDegTheta and LASER lasAxisN, lasDeg are WALL-dependent
-	Point walPosC(-1.0f, 0.0f, -1.50f);
-	Point walS(6.0f, 3.0f, 0.2f);
+	Point walPosC(-0.75f, 0.0f, -1.50f);
+	Point walS(3.25f, 2.5f, 0.1f);
 	Point walAxisN(0.0f, 1.0f, 0.0f);
 	float walDeg = 0.0f;
 	Point walC_relToP0(0.0f, 0.0f, 0.0f);
@@ -2387,9 +2406,11 @@ void Scene::setScene_Occlusion(std::vector<int> & rowsPerFaceV, std::vector<int>
 	
 	// LASER (1)	// after WALL, because LASER lasAxisN, lasDeg are WALL-dependent
 	Point lasPosCrelToCam(0.405f, 0.0f, -0.05f);				// manual measurement
+	//Point lasPosCrelToCam(0.2f, 0.0f, 0.0f);					// for testing...
 	Point lasPosC = camPosC + lasPosCrelToCam;
 	// measurements WALL-dependent for lasAxisN, lasDeg
 	Point lasPosWLrelTowalCamFloor(0.763f, 0.797f, 0.0f);		// manual measurement (0.763f, 0.797f, 0.0f), relative position of WL from the projection of the base of the camera into the wall
+	//Point lasPosWLrelTowalCamFloor(0.0f, camPosC.y, 0.0f);		// for testing...
 	Point lasPosWL = walCamFloor + lasPosWLrelTowalCamFloor;	// WL position of the projection of the normal of the laser into the wall
 	Point lasV = lasPosWL - lasPosC;
 	float lasDegPhi = degP(lasV);
@@ -2430,7 +2451,7 @@ void Scene::setScene_Occlusion(std::vector<int> & rowsPerFaceV, std::vector<int>
 
 	// OCCLUDER (3)
 	Point occPosC(0.6f, 0.0f, 0.7f);
-	Point occS(1.0f, 3.0f, 0.05f);
+	Point occS(1.0f, walS.y, 0.05f);
 	Point occAxisN(0.0f, 1.0f, 0.0f);
 	float occDeg = 90.0f;
 	Point occC_relToP0(0.0f, 0.0f, 0.0f);

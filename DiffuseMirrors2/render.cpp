@@ -91,120 +91,133 @@ void transform_UI() {
 
 
 // It renders all the object3D's of a Scene
-void render_Scene(Scene & scene, bool renderEdges) {
-	
-	bool render_WALL_PATCHES		= true;
-	bool render_WALL_PATCHES_edges	= true;
-	bool render_PIXEL_PATCHES		= true;
-	bool render_PIXEL_PATCHES_edges = false;
-
+void render_Scene(Scene & scene) {
+	float lineWidth = 1.0f;
+	float centerPointSize = 3.0f;
 	for (std::size_t i = 0; i < scene.o.size(); i++) {
-		if ((i == WALL_PATCHES) && render_WALL_PATCHES)
-			render_Object3D(scene.o[i], render_WALL_PATCHES_edges);
-		else if ((i == PIXEL_PATCHES) && render_PIXEL_PATCHES)
-			render_Object3D(scene.o[i], render_PIXEL_PATCHES_edges);
-		else
-			render_Object3D(scene.o[i], renderEdges);
+		switch (i) {
+			case CAMERA			: render_Object3D(scene.o[i], true, lineWidth, 0.0f);	break;
+			case LASER			: render_Object3D(scene.o[i], true, lineWidth, centerPointSize);	break;
+			case WALL			: render_Object3D(scene.o[i], true, lineWidth, 0.0f);	break;
+			case OCCLUDER		: render_Object3D(scene.o[i], true, lineWidth, 0.0f);	break;
+			case FLOOR			: render_Object3D(scene.o[i], true, lineWidth, 0.0f);	break;
+			case VOLUME			: render_Object3D(scene.o[i], true, lineWidth, 0.0f);	break;
+			case WALL_PATCHES	: render_Object3D(scene.o[i], false, lineWidth * 0.0f, 0.0f);	break;
+			case CAMERA_FOV		: render_Object3D(scene.o[i], true, lineWidth * 1.5f, 0.0f);	break;
+			case LASER_RAY		: render_Object3D(scene.o[i], true, lineWidth * 1.5f, 0.0f);	break;
+			case VOLUME_PATCHES	: render_Object3D(scene.o[i], true, lineWidth * 1.5f, 0.0f);	break;
+			case PIXEL_PATCHES	: render_Object3D(scene.o[i], true, lineWidth, 0.0f);	break;
+			case UNKOWN_OBT		: render_Object3D(scene.o[i], true, lineWidth, centerPointSize);	break;
+		}
 	}
 }
 
 // It renders all the Shapes of an object3D
-void render_Object3D(Object3D & o, bool renderEdges) {
+void render_Object3D(Object3D & o, bool renderShape, float lineWidth, float centerPointSize) {
 	for (std::size_t i = 0; i < o.s.size(); i++) {
-			render_Shape(o.s[i], renderEdges);
+		render_Shape(o.s[i], renderShape, lineWidth, centerPointSize);
 	}
-	if (o.s.size() > 0)
-		render_Point(o.s[0].c, 1.0f, 0.0f, 0.0f, 1.0f);
+	if ((centerPointSize > 0.0f) && (o.s.size() > 0)) {
+		if ((o.s[0].st != PT) || ((o.s[0].st == PT) && (o.s.size() > 1))) 
+			render_Point(o.s[0].c, 1.0f, 0.0f, 0.0f, 1.0f, centerPointSize);
+	}
 }
 
 // It renders a Shape
-void render_Shape(Shape & s, bool renderEdges) {
+void render_Shape(Shape & s, bool renderShape, float lineWidth, float pointSize) {
 	if (s.st == QUAD)
-		render_Rectangle(s.p[0], s.p[1], s.p[2], s.p[3], s.R, s.G, s.B, s.A, renderEdges);
+		render_Rectangle(s.p[0], s.p[1], s.p[2], s.p[3], s.R, s.G, s.B, s.A, renderShape, lineWidth);
 	else if (s.st == TRIANGLE)
-		render_Triangle(s.p[0], s.p[1], s.p[2], s.R, s.G, s.B, s.A, renderEdges);
+		render_Triangle(s.p[0], s.p[1], s.p[2], s.R, s.G, s.B, s.A, renderShape, lineWidth);
 	else if (s.st == LINE)
-		render_Line(s.p[0], s.p[1], s.R, s.G, s.B, s.A);
-	else if (s.st == TRIANGLE)
-		render_Point(s.p[0], s.R, s.G, s.B, s.A);
+		render_Line(s.p[0], s.p[1], s.R, s.G, s.B, s.A, lineWidth);
+	else if (s.st == PT)
+		render_Point(s.p[0], s.R, s.G, s.B, s.A, pointSize);
 }
 
 // It renders a rectangle from 4 points
-void render_Rectangle(Point & p0, Point & p1, Point & p2, Point & p3, float R, float G, float B, float A, bool renderEdges) {
-	// OpenGL
-	glLoadIdentity();
-	set_initial_pose();
-	transform_UI();
-	glBegin(GL_QUADS);
-	// Color
-	glColor4f(R, G, B, A);
-	// Vertex: counter-clockwise (CCW) order with normal pointing out
-	glVertex3f(p0.x, p0.y, p0.z);
-	glVertex3f(p1.x, p1.y, p1.z);
-	glVertex3f(p2.x, p2.y, p2.z);
-	glVertex3f(p3.x, p3.y, p3.z);
-	glEnd();
+void render_Rectangle(Point & p0, Point & p1, Point & p2, Point & p3, float R, float G, float B, float A, bool renderShape, float lineWidth) {
+	if (renderShape) {
+		// OpenGL
+		glLoadIdentity();
+		set_initial_pose();
+		transform_UI();
+		glBegin(GL_QUADS);
+		// Color
+		glColor4f(R, G, B, A);
+		// Vertex: counter-clockwise (CCW) order with normal pointing out
+		glVertex3f(p0.x, p0.y, p0.z);
+		glVertex3f(p1.x, p1.y, p1.z);
+		glVertex3f(p2.x, p2.y, p2.z);
+		glVertex3f(p3.x, p3.y, p3.z);
+		glEnd();
+	}
 	// Render the edges of the Rectangle (black)
-	if (renderEdges) {
-		render_Line(p0, p1, 0.0f, 0.0f, 0.0f, 1.0f);
-		render_Line(p1, p2, 0.0f, 0.0f, 0.0f, 1.0f);
-		render_Line(p2, p3, 0.0f, 0.0f, 0.0f, 1.0f);
-		render_Line(p3, p0, 0.0f, 0.0f, 0.0f, 1.0f);
+	if (lineWidth > 0.0f) {
+		render_Line(p0, p1, 0.0f, 0.0f, 0.0f, 1.0f, lineWidth);
+		render_Line(p1, p2, 0.0f, 0.0f, 0.0f, 1.0f, lineWidth);
+		render_Line(p2, p3, 0.0f, 0.0f, 0.0f, 1.0f, lineWidth);
+		render_Line(p3, p0, 0.0f, 0.0f, 0.0f, 1.0f, lineWidth);
 	}
 }
 
 // It renders a triangle from 3 points
-void render_Triangle(Point & p0, Point & p1, Point & p2, float R, float G, float B, float A, bool renderEdges) {
-	// OpenGL
-	glLoadIdentity();
-	set_initial_pose();
-	transform_UI();
-	glBegin(GL_TRIANGLES);
-	// Color
-	glColor4f(R, G, B, A);
-	// Vertex: counter-clockwise (CCW) order with normal pointing out
-	glVertex3f(p0.x, p0.y, p0.z);
-	glVertex3f(p1.x, p1.y, p1.z);
-	glVertex3f(p2.x, p2.y, p2.z);
-	glEnd();
+void render_Triangle(Point & p0, Point & p1, Point & p2, float R, float G, float B, float A, bool renderShape, float lineWidth) {
+	if (renderShape) {
+		// OpenGL
+		glLoadIdentity();
+		set_initial_pose();
+		transform_UI();
+		glBegin(GL_TRIANGLES);
+		// Color
+		glColor4f(R, G, B, A);
+		// Vertex: counter-clockwise (CCW) order with normal pointing out
+		glVertex3f(p0.x, p0.y, p0.z);
+		glVertex3f(p1.x, p1.y, p1.z);
+		glVertex3f(p2.x, p2.y, p2.z);
+		glEnd();
+	}
 	// Render the edges of the Triangle (black)
-	if (renderEdges) {
-		render_Line(p0, p1, 0.0f, 0.0f, 0.0f, 1.0f);
-		render_Line(p1, p2, 0.0f, 0.0f, 0.0f, 1.0f);
-		render_Line(p2, p0, 0.0f, 0.0f, 0.0f, 1.0f);
+	if (lineWidth > 0.0f) {
+		render_Line(p0, p1, 0.0f, 0.0f, 0.0f, 1.0f, lineWidth);
+		render_Line(p1, p2, 0.0f, 0.0f, 0.0f, 1.0f, lineWidth);
+		render_Line(p2, p0, 0.0f, 0.0f, 0.0f, 1.0f, lineWidth);
 	}
 }
 
 // It renders a line from 2 points
-void render_Line(Point & p0, Point & p1, float R, float G, float B, float A) {
-	// OpenGL
-	glLoadIdentity();
-	set_initial_pose();
-	transform_UI();
-	glLineWidth(1.0);	// line width = 1.0
-	glBegin(GL_LINES);
-	// Color
-	glColor4f(R, G, B, A);
-	// Vertex
-	glVertex3f(p0.x, p0.y, p0.z);
-	glVertex3f(p1.x, p1.y, p1.z);
-	glEnd();
-
+void render_Line(Point & p0, Point & p1, float R, float G, float B, float A, float lineWidth) {
+	if (lineWidth > 0.0f) {
+		// OpenGL
+		glLoadIdentity();
+		set_initial_pose();
+		transform_UI();
+		glLineWidth(lineWidth);	// def = 1.0f
+		glBegin(GL_LINES);
+		// Color
+		glColor4f(R, G, B, A);
+		// Vertex
+		glVertex3f(p0.x, p0.y, p0.z);
+		glVertex3f(p1.x, p1.y, p1.z);
+		glEnd();
+	}
 }
 
 // It renders a point from 1 point
-void render_Point(Point & p0, float R, float G, float B, float A) {
-	// OpenGL
-	glLoadIdentity();
-	set_initial_pose();
-	transform_UI();
-	glPointSize(3.0);	// point size = 3.0
-	glBegin(GL_POINTS);
-	// Color
-	glColor4f(R, G, B, A);
-	// Vertex
-	glVertex3f(p0.x, p0.y, p0.z);
-	glEnd();
+void render_Point(Point & p0, float R, float G, float B, float A, float pointSize) {
+	if (pointSize > 0.0f) {
+		// OpenGL
+		glLoadIdentity();
+		set_initial_pose();
+		transform_UI();
+		glPointSize(pointSize);	// def = 3.0f
+		glBegin(GL_POINTS);
+		// Color
+		glColor4f(R, G, B, A);
+		// Vertex
+		glVertex3f(p0.x, p0.y, p0.z);
+		glEnd();
+	}
 }
 
 
@@ -216,7 +229,7 @@ void display() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear color and depth buffers
 	glMatrixMode(GL_MODELVIEW);     // To operate on model-view matrix
 	
-	render_Scene(SCENEMAIN, true);
+	render_Scene(SCENEMAIN);
 	drawFPS();
 
 	glutSwapBuffers();  // Swap the front and back frame buffers (double buffering)

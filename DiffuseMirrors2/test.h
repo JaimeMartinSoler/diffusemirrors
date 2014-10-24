@@ -11,6 +11,14 @@ void test(char* dir_name, char* file_name);
 
 
 
+//void testDiffSPGExt(...)
+void testDiffSPGExt(char* dir_name, char* file_name);
+
+//void testDiffSPG(char* dir_name, char* file_name)
+void testDiffSPG(char* dir_name, char* file_name, Frame & frameSim00, Frame & frameSim90, float* p, float frequency, float distLaserOffset, float shutter, PixStoring ps ,bool pSim);
+
+
+
 // test_cosXYZ(...)
 void test_cosXYZ();
 
