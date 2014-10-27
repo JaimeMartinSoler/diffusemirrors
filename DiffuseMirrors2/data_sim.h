@@ -82,12 +82,6 @@ void set_FrameSim(float* p, struct OCCLUSION_ADATA* ad);
 int idxFS(int fi, int si, std::vector<int> & idxS0ofF);
 */
 
-// Auxiliar function for updateSceneOcclusion(...)
-// sets the axisN and the rad from the parameters
-void set_axisNrad_fromP(Point & axisN, float & rad, float* p);
-
-
-
 
 // ----------------------------------------------------------------------------------------------------------------------------------------
 // ----- OCCLUSION OLD IMPLEMENTATION -----------------------------------------------------------------------------------------------------

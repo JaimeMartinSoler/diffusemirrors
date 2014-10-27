@@ -647,6 +647,11 @@ void CalibrationMatrix::set (Info & info_) {
 	C_sim_rows = PMD_SIM_ROWS;
 	C_sim_cols = PMD_SIM_COLS;
 
+	// reconstruct C pixel by pixel or just from the maximum signed pixel
+	const bool pixByPix = false;
+	Frame framePix;
+	float framePixMaxSigned = 0.0f;
+
 	// Filling C
 	distSrcPixPow2V.resize(numPix(PIXELS_TOTAL, pSim));
 	scene.clear();
@@ -657,10 +662,18 @@ void CalibrationMatrix::set (Info & info_) {
 	for (size_t fi = 0; fi < info_.freqV.size(); fi++) {
 		for (size_t di = 0; di < info_.distV.size(); di++) {
 			for (size_t pi = 0; pi < info_.phasV.size(); pi++) {
+				if(!pixByPix) {
+					framePix.set(rawData, fi, di, si, pi, PIXELS_VALID, pSim);	// PIXELS_VALID, PIXELS_TOTAL could be the MaxSigned
+					framePixMaxSigned = maxAbsSigned(framePix.data);
+				}
 				for (size_t r = 0; r < info_.rows; r++) {
 					for (size_t c = 0; c < info_.cols; c++) {
-						//cmx_data_value = c * Em * albedo = H * distSrcPixPow2,    distSrcPixPow2 = |r_src - r_x0(r,c)|^2,
-						C[C_idx(fi, di, pi, r, c, PIXELS_TOTAL, pSim)] = rawData.atF(fi, di, si, pi, r, c, PIXELS_TOTAL, pSim) *  distSrcPixPow2V[rc2idx(r, c, PIXELS_TOTAL, pSim)];
+						// pixel by pixel: //cmx_data_value = c * Em * albedo = H * distSrcPixPow2,    distSrcPixPow2 = |r_src - r_x0(r,c)|^2,
+						if(pixByPix)
+							C[C_idx(fi, di, pi, r, c, PIXELS_TOTAL, pSim)] = rawData.atF(fi, di, si, pi, r, c, PIXELS_TOTAL, pSim) *  distSrcPixPow2V[rc2idx(r, c, PIXELS_TOTAL, pSim)];
+						// from one only pixel
+						else
+							C[C_idx(fi, di, pi, r, c, PIXELS_TOTAL, pSim)] = framePixMaxSigned * distSrcPixPow2V[rc2idx(r, c, PIXELS_TOTAL, pSim)];
 	}	}	}	}	}
 	
 	// Filling C_sim_PT, C_sim_PV
@@ -681,13 +694,22 @@ void CalibrationMatrix::set (Info & info_) {
 	for (size_t fi = 0; fi < info_.freqV.size(); fi++) {
 		for (size_t di = 0; di < info_.distV.size(); di++) {
 			for (size_t pi = 0; pi < info_.phasV.size(); pi++) {
-			for (size_t r = 0; r < C_sim_rows; r++) {
-				for (size_t c = 0; c < C_sim_cols; c++) {
-					//cmx_data_value = c * Em * albedo = H * distSrcPixPow2,    distSrcPixPow2 = |r_src - r_x0(r,c)|^2,
-					C_sim_PT[C_idx(fi, di, pi, r, c, PIXELS_TOTAL, pSim)] = rawData.atF(fi, di, si, pi, r, c, PIXELS_TOTAL, pSim) *  distSrcPixPow2V_sim_PT[rc2idx(r, c, PIXELS_TOTAL, pSim)];
-					C_sim_PV[C_idx(fi, di, pi, r, c, PIXELS_VALID, pSim)] = rawData.atF(fi, di, si, pi, r, c, PIXELS_VALID, pSim) *  distSrcPixPow2V_sim_PV[rc2idx(r, c, PIXELS_VALID, pSim)];
+				if(!pixByPix) {
+					framePix.set(rawData, fi, di, si, pi, PIXELS_TOTAL, false);	// PIXELS_VALID, PIXELS_TOTAL could be the MaxSigned, and pSim = false, we want the maxSigned, forget averaging
+					framePixMaxSigned = maxAbsSigned(framePix.data);
+				}
+				for (size_t r = 0; r < C_sim_rows; r++) {
+					for (size_t c = 0; c < C_sim_cols; c++) {
+						// pixel by pixel: //cmx_data_value = c * Em * albedo = H * distSrcPixPow2,    distSrcPixPow2 = |r_src - r_x0(r,c)|^2,
+						if(pixByPix) {
+							C_sim_PT[C_idx(fi, di, pi, r, c, PIXELS_TOTAL, pSim)] = rawData.atF(fi, di, si, pi, r, c, PIXELS_TOTAL, pSim) * distSrcPixPow2V_sim_PT[rc2idx(r, c, PIXELS_TOTAL, pSim)];
+							C_sim_PV[C_idx(fi, di, pi, r, c, PIXELS_VALID, pSim)] = rawData.atF(fi, di, si, pi, r, c, PIXELS_VALID, pSim) * distSrcPixPow2V_sim_PV[rc2idx(r, c, PIXELS_VALID, pSim)];
+						} else {	// from one only pixel
+							C_sim_PT[C_idx(fi, di, pi, r, c, PIXELS_TOTAL, pSim)] = framePixMaxSigned * distSrcPixPow2V_sim_PT[rc2idx(r, c, PIXELS_TOTAL, pSim)];
+							C_sim_PV[C_idx(fi, di, pi, r, c, PIXELS_VALID, pSim)] =  framePixMaxSigned * distSrcPixPow2V_sim_PV[rc2idx(r, c, PIXELS_VALID, pSim)];
+						}
 	}	}	}	}	}
-	
+
 	// Filling pathDist0
 	pSim = false;
 	pathDist0.resize(numPix(PIXELS_TOTAL, pSim)); // independent of PixStoring, the accessing depends on it. Ordering: for(r){ for(c){ // here...}} // r,c Matrix-like, 0-idx
@@ -1565,9 +1587,9 @@ void plot_rowcol(Frame & frame, char* text, int row, int col, bool & epExtStarte
 	delete [] value;
 }
 // Plots a row, a colum, the average of every row or the average every columns of 2 Frames using MATALAB engine
-//   (row >= 0) && (col <  0) && (avg == false): Plots the raw
+//   (row >= 0) && (col <  0) && (avg == false): Plots the row
 //   (row <  0) && (col >= 0) && (avg == false): Plots the col
-//   (row >= 0) && (col <  0) && (avg == true ): Plots the average of every raw
+//   (row >= 0) && (col <  0) && (avg == true ): Plots the average of every row
 //   (row <  0) && (col >= 0) && (avg == true ): Plots the average of every col
 //   else: undefined behavior
 void plot_rowcol2(Frame & frameR, Frame & frameS, char* textR, char* textS, int row, int col, bool avg, bool & epExtStarted, bool epExtUsing, Engine *epExt) {
@@ -1690,9 +1712,9 @@ void plot_rowcol2(Frame & frameR, Frame & frameS, char* textR, char* textS, int 
 	delete [] valueS;
 }
 // Plots a row, a colum, the average of every row or the average every columns of 4 Frames using MATALAB engine
-//   (row >= 0) && (col <  0) && (avg == false): Plots the raw
+//   (row >= 0) && (col <  0) && (avg == false): Plots the row
 //   (row <  0) && (col >= 0) && (avg == false): Plots the col
-//   (row >= 0) && (col <  0) && (avg == true ): Plots the average of every raw
+//   (row >= 0) && (col <  0) && (avg == true ): Plots the average of every row
 //   (row <  0) && (col >= 0) && (avg == true ): Plots the average of every col
 //   else: undefined behavior
 void plot_rowcol4(Frame & frameR00, Frame & frameS00, Frame & frameR90, Frame & frameS90, char* textR00, char* textS00, char* textR90, char* textS90, int row, int col, bool avg, bool & epExtStarted, bool epExtUsing, Engine *epExt) {
@@ -1877,6 +1899,151 @@ void plot_rowcol4(Frame & frameR00, Frame & frameS00, Frame & frameR90, Frame & 
 	delete [] valueR90;
 	delete [] valueS90;
 }
+// Plots a row, a colum, the average of every row or the average every columns of all the Frames of a vector of frames using MATALAB engine
+//   (row >= 0) && (col <  0) && (avg == false): Plots the row
+//   (row <  0) && (col >= 0) && (avg == false): Plots the col
+//   (row >= 0) && (col <  0) && (avg == true ): Plots the average of every row
+//   (row <  0) && (col >= 0) && (avg == true ): Plots the average of every col
+//   else: undefined behavior
+void plot_rowcolV(std::vector<Frame> & frameV, std::vector<char*> & textV, std::vector<float> & colorV, float lineWidth, int row, int col, bool avg, bool legend, bool freezePlot, bool & epExtStarted, bool epExtUsing, Engine *epExt) {
+	
+	// MATLAB variables
+	Engine *ep;
+	mxArray *X = NULL;
+	const int frames =  frameV.size();
+	std::vector<mxArray*> V(frames, NULL);
+	if (epExtUsing)
+		ep = epExt;
+
+	// Variables. Array structure needed to deal with MATLAB functions
+	int size = frameV[0].cols;
+	if (row < 0)
+		size = frameV[0].rows;
+	double* x = new double[size];			// need to convert to double to deal with MATLAB
+	std::vector<double*> value(frames, new double[size]);
+	
+	// Fill the corresponding values arrays
+	if (avg) {
+		if (row >= 0) {	// row, avg
+			for (int c = 0; c < frameV[0].cols; ++c) {
+				x[c] = (double)c;
+				for (int f = 0; f < frames; ++f)
+					value[f][c] = 0.0;
+				for (int r = 0; r < frameV[0].rows; ++r) {
+					for (int f = 0; f < frames; ++f)
+						value[f][c] += (double)(frameV[f].at(r, c));
+				}
+				for (int f = 0; f < frames; ++f)
+					value[f][c] /= (double)(frameV[f].rows);
+		}	} else {	// col, avg
+			for (int r = 0; r < frameV[0].rows; ++r) {
+				x[r] = (double)r;
+				for (int f = 0; f < frames; ++f)
+					value[f][r] = 0.0;
+				for (int c = 0; c < frameV[0].cols; ++c) {
+					for (int f = 0; f < frames; ++f)
+						value[f][r] += (double)(frameV[f].at(r, c));
+				}
+				for (int f = 0; f < frames; ++f)
+					value[f][r] /= (double)(frameV[f].cols);
+	}	}	} else {
+		if (row >= 0) {	// row, non-avg
+			for (int c = 0; c < frameV[0].cols; ++c) {
+				x[c] = (double)c;
+				for (int f = 0; f < frames; ++f)
+					value[f][c] = (double)(frameV[f].at(row, c));
+		}	} else {	// col, non-avg
+			for (int r = 0; r < frameV[0].rows; ++r) {
+				x[r] = (double)r;
+				for (int f = 0; f < frames; ++f)
+					value[f][r] = (double)(frameV[f].at(r, col)); 
+	}	}	}
+	
+	// Call engOpen(""). This starts a MATLAB process on the current host using the command "matlab"
+	if (!(ep = engOpen("")))
+		fprintf(stderr, "\nCan't start MATLAB engine\n");
+	
+	// Create MATLAB variables from C++ variables
+	X = mxCreateDoubleMatrix(1, size, mxREAL);
+	for (int f = 0; f < frames; ++f)
+		V[f] = mxCreateDoubleMatrix(1, size, mxREAL);
+	memcpy((void *)mxGetPr(X), (void *)x, size*sizeof(x));
+	for (int f = 0; f < frames; ++f)
+		memcpy((void *)mxGetPr(V[f]), (void *)value[f], size*sizeof(value[f]));
+	
+	// Place MATLAB variables into the MATLAB workspace
+	engPutVariable(ep, "X", X);
+	std::vector<char*> VM(frames, new char[128]);
+	for (int f = 0; f < frames; ++f) {
+		sprintf(VM[f], "VM%d", f);
+		engPutVariable(ep, VM[f], V[f]);
+	}
+	
+	// Plot the results of the figure 1 (00)
+	engEvalString(ep, "figure(1);");
+	engEvalString(ep, "hold on;");
+	std::vector<char*> plotTxtV(frames, new char[1024]);
+	for (int f = 0; f < frames; ++f) {
+		sprintf(plotTxtV[f], "plot(X, %s, 'color', [%f, %f, %f], 'lineWidth', %f)", VM[f], colorV[3*f+0], colorV[3*f+1], colorV[3*f+2], lineWidth);
+		engEvalString(ep, plotTxtV[f]);
+	}
+	
+	char xTxt[1024];
+	char titleTxt[1024];
+	char titleTxtAppend[1024] = "";
+	for (int f = 0; f < frames; ++f)
+		sprintf(titleTxtAppend, "%s", textV[f]);
+	if (avg) {
+		if (row >= 0) {
+			sprintf(titleTxt,"title('Values of the averaged rows. %s');", titleTxtAppend);
+			sprintf(xTxt,"xlabel('cols of the averaged rows');");
+		} else {
+			sprintf(titleTxt,"title('Values of the averaged cols. %s');", titleTxtAppend);
+			sprintf(xTxt,"xlabel('rows of the averaged cols');");
+	}	} else {
+		if (row >= 0) {
+			sprintf(titleTxt,"title('Values of each col of the row #%d. %s');", row, titleTxtAppend);
+			sprintf(xTxt,"xlabel('cols of the row #%d');", row);
+		} else {
+			sprintf(titleTxt,"title('Values of each row of the col #%d. %s');", col, titleTxtAppend);
+			sprintf(xTxt,"xlabel('rows of the col #%d');", col);
+	}	}
+	engEvalString(ep, titleTxt);
+	engEvalString(ep, xTxt);
+	engEvalString(ep, "ylabel('values');");
+	if (legend) {	//if (!epExtUsing)
+		char legendTxt[1024] = "legend(";
+		for (int f = 0; f < frames; ++f)
+			sprintf(legendTxt, "%s", textV[f]);
+		sprintf(legendTxt, ");");
+		engEvalString(ep, legendTxt);		// the legend blinks iterating through an external ep
+	}
+	engEvalString(ep, "hold off;");
+
+	// use std::cin freeze the plot
+	if (freezePlot) {	// if (!epExtUsing) {
+		std::cout << "\nWrite any std::string and click ENTER to continue\n";
+		std::string answer;
+		std::cin >> answer;
+	}
+	
+	// Free memory, close MATLAB figure.
+	mxDestroyArray(X);
+	for (int f = 0; f < frames; ++f)
+		mxDestroyArray(V[f]);
+	if (!epExtUsing) {
+		engEvalString(ep, "close;");
+		engClose(ep);
+	} else {
+		epExtStarted = true;
+	}
+	delete [] x;
+	for (int f = 0; f < frames; ++f) {
+		delete [] value[f];
+		delete [] VM[f];
+		delete [] plotTxtV[f];
+	}
+}
 
 
 // ----------------------------------------------------------------------------------------------------------------------------------------
@@ -1930,6 +2097,14 @@ float max(std::vector<float> & v) {
 			maxf = v[i];
 	}
 	return maxf;
+}
+float maxAbsSigned(std::vector<float> & v) {
+	float maxAS = v[0];
+	for (size_t i = 1; i < v.size(); i++) {
+		if (abs(v[i]) > abs(maxAS))
+			maxAS = v[i];
+	}
+	return maxAS;
 }
 float min(std::vector<float> & v, int & min_idx) {
 	float minf = v[0];

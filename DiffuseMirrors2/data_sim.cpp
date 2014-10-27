@@ -456,28 +456,28 @@ bool pInBounds(float* p, float* x, int p_size, int x_size, struct OCCLUSION_ADAT
 void updateSceneOcclusion(float* p, struct OCCLUSION_ADATA* ad) {
 
 	// traslation parameters
-	ad->traV->set(p[0], p[1], p[2]);
+	ad->traV->set(getPiAll(0, p, ad), getPiAll(1, p, ad), getPiAll(2, p, ad));
 	// rotX parameters (Theta)
-	float cosX = cos(p[4]);
+	float cosX = cos(getPiAll(4, p, ad));
 	float sinX = sqrt(1.0f-cosX*cosX);
-	if (p[4] > 0.0f)
+	if (getPiAll(4, p, ad) > 0.0f)
 		sinX = -sinX;	// Theta > 0.0f means a negative rotation around X
 	// rotY parameters (Phi)
-	float cosY = cos(p[3]); 
+	float cosY = cos(getPiAll(3, p, ad)); 
 	float sinY = sqrt(1.0f-cosY*cosY);
-	if (p[3] < 0.0f)
+	if (getPiAll(3, p, ad) < 0.0f)
 		sinY = -sinY;	// Phi < 0.0f means a negative rotation around Y
 	// rotZ parameters (Roll)
-	float cosZ = cos(p[5]); 
+	float cosZ = cos(getPiAll(5, p, ad)); 
 	float sinZ = sqrt(1.0f-cosZ*cosZ);
-	if (p[5] < 0.0f)
+	if (getPiAll(5, p, ad) < 0.0f)
 		sinZ = -sinZ;	// Roll < 0.0f means a negative rotation around Z
 
 	// apply transformations from the reference object
 	for (int si = 0; si < ad->numShapes; ++si) {
 		ad->sceneCopy->o[VOLUME_PATCHES].s[si].c.rotXYZopt(cosX, sinX, cosY, sinY, cosZ, sinZ, ad->volPatchesRef->s[si].c);	// useful for meas (the volPatchesRef is already centered in origin)
 		ad->sceneCopy->o[VOLUME_PATCHES].s[si].c.tra(*ad->traV);															// useful for meas
-		//ad->sceneCopy->o[VOLUME_PATCHES].s[si].albedo = p[6];																// useful for meas
+		//ad->sceneCopy->o[VOLUME_PATCHES].s[si].albedo = getPiAll(6, p, ad);												// useful for meas
 		for (size_t pi = 0; pi < ad->volPatchesRef->s[si].p.size(); ++pi) {
 			ad->sceneCopy->o[VOLUME_PATCHES].s[si].p[pi].rotXYZopt(cosX, sinX, cosY, sinY, cosZ, sinZ, ad->volPatchesRef->s[si].p[pi]);	// useless for meas, just for rendering
 			ad->sceneCopy->o[VOLUME_PATCHES].s[si].p[pi].tra(*ad->traV);																// useless for meas, just for rendering
@@ -603,12 +603,14 @@ void set_FrameSim(float* p, struct OCCLUSION_ADATA* ad) {
 				ad->frameSim00->data[pix] += (*ad->transientImageAttTerm)[pix][i] * ad->cmx->C_atX(ad->freq_idx, (*ad->transientImageDist)[pix][i], 0, r, c, ad->ps_, ad->pSim_);
 				ad->frameSim90->data[pix] += (*ad->transientImageAttTerm)[pix][i] * ad->cmx->C_atX(ad->freq_idx, (*ad->transientImageDist)[pix][i], 1, r, c, ad->ps_, ad->pSim_);
 			}
-			ad->frameSim00->data[pix] *= p[6];	//  p[6] = kTS
-			ad->frameSim90->data[pix] *= p[6];
+			ad->frameSim00->data[pix] *= 0.01 * getPiAll(6, p, ad);	//  getPiAll(6, p, ad) = kTS
+			ad->frameSim90->data[pix] *= 0.01 * getPiAll(6, p, ad);
 			pix++;
 
 	}	}
 }
+
+
 /*
 // Auxiliar (add-hoc) function for setAttTermV and setAttTermV
 // returns the actual index of the shape si of the face fi, where:
@@ -619,8 +621,10 @@ int idxFS(int fi, int si, std::vector<int> & idxS0ofF) {
 }
 */
 
+// OLD
 // Auxiliar function for updateSceneOcclusion(...)
 // sets the axisN and the rad from the parameters
+/*
 void set_axisNrad_fromP(Point & axisN, float & rad, float* p) {
 	axisN.set(p[3], p[4], p[5]);
 	float axisMod = axisN.mod();
@@ -633,7 +637,7 @@ void set_axisNrad_fromP(Point & axisN, float & rad, float* p) {
 		rad = 0.0f;
 	}
 }
-
+*/
 
 
 
