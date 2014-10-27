@@ -390,7 +390,13 @@ void plot_rowcol2(Frame & frame0, Frame & frame1, char* text0, char* text1, int 
 //   (row <  0) && (col >= 0) && (avg == true ): Plots the average of every col
 //   else: undefined behavior
 void plot_rowcol4(Frame & frameR00, Frame & frameS00, Frame & frameR90, Frame & frameS90, char* textR00, char* textS00, char* textR90, char* textS90, int row, int col, bool avg, bool & epExtStarted, bool epExtUsing, Engine *epExt);
-
+// Plots a row, a colum, the average of every row or the average every columns of all the Frames of a vector of frames using MATALAB engine
+//   (row >= 0) && (col <  0) && (avg == false): Plots the row
+//   (row <  0) && (col >= 0) && (avg == false): Plots the col
+//   (row >= 0) && (col <  0) && (avg == true ): Plots the average of every row
+//   (row <  0) && (col >= 0) && (avg == true ): Plots the average of every col
+//   else: undefined behavior
+void plot_rowcolV(std::vector<Frame> & frameV, std::vector<char*> & textV, std::vector<float> & colorV, float lineWidth, int row, int col, bool avg, bool legend, bool freezePlot, bool & epExtStarted, bool epExtUsing, Engine *epExt);
 
 
 
@@ -404,6 +410,7 @@ void char_array_to_float_vector_from_delimiter (char* char_array, std::vector<fl
 // returns the min, max, sum, mean, variance value or index of the vector
 float min(std::vector<float> & v);
 float max(std::vector<float> & v);
+float maxAbsSigned(std::vector<float> & v);
 float min(std::vector<float> & v, int & min_idx);
 float max(std::vector<float> & v, int & max_idx);
 float sum(std::vector<float> & v);

@@ -56,11 +56,11 @@ int main_DirectVision_Sinusoid() {
 	char comport[128] = "COM6";
 	bool loop = true;
 	PixStoring ps = PIXELS_STORING_GLOBAL;
-	bool pSim = true;
+	bool pSim = false;
 	//int* opt = NULL;
 	int opt[2];
-	opt[0] = 10;		// avg_size: output frame is the average of the last avg_size frames
-	opt[1] = 1;		// update_size: output frame is updated each update_size frames
+	opt[0] = 20;		// avg_size: output frame is the average of the last avg_size frames
+	opt[1] = 5;			// update_size: output frame is updated each update_size frames
 	std::thread thread_PMD_params_to_Frame(PMD_params_to_Frame_anti_bug_thread, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), frequency, distance, shutter, comport, loop, ps, pSim, opt);
 
 	// Set all the object3D of the corresponding scene
@@ -172,7 +172,7 @@ int main_Occlusion(char* dir_name_, char* file_name_) {
 
 	// capture data directly from PMD to Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE)
 	float frequency = 50.0f;	
-	float distance = 0.0f;
+	float distance = 0.2f; //* frequency / 50.0f;	// 0.2f works fine for 50.0f MHz
 	float shutter = 1920.0f;
 	char comport[128] = "COM6";
 	bool loop = true;
@@ -438,7 +438,7 @@ int main_CalibrationMatrix (char* dir_name_, char* file_name_) {
 int main(int argc, char** argv) {
 	
 	// Set RAW_DATA
-	SceneType sceneType = TEST_TEST;
+	SceneType sceneType = DIRECT_VISION_SINUSOID;
 	SCENEMAIN.set(sceneType);
 	//char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\cmx_01";
 	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\cmx_03";

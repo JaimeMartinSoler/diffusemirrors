@@ -53,9 +53,16 @@ struct OCCLUSION_ADATA {
 	bool pSim_;
 	int numPix;				// rows*cols
 	int sizeofFrameData;	// rows*cols*sizeof(float) = rows*cols*4
-	// constant parameters p bounds
-	std::vector<float>* pL;	// lower bound
-	std::vector<float>* pU;	// upper bound
+	// constant parameters p and bounds
+	int pAll_size;
+	float* pAll;
+	bool* pUse;
+	int* idxOfpInpAll;
+	int* idxOfpAllInp;
+	std::vector<float>* pAllL;	// lower bound
+	std::vector<float>* pAllU;	// upper bound
+	std::vector<float>* pL;		// lower bound
+	std::vector<float>* pU;		// upper bound
 	// variable parameters
 	Scene* sceneCopy;			// semi-constant: sceneCopy.o[VOLUME_PATHCES] is modified in each iteration of levmar
 	Frame* frame00;

@@ -1381,22 +1381,92 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	
 	// LEVMAR function parameters
 
-	// set the initial parameters (p) and values (x)
-	const int p_size = 7;							// x, y, z, phi[-PI,+PI], theta[-PI/2,+PI/2], roll[-PI,+PI] kTS
-	const int x_size = numPix * info.phasV.size();	// rows*cols*phases = rows*cols*2
-	float* p = new float[p_size];							// p[0],p[1],p[2],p[3],p[4],p[5],p[6] = x,y,z,phi,theta,roll,kTS
-	float* x = new float[x_size];							// x[i]: value of simulated pixel i
-	p[0] = 1.4f;				// initial parameters estimate (x,y,z) (p[0] = 1.10f; p[1] = 0.79f; p[2] = -0.55f;)
-	p[1] = 0.4f;
-	p[2] = -0.8f;				
+	// set the initial parameters (p). Implemented to let the user choose which parameters are we going to use. Just modify the pAll[iAll] and the  pUse[iAll]
+	// pAll[]
+	const int pAll_size = 7;			// x, y, z, phi[-PI,+PI], theta[-PI/2,+PI/2], roll[-PI,+PI], kTS
+	float* pAll = new float[pAll_size];		// p[0],p[1],p[2],p[3],p[4],p[5],p[6] = x,y,z,phi,theta,roll,kTS
+	pAll[0] = 1.40f;				// initial parameters estimate (x,y,z) (p[0] = 1.00f; p[1] = 0.85f; p[2] = -0.28f;)
+	pAll[1] = 0.4f;
+	pAll[2] = -0.7f;				
 	//p[0] = (scene.o[CAMERA].s[0].c.x + scene.o[LASER].s[0].c.x) / 2.0f;	// for testing...
 	//p[1] = (scene.o[CAMERA].s[0].c.y + scene.o[LASER].s[0].c.y) / 2.0f;
 	//p[2] = (scene.o[CAMERA].s[0].c.z + scene.o[LASER].s[0].c.z) / 2.0f + 3.0f;
-	p[3] = 0.0f * PI / 180.0f;	// initial parameters estimate (phi,theta,roll) (in radians)
-	p[4] = 0.0f;
-	p[5] = 0.0f;	
-	p[6] = 0.01f;											// initial parameters estimate kTS
-	bool resetP = true;							// resets p in each iteration to its initial value
+	pAll[3] = 0.0f * PI / 180.0f;	// initial parameters estimate (phi,theta,roll) (in radians)
+	pAll[4] = 0.0f;
+	pAll[5] = 0.0f;	
+	pAll[6] = 0.63f;				// initial parameters estimate kTS
+	// pUse[]
+	bool* pUse = new bool[pAll_size];		// pUse[iAll] = true: pAll[iAll] will be used in p[i].
+	pUse[0] = true;		// x
+	pUse[1] = true;		// y
+	pUse[2] = true;		// z
+	pUse[3] = true;		// phi
+	pUse[4] = true;		// theta
+	pUse[5] = true;		// roll
+	pUse[6] = true;		// kTS
+	// pAllL[], pAllU[] (pAll bounds)
+	const float aso = 1.01f;		// angle scale offset to the angular limits, to avoid problems around the bounds of these limits
+	const float boxSizeHalf = 0.3f;
+	std::vector<float> pAllL(pAll_size);
+	pAllL[0] = scene.o[LASER].s[0].c.x + 0.1f + boxSizeHalf;
+	pAllL[1] = 0.0f + boxSizeHalf;
+	pAllL[2] = scene.o[WALL].s[0].c.z + boxSizeHalf;
+	pAllL[3] = -aso*PI;
+	pAllL[4] = -aso*PI/2.0f;
+	pAllL[5] = -aso*PI;
+	pAllL[6] = pAll[6] * 0.001f;	
+	std::vector<float> pAllU(pAll_size);
+	pAllU[0] = scene.o[WALL].s[0].p[1].x - boxSizeHalf;
+	pAllU[1] = scene.o[WALL].s[0].p[2].y - boxSizeHalf;
+	if (scene.o[FLOOR].s.size() > 0)
+		pAllU[2] = scene.o[FLOOR].s[0].c.z - boxSizeHalf;
+	else
+		pAllU[2] = scene.o[LASER].s[0].c.z + 0.75f - boxSizeHalf;
+	pAllU[3] = aso*PI;
+	pAllU[4] = aso*PI/2.0f;
+	pAllU[5] = aso*PI;
+	pAllU[6] = pAll[6] * 1000.0f;
+	// get p_size
+	int p_size = 0;
+	for (int iAll = 0; iAll < pAll_size; ++iAll) {
+		if (pUse[iAll]) {
+			p_size++;
+	}	}
+	// p[], pL[], pU[], idxOfpInpAll[iAll], idxOfpAllInp[i]
+	float* p = new float[p_size];	// this will store the parameters we are going to use, this is the actual parameter vector
+	std::vector<float> pL(p_size);
+	std::vector<float> pU(p_size);
+	int* idxOfpInpAll = new int[pAll_size];
+	int* idxOfpAllInp = new int[p_size];
+	int i = 0;
+	for (int iAll = 0; iAll < pAll_size; ++iAll) {
+		if (pUse[iAll]) {
+			p[i]  = pAll[iAll];
+			pL[i] = pAllL[iAll];
+			pU[i] = pAllU[iAll];
+			idxOfpAllInp[i]    = iAll;
+			idxOfpInpAll[iAll] = i;
+			i++;
+		} else {
+			idxOfpInpAll[iAll] = -1;
+	}	}
+
+	// OCCLUSION_ADATA variable parameters p bounds
+	adata.pAll_size = pAll_size;
+	adata.pAll = pAll;
+	adata.pUse = pUse;
+	adata.idxOfpInpAll = idxOfpInpAll;
+	adata.idxOfpAllInp = idxOfpAllInp;
+	adata.pAllL = &pAllL;
+	adata.pAllU = &pAllU;
+	adata.pL = &pL;
+	adata.pU = &pU;
+
+	bool resetP = true;					// resets p in each iteration to its initial value
+	
+	// set the initial values (x)
+	const int x_size = numPix * info.phasV.size();	// rows*cols*phases = rows*cols*2
+	float* x = new float[x_size];					// x[i]: value of simulated pixel i
 	// optimization control parameters; passing to levmar NULL instead of opts reverts to defaults
 	float opts[LM_OPTS_SZ];
 	//float* optsNULL = NULL;	// in case we decide to pass NULL
@@ -1415,34 +1485,11 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	int numIters = 0;
 	int numCaptures = 0;
 	
-	// OCCLUSION_ADATA variable parameters p bounds
-	const float aso = 1.01f;		// angle scale offset to the angular limits, to avoid problems around the bounds of these limits
-	const float boxSizeHalf = 0.3f;
-	std::vector<float> pL(p_size);
-	pL[0] = scene.o[LASER].s[0].c.x + 0.1f + boxSizeHalf;
-	pL[1] = 0.0f + boxSizeHalf;
-	pL[2] = scene.o[WALL].s[0].c.z + boxSizeHalf;
-	pL[3] = -aso*PI;
-	pL[4] = -aso*PI/2.0f;
-	pL[5] = -aso*PI;
-	pL[6] = p[6] * 0.001f;	
-	std::vector<float> pU(p_size);
-	pU[0] = scene.o[WALL].s[0].p[1].x - boxSizeHalf;
-	pU[1] = scene.o[WALL].s[0].p[2].y - boxSizeHalf;
-	if (scene.o[FLOOR].s.size() > 0)
-		pU[2] = scene.o[FLOOR].s[0].c.z - boxSizeHalf;
-	else
-		pU[2] = scene.o[LASER].s[0].c.z + 0.75f - boxSizeHalf;
-	pU[3] = aso*PI;
-	pU[4] = aso*PI/2.0f;
-	pU[5] = aso*PI;
-	pU[6] = p[6] * 1000.0f;	
-	adata.pL = &pL;
-	adata.pU = &pU;
+	
 	// printing actual parameters
 	const bool print_p_info = true;		// enables the parameter printing
 	const bool actual_p_known = false;	// enables the actual and erro parameter printing (if print_p_info is also enabled)
-	float* pA = new float[p_size];
+	float* pA = new float[pAll_size];
 	pA[0] = 2.5f;	pA[1] = 0.75f;	pA[2] = -0.5f;	pA[3] = 0.0f;	pA[4] = 0.0;	pA[5] = 0.0f;	pA[6] = 0.01f;
 	if (print_p_info && actual_p_known) {
 		std::cout << "\n\nActual parameters : pA"
@@ -1451,8 +1498,9 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 			"\nkTs              = " << pA[6];
 	}
 	// printing initial parameters
-	float* p0 = new float[p_size];
-	p0[0] = p[0];	p0[1] = p[1];	p0[2] = p[2];	p0[3] = p[3];	p0[4] = p[4];	p0[5] = p[5];	p0[6] = p[6];
+	float* p0 = new float[pAll_size];
+	p0[0] = getPiAll(0,p,&adata);	p0[1] = getPiAll(1,p,&adata);	p0[2] = getPiAll(2,p,&adata);
+	p0[3] = getPiAll(3,p,&adata);	p0[4] = getPiAll(4,p,&adata);	p0[5] = getPiAll(5,p,&adata);	p0[6] = getPiAll(6,p,&adata);
 	if (print_p_info) {
 		std::cout << "\n\nInitial parameters : p0"
 			"\npos = (x,y,z)    = (" << p0[0] << ", " << p0[1] << ", " << p0[2] << ") (meters)"
@@ -1520,21 +1568,22 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 		// printing final parameters
 		if (print_p_info) {
 			std::cout << "\n\nFinal parameters : pF"
-				"\npos = (x,y,z)    = (" << p[0] << ", " << p[1] << ", " << p[2] << ") (meters)"
-				"\n(phi,theta,roll) = (" << p[3] * 180.0f / PI << ", " << p[4] * 180.0f / PI << ", " << p[5] * 180.0f / PI << ") (degrees)"
-				"\nkTs              = " << p[6];
+				"\npos = (x,y,z)    = (" << getPiAll(0,p,&adata) << ", " << getPiAll(1,p,&adata) << ", " << getPiAll(2,p,&adata) << ") (meters)"
+				"\n(phi,theta,roll) = (" << getPiAll(3,p,&adata) * 180.0f / PI << ", " << getPiAll(4,p,&adata) * 180.0f / PI << ", " << getPiAll(5,p,&adata) * 180.0f / PI << ") (degrees)"
+				"\nkTs              = " << getPiAll(6,p,&adata);
 		}
 		// printing error parameters
 		if (print_p_info && actual_p_known) {
 			std::cout << "\n\nError parameters : pE"
-				"\npos = (x,y,z)    = (" << p[0] - pA[0] << ", " << p[1] - pA[1] << ", " << p[2] - pA[2] << ") (meters)"
-				"\n(phi,theta,roll) = (" << (p[3] - pA[3]) * 180.0f / PI << ", " << (p[4] - pA[4]) * 180.0f / PI << ", " << (p[5] - pA[5]) * 180.0f / PI << ") (degrees)"
-				"\nkTs              = " << p[6] - pA[6];
+				"\npos = (x,y,z)    = (" << getPiAll(0,p,&adata) - pA[0] << ", " << getPiAll(1,p,&adata) - pA[1] << ", " << getPiAll(2,p,&adata) - pA[2] << ") (meters)"
+				"\n(phi,theta,roll) = (" << (getPiAll(3,p,&adata) - pA[3]) * 180.0f / PI << ", " << (getPiAll(4,p,&adata) - pA[4]) * 180.0f / PI << ", " << (getPiAll(5,p,&adata) - pA[5]) * 180.0f / PI << ") (degrees)"
+				"\nkTs              = " << getPiAll(6,p,&adata) - pA[6];
 		}
 
 		// reset p
 		if (resetP) {
-			p[0] = p0[0];	p[1] = p0[1];	p[2] = p0[2];	p[3] = p0[3];	p[4] = p0[4];	p[5] = p0[5];	p[6] = p0[6];
+			for (int i = 0; i < p_size; i++)
+				p[i] = p0[idxOfpAllInp[i]];
 		}
 	}
 	// --- END OF LOOP -----------------------------------------------------------------------------------------
@@ -1702,6 +1751,11 @@ void Object3D::updatePixelPatches_Sinusoid(Scene & scene, Frame & frame00, Frame
 	std::unique_lock<std::mutex> locker_frame_object;	// Create a defered locker (a locker not locked yet)
 	locker_frame_object = std::unique_lock<std::mutex>(mutex_frame_object, std::defer_lock);
 
+	// Matlab plotting
+	bool epExtStarted = false;
+	bool epExtUsing = true;
+	Engine *epExt;
+
 	// --- LOOP ------------------------------------------------------------------------------------------------
 	bool first_iter = true;
 	while (loop || first_iter) {
@@ -1728,6 +1782,9 @@ void Object3D::updatePixelPatches_Sinusoid(Scene & scene, Frame & frame00, Frame
 			s[i].p[3].set(scene.o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[3] * depthMap[i]);
 			s[i].c.set   (scene.o[CAMERA].s[0].c + screenFoVmeasN.s[i].c    * depthMap[i]);
 		}
+		
+		// plotting rows values. This takes around 30ms
+		plot_rowcol2(frame00, frame90, "R00", "R90", frame00.rows/2, -1, false, epExtStarted,epExtUsing, epExt);
 
 		// Syncronization
 		//std::cout << ",    UPDATED_NEW_SCENE\n";
@@ -2825,5 +2882,13 @@ float distPath4(Point & p0, Point & p1, Point & p2, Point & p3) {
 float distPath5(Point & p0, Point & p1, Point & p2, Point & p3, Point & p4) {
 	return dist(p0, p1) + dist(p1, p2) + dist(p2, p3) + dist(p3, p4);
 }
-
-
+// ad-hoc function to deal with p and pAll (see void Object3D::updateVolumePatches_Occlusion(...))
+float getPiAll(int iAll, float* p, float* pAll, bool* pUse, int* idxOfpInpAll) {
+	if (pUse[iAll])						// if the paramter iAll is stored in p (variable for levmar)
+		return p[idxOfpInpAll[iAll]];		// return it from p 
+	else								// if the paramter iAll is NOT stored in p (constant for levmar)
+		return pAll[iAll];					// return it from pAll
+}
+float getPiAll(int iAll, float* p, struct OCCLUSION_ADATA* ad) {
+	return getPiAll(iAll, p, ad->pAll, ad->pUse, ad->idxOfpInpAll);
+}

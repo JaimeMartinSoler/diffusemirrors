@@ -496,7 +496,8 @@ float distPath2(Point & p0, Point & p1);
 float distPath3(Point & p0, Point & p1, Point & p2);
 float distPath4(Point & p0, Point & p1, Point & p2, Point & p3);
 float distPath5(Point & p0, Point & p1, Point & p2, Point & p3, Point & p4);
-
-
+// ad-hoc function to deal with p and pAll (see void Object3D::updateVolumePatches_Occlusion(...))
+float getPiAll(int iAll, float* p, float* pAll, bool* pUse, int* idxOfpInpAll);
+float getPiAll(int iAll, float* p, struct OCCLUSION_ADATA* ad);
 #endif
 
