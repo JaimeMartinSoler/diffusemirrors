@@ -330,6 +330,8 @@ public:
 	Frame::Frame(unsigned short int* data_, int rowsPT, int colsPT, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false, bool first_iter = true);
 	// Constructor from std::vector<Frame>. Real Time capture oriented. Average of the vector of Frames
 	Frame::Frame(std::vector<Frame> & Frame_v, int Frame_v_size, bool first_iter = true);
+	// Constructor from 2 Frames. Real Time capture oriented. Amplitude of 2 Frames with sinusioud assumpotion
+	Frame::Frame(Frame & frame00, Frame & frame90, bool first_iterr = true);
 	// Constructor stub from basic parameters
 	Frame::Frame(Info & info, PixStoring ps_, bool pSim_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_);
 
@@ -352,6 +354,8 @@ public:
 	void Frame::set(unsigned short int* data_, int rowsPT, int colsPT, float freq_, float dist_, float shut_, float phas_, int phas_idx_, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false, bool first_iter = true);
 	// Setter from std::vector<Frame>. Real Time capture oriented. Average of the vector of Frames
 	void Frame::set(std::vector<Frame> & Frame_v, int Frame_v_size, bool first_iter = true);
+	// Setter from 2 Frames. Real Time capture oriented. Amplitude of 2 Frames with sinusioud assumpotion
+	void Frame::set(Frame & frame00, Frame & frame90, bool first_iterr = true);
 	// Setter stub from basic parameters
 	void Frame::set(Info & info, PixStoring ps_, bool pSim_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_);
 	
@@ -396,8 +400,11 @@ void plot_rowcol4(Frame & frameR00, Frame & frameS00, Frame & frameR90, Frame & 
 //   (row >= 0) && (col <  0) && (avg == true ): Plots the average of every row
 //   (row <  0) && (col >= 0) && (avg == true ): Plots the average of every col
 //   else: undefined behavior
-void plot_rowcolV(std::vector<Frame> & frameV, std::vector<char*> & textV, std::vector<float> & colorV, float lineWidth, int row, int col, bool avg, bool legend, bool freezePlot, bool & epExtStarted, bool epExtUsing, Engine *epExt);
-
+void plot_rowcolV(std::vector<Frame*> & frameV, std::vector<char*> & textV, std::vector<float> & colorV, float lineWidth, int row, int col, bool avg, bool legend, bool freezePlot, bool & epExtStarted, bool epExtUsing, Engine *epExt);
+// This stores all the function executed in a MATLAB variable strStore. This is like exectuting both:
+//   engEvalString(ep, strFunction);				// in C++
+//   strStorer = char(strStorer, 'strFunction');	// in MATLAB (taking care of duplicating (')
+void engEvalString_andStoreInMATLAB (Engine *ep, const char* strFunction, char* strStorer, bool firstTime = false);
 
 
 // ----------------------------------------------------------------------------------------------------------------------------------------

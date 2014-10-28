@@ -1752,6 +1752,29 @@ void Object3D::updatePixelPatches_Sinusoid(Scene & scene, Frame & frame00, Frame
 	locker_frame_object = std::unique_lock<std::mutex>(mutex_frame_object, std::defer_lock);
 
 	// Matlab plotting
+	Frame frameMod;
+		const int frames = 3;
+	std::vector<Frame*> frameV(frames);
+		frameV[0] = &frame00;
+		frameV[1] = &frame90;
+		frameV[2] = &frameMod;
+		//frameV[2] = &frameMod;
+	std::vector<char*> textV(frames);
+		textV[0] = "Frame \\phi=0";
+		textV[1] = "Frame \\phi=\\pi/2";
+		textV[2] = "Frame Module";
+		//textV[2] = "Frame Module";
+	std::vector<float> colorV(frames*3);
+		colorV[0] = 0.0; colorV[1] = 0.0; colorV[2] = 1.0;	
+		colorV[3] = 1.0; colorV[4] = 0.4; colorV[5] = 0.4;
+		colorV[6] = 0.0; colorV[7] = 0.0; colorV[8] = 0.0;
+		//colorV[6] = 1.0; colorV[7] = 1.0; colorV[8] = 1.0;
+	float lineWidth = 1.0f;
+	int rowPlot = 40; //frame00.rows/3;
+	int colPlot = -1;
+	bool avgPlot = false;
+	bool legend = true;
+	bool freezePlot = false;
 	bool epExtStarted = false;
 	bool epExtUsing = true;
 	Engine *epExt;
@@ -1764,7 +1787,6 @@ void Object3D::updatePixelPatches_Sinusoid(Scene & scene, Frame & frame00, Frame
 
 		if (!PMD_LOOP_ENABLE && !first_iter)
 			break;
-		first_iter = false;
 
 		// Syncronization
 		locker_frame_object.lock();		// Lock mutex_frame_object, any thread which used mutex_frame_object can NOT continue until unlock()
@@ -1784,7 +1806,10 @@ void Object3D::updatePixelPatches_Sinusoid(Scene & scene, Frame & frame00, Frame
 		}
 		
 		// plotting rows values. This takes around 30ms
-		plot_rowcol2(frame00, frame90, "R00", "R90", frame00.rows/2, -1, false, epExtStarted,epExtUsing, epExt);
+		//plot_rowcol2(frame00, frame90, "R00", "R90", frame00.rows/2, -1, false, epExtStarted, epExtUsing, epExt);
+		//plot_rowcol4(frame00, frame90, frame00, frame90, "Ra00", "Ra90", "Rb00", "Rb90", rowPlot, colPlot, avgPlot, epExtStarted, epExtUsing, epExt);
+		frameMod.set(frame00, frame90, first_iter);
+		plot_rowcolV(frameV, textV, colorV, lineWidth, rowPlot, colPlot, avgPlot, legend, freezePlot,epExtStarted, epExtUsing, epExt);
 
 		// Syncronization
 		//std::cout << ",    UPDATED_NEW_SCENE\n";
@@ -1797,6 +1822,8 @@ void Object3D::updatePixelPatches_Sinusoid(Scene & scene, Frame & frame00, Frame
 		//float ms_time = 1000.0f * float(end_time - begin_time) / (float)CLOCKS_PER_SEC;
 		//float fps_time = 1000.0f / ms_time;
 		//std::cout << "time = " << ms_time << " ms,    fps = " << fps_time <<  " fps\n";
+		
+		first_iter = false;
 	}
 	// --- END OF LOOP -----------------------------------------------------------------------------------------
 }

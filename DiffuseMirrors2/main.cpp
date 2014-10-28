@@ -59,8 +59,8 @@ int main_DirectVision_Sinusoid() {
 	bool pSim = false;
 	//int* opt = NULL;
 	int opt[2];
-	opt[0] = 20;		// avg_size: output frame is the average of the last avg_size frames
-	opt[1] = 5;			// update_size: output frame is updated each update_size frames
+	opt[0] = 10;		// avg_size: output frame is the average of the last avg_size frames
+	opt[1] = 10;			// update_size: output frame is updated each update_size frames
 	std::thread thread_PMD_params_to_Frame(PMD_params_to_Frame_anti_bug_thread, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), frequency, distance, shutter, comport, loop, ps, pSim, opt);
 
 	// Set all the object3D of the corresponding scene
