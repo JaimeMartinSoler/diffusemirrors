@@ -937,6 +937,10 @@ Frame::Frame(unsigned short int* data_, int rowsPT, int colsPT, float freq_, flo
 Frame::Frame(std::vector<Frame> & Frame_v, int Frame_v_size, bool first_iter) {
 	set(Frame_v, Frame_v_size, first_iter);
 }
+// Constructor from 2 Frames. Real Time capture oriented. Amplitude of 2 Frames with sinusioud assumpotion
+Frame::Frame(Frame & frame00, Frame & frame90, bool first_iter) {
+	set(frame00, frame90, first_iter);
+}
 // Constructor stub from basic parameters
 Frame::Frame(Info & info, PixStoring ps_, bool pSim_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_) {
 	set(info, ps_, pSim_, rows_,cols_, freq_, dist_, shut_, phas_);
@@ -1153,6 +1157,33 @@ void Frame::set(std::vector<Frame> & Frame_v, int Frame_v_size, bool first_iter)
 			data[i] += Frame_v[f].data[i];
 		data[i] /= (float)Frame_v_size;
 	}
+}
+// Setter from 2 Frames. Real Time capture oriented. Amplitude of 2 Frames with sinusioud assumpotion
+void Frame::set(Frame & frame00, Frame & frame90, bool first_iter) {
+
+	if (first_iter) {
+		// External Parameters (RawData, idices)
+		RawData_src = frame00.RawData_src;
+		freq_idx = frame00.freq_idx;
+		dist_idx = frame00.dist_idx;
+		shut_idx = frame00.shut_idx;
+		phas_idx = frame00.phas_idx;
+	
+		// Frame Parameters
+		ps = frame00.ps;
+		pSim = frame00.pSim;
+		rows = frame00.rows;
+		cols = frame00.cols;
+		freq = frame00.freq;
+		dist = frame00.dist;
+		shut = frame00.shut;
+		phas = frame00.phas;
+		data.resize(rows*cols);
+	}
+
+	// Fill the Frame with the amplitude of the frames
+	for (int i = 0; i < data.size(); ++i)
+		data[i] = sqrt((frame00.data[i] * frame00.data[i]) + (frame90.data[i] * frame90.data[i]));
 }
 // Setter stub from basic parameters
 void Frame::set(Info & info, PixStoring ps_, bool pSim_, int rows_, int cols_, float freq_, float dist_, float shut_, float phas_) {
@@ -1387,7 +1418,7 @@ void plot_frame(Frame & frame_00, Frame & frame_90, int delay_ms, bool destroyWi
 	memcpy(M_out.data, frame_00.data.data(), frame_00.data.size()*sizeof(float));
 	for(int r = 0; r < M_out.rows; r++) {
 		for(int c = 0; c < M_out.cols; c++) {
-			M_out.at<float>(r,c) = (frame_00.at(r,c) * frame_00.at(r,c)) + (frame_90.at(r,c) * frame_90.at(r,c));
+			M_out.at<float>(r,c) = sqrt((frame_00.at(r,c) * frame_00.at(r,c)) + (frame_90.at(r,c) * frame_90.at(r,c)));
 	}	}
 
 	// Get a normalized matrix (min=0.0, max=1.0)
@@ -1475,7 +1506,7 @@ void plot_frame_fov_measurement(Frame & frame_00, Frame & frame_90, bool loop, b
 		if (!frame_00_empty && !frame_90_empty) {
 			for(int r = 0; r < M_00.rows; r++) {
 				for(int c = 0; c < M_00.cols; c++) {
-					M_00.at<float>(r,c) = (M_00.at<float>(r,c) * M_00.at<float>(r,c)) + (M_90.at<float>(r,c) * M_90.at<float>(r,c));
+					M_00.at<float>(r,c) = sqrt((M_00.at<float>(r,c) * M_00.at<float>(r,c)) + (M_90.at<float>(r,c) * M_90.at<float>(r,c)));
 		}	}	}
 		
 		// Get a normalized matrix (min=0.0, max=1.0)
@@ -1905,65 +1936,73 @@ void plot_rowcol4(Frame & frameR00, Frame & frameS00, Frame & frameR90, Frame & 
 //   (row >= 0) && (col <  0) && (avg == true ): Plots the average of every row
 //   (row <  0) && (col >= 0) && (avg == true ): Plots the average of every col
 //   else: undefined behavior
-void plot_rowcolV(std::vector<Frame> & frameV, std::vector<char*> & textV, std::vector<float> & colorV, float lineWidth, int row, int col, bool avg, bool legend, bool freezePlot, bool & epExtStarted, bool epExtUsing, Engine *epExt) {
+void plot_rowcolV(std::vector<Frame*> & frameV, std::vector<char*> & textV, std::vector<float> & colorV, float lineWidth, int row, int col, bool avg, bool legend, bool freezePlot, bool & epExtStarted, bool epExtUsing, Engine *epExt) {
 	
 	// MATLAB variables
 	Engine *ep;
 	mxArray *X = NULL;
 	const int frames =  frameV.size();
 	std::vector<mxArray*> V(frames, NULL);
+	char strStorer[128] = "FUNCTIONS";
 	if (epExtUsing)
 		ep = epExt;
 
 	// Variables. Array structure needed to deal with MATLAB functions
-	int size = frameV[0].cols;
+	int size = frameV[0]->cols;
 	if (row < 0)
-		size = frameV[0].rows;
+		size = frameV[0]->rows;
 	double* x = new double[size];			// need to convert to double to deal with MATLAB
-	std::vector<double*> value(frames, new double[size]);
+	std::vector<double*> value(frames);
+	for (int f = 0; f < frames; ++f)
+		value[f] = new double[size];
 	
 	// Fill the corresponding values arrays
 	if (avg) {
 		if (row >= 0) {	// row, avg
-			for (int c = 0; c < frameV[0].cols; ++c) {
+			for (int c = 0; c < frameV[0]->cols; ++c) {
 				x[c] = (double)c;
 				for (int f = 0; f < frames; ++f)
 					value[f][c] = 0.0;
-				for (int r = 0; r < frameV[0].rows; ++r) {
+				for (int r = 0; r < frameV[0]->rows; ++r) {
 					for (int f = 0; f < frames; ++f)
-						value[f][c] += (double)(frameV[f].at(r, c));
+						value[f][c] += (double)(frameV[f]->at(r, c));
 				}
 				for (int f = 0; f < frames; ++f)
-					value[f][c] /= (double)(frameV[f].rows);
+					value[f][c] /= (double)(frameV[f]->rows);
 		}	} else {	// col, avg
-			for (int r = 0; r < frameV[0].rows; ++r) {
+			for (int r = 0; r < frameV[0]->rows; ++r) {
 				x[r] = (double)r;
 				for (int f = 0; f < frames; ++f)
 					value[f][r] = 0.0;
-				for (int c = 0; c < frameV[0].cols; ++c) {
+				for (int c = 0; c < frameV[0]->cols; ++c) {
 					for (int f = 0; f < frames; ++f)
-						value[f][r] += (double)(frameV[f].at(r, c));
+						value[f][r] += (double)(frameV[f]->at(r, c));
 				}
 				for (int f = 0; f < frames; ++f)
-					value[f][r] /= (double)(frameV[f].cols);
+					value[f][r] /= (double)(frameV[f]->cols);
 	}	}	} else {
 		if (row >= 0) {	// row, non-avg
-			for (int c = 0; c < frameV[0].cols; ++c) {
+			for (int c = 0; c < frameV[0]->cols; ++c) {
 				x[c] = (double)c;
 				for (int f = 0; f < frames; ++f)
-					value[f][c] = (double)(frameV[f].at(row, c));
+					value[f][c] = (double)(frameV[f]->at(row, c));
 		}	} else {	// col, non-avg
-			for (int r = 0; r < frameV[0].rows; ++r) {
+			for (int r = 0; r < frameV[0]->rows; ++r) {
 				x[r] = (double)r;
 				for (int f = 0; f < frames; ++f)
-					value[f][r] = (double)(frameV[f].at(r, col)); 
+					value[f][r] = (double)(frameV[f]->at(r, col)); 
 	}	}	}
 	
 	// Call engOpen(""). This starts a MATLAB process on the current host using the command "matlab"
+	if (!epExtStarted)
+		std::cout << "\nOpening MATLAB engine, wait...";
 	if (!(ep = engOpen("")))
 		fprintf(stderr, "\nCan't start MATLAB engine\n");
+	if (!epExtStarted)
+		std::cout << "\nMATLAB engine opened\n\n";
 	
 	// Create MATLAB variables from C++ variables
+	engEvalString(ep, "clear;");	// we are not interested on using engEvalString_andStoreInMATLAB(...) here
 	X = mxCreateDoubleMatrix(1, size, mxREAL);
 	for (int f = 0; f < frames; ++f)
 		V[f] = mxCreateDoubleMatrix(1, size, mxREAL);
@@ -1973,26 +2012,35 @@ void plot_rowcolV(std::vector<Frame> & frameV, std::vector<char*> & textV, std::
 	
 	// Place MATLAB variables into the MATLAB workspace
 	engPutVariable(ep, "X", X);
-	std::vector<char*> VM(frames, new char[128]);
+	std::vector<char*> VM(frames);
 	for (int f = 0; f < frames; ++f) {
+		VM[f] = new char[128];
 		sprintf(VM[f], "VM%d", f);
 		engPutVariable(ep, VM[f], V[f]);
 	}
-	
+
 	// Plot the results of the figure 1 (00)
-	engEvalString(ep, "figure(1);");
-	engEvalString(ep, "hold on;");
-	std::vector<char*> plotTxtV(frames, new char[1024]);
+	engEvalString_andStoreInMATLAB(ep, "figure(1);", strStorer, true);	// firstTime = true
+	engEvalString_andStoreInMATLAB(ep, "clf;", strStorer);
+	engEvalString_andStoreInMATLAB(ep, "hold on;", strStorer);
+	std::vector<char*> plotTxtV(frames);
 	for (int f = 0; f < frames; ++f) {
-		sprintf(plotTxtV[f], "plot(X, %s, 'color', [%f, %f, %f], 'lineWidth', %f)", VM[f], colorV[3*f+0], colorV[3*f+1], colorV[3*f+2], lineWidth);
-		engEvalString(ep, plotTxtV[f]);
+		plotTxtV[f] = new char[1024];
+		sprintf(plotTxtV[f], "plot(X, %s, 'color', [%f, %f, %f], 'lineWidth', %f);", VM[f], colorV[3*f+0], colorV[3*f+1], colorV[3*f+2], lineWidth);
+		engEvalString_andStoreInMATLAB(ep, plotTxtV[f], strStorer);
 	}
 	
 	char xTxt[1024];
 	char titleTxt[1024];
-	char titleTxtAppend[1024] = "";
-	for (int f = 0; f < frames; ++f)
-		sprintf(titleTxtAppend, "%s", textV[f]);
+	char titleTxtAppend[1024];
+	if (!legend) {
+		int titleTxtAppendFirstChar = 0;
+		for (int f = 0; f < frames-1; ++f)
+			titleTxtAppendFirstChar += sprintf(titleTxtAppend + titleTxtAppendFirstChar, "%s, ", textV[f]);
+		titleTxtAppendFirstChar += sprintf(titleTxtAppend + titleTxtAppendFirstChar, "%s", textV[frames-1]);
+	} else {
+		sprintf(titleTxtAppend, "%s", "");
+	}
 	if (avg) {
 		if (row >= 0) {
 			sprintf(titleTxt,"title('Values of the averaged rows. %s');", titleTxtAppend);
@@ -2008,18 +2056,26 @@ void plot_rowcolV(std::vector<Frame> & frameV, std::vector<char*> & textV, std::
 			sprintf(titleTxt,"title('Values of each row of the col #%d. %s');", col, titleTxtAppend);
 			sprintf(xTxt,"xlabel('rows of the col #%d');", col);
 	}	}
-	engEvalString(ep, titleTxt);
-	engEvalString(ep, xTxt);
-	engEvalString(ep, "ylabel('values');");
-	if (legend) {	//if (!epExtUsing)
-		char legendTxt[1024] = "legend(";
-		for (int f = 0; f < frames; ++f)
-			sprintf(legendTxt, "%s", textV[f]);
-		sprintf(legendTxt, ");");
-		engEvalString(ep, legendTxt);		// the legend blinks iterating through an external ep
-	}
-	engEvalString(ep, "hold off;");
+	
+	engEvalString_andStoreInMATLAB(ep, titleTxt, strStorer);
+	engEvalString_andStoreInMATLAB(ep, xTxt, strStorer);
+	engEvalString_andStoreInMATLAB(ep, "ylabel('values');", strStorer);
+	char xlimTxt[1024];
+	sprintf(xlimTxt, "xlim([0, %d]);", size-1);
+	engEvalString_andStoreInMATLAB(ep, xlimTxt, strStorer);
+	engEvalString_andStoreInMATLAB(ep, "grid on;", strStorer);
 
+	if (legend) {	//if (!epExtUsing)
+		int legendFirstChar = 0;
+		char legendTxt[1024] = "";
+		legendFirstChar += sprintf(legendTxt + legendFirstChar, "legend(");
+		for (int f = 0; f < frames-1; ++f)
+			legendFirstChar += sprintf(legendTxt + legendFirstChar, "'%s',", textV[f]);
+		legendFirstChar += sprintf(legendTxt + legendFirstChar, "'%s');", textV[frames-1]);
+		engEvalString_andStoreInMATLAB(ep, legendTxt, strStorer);		// the legend blinks iterating through an external ep
+	}
+	engEvalString_andStoreInMATLAB(ep, "hold off;", strStorer);
+	
 	// use std::cin freeze the plot
 	if (freezePlot) {	// if (!epExtUsing) {
 		std::cout << "\nWrite any std::string and click ENTER to continue\n";
@@ -2032,8 +2088,9 @@ void plot_rowcolV(std::vector<Frame> & frameV, std::vector<char*> & textV, std::
 	for (int f = 0; f < frames; ++f)
 		mxDestroyArray(V[f]);
 	if (!epExtUsing) {
-		engEvalString(ep, "close;");
+		engEvalString_andStoreInMATLAB(ep, "close;", strStorer);
 		engClose(ep);
+		epExtStarted = false;
 	} else {
 		epExtStarted = true;
 	}
@@ -2043,6 +2100,33 @@ void plot_rowcolV(std::vector<Frame> & frameV, std::vector<char*> & textV, std::
 		delete [] VM[f];
 		delete [] plotTxtV[f];
 	}
+}
+
+// This stores all the function executed in a MATLAB variable strStore. This is like exectuting both:
+//   engEvalString(ep, strFunction);				// in C++
+//   strStorer = char(strStorer, 'strFunction');	// in MATLAB (taking care of duplicating (')
+void engEvalString_andStoreInMATLAB (Engine *ep, const char* strFunction, char* strStorer, bool firstTime) {
+
+	// Execute: engEvalString(ep, strFunction);
+	engEvalString(ep, strFunction);
+
+	// Take care of diplicating (')
+	char strFunctionFiltered[1024];
+	int origIdx = 0, filtIdx = 0;
+	while (strFunction[origIdx]) {
+		strFunctionFiltered[filtIdx++] = strFunction[origIdx++];
+		if (strFunction[origIdx-1] == '\'')
+			strFunctionFiltered[filtIdx++] = '\'';
+	}
+	strFunctionFiltered[filtIdx] = '\0';
+
+	// Execute: strStorer = char(strStorer, 'strFunctionFiltered');
+	char strToStore[1024];
+	if (firstTime)
+		sprintf(strToStore, "%s = char('%s');", strStorer, strFunctionFiltered);
+	else
+		sprintf(strToStore, "%s = char(%s, '%s');", strStorer, strStorer, strFunctionFiltered);
+	engEvalString(ep, strToStore);
 }
 
 
