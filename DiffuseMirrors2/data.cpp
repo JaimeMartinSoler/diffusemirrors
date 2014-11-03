@@ -1940,6 +1940,189 @@ void plot_rowcolV(std::vector<Frame*> & frameV, std::vector<char*> & textV, std:
 	
 	// MATLAB variables
 	Engine *ep;
+	const int frames =  frameV.size();
+	// mxArrays
+	std::vector<mxArray*> F(frames, NULL);	// frames
+	mxArray *Frows = NULL;
+	mxArray *Fcols = NULL;
+	// char names
+	std::vector<char*> F_name(frames);	// frame
+	std::vector<char*> V_name(frames);	// value of the row/col
+	for (int f = 0; f < frames; ++f) {
+		F_name[f] = new char[128];
+		sprintf(F_name[f], "F%d", f);
+		V_name[f] = new char[128];
+		sprintf(V_name[f], "V%d", f);
+	}
+	char Frows_name[128] = "Frows";
+	char Fcols_name[128] = "Fcols";
+	char X_name[128] = "X";
+	char strStorer[128] = "FUNCTIONS";
+	// MATLAB Engine pointer
+	if (epExtUsing)
+		ep = epExt;
+	
+	// Variables. Array structure needed to deal with MATLAB functions
+	int sizeFrame = frameV[0]->rows * frameV[0]->cols;
+	int sizeX = frameV[0]->cols;
+	if (row < 0)
+		sizeX = frameV[0]->rows;
+	std::vector<double*> F_arrayD(frames);
+	for (int f = 0; f < frames; ++f) {
+		F_arrayD[f] = new double[sizeFrame];
+		for (int i = 0; i < sizeFrame; ++i)
+			F_arrayD[f][i] = frameV[f]->data[i];
+	}
+	
+	// Call engOpen(""). This starts a MATLAB process on the current host using the command "matlab"
+	if (!epExtStarted)
+		std::cout << "\nOpening MATLAB engine, wait...";
+	if (!(ep = engOpen("")))
+		fprintf(stderr, "\nCan't start MATLAB engine\n");
+	if (!epExtStarted)
+		std::cout << "\nMATLAB engine opened\n\n";
+
+	
+	// Create MATLAB variables from C++ variables
+	engEvalString(ep, "clear;");	// we are not interested on using engEvalString_andStoreInMATLAB(...) here
+	engEvalString_andStoreInMATLAB(ep, "disp('Below are shown all the commands executed in matlab for the plotting');", strStorer, true);	// firstTime = true
+	for (int f = 0; f < frames; ++f)
+		F[f] = mxCreateDoubleMatrix(1, sizeFrame, mxREAL);
+	for (int f = 0; f < frames; ++f)
+		memcpy((void *)mxGetPr(F[f]), (void *)F_arrayD[f], sizeFrame*sizeof(F_arrayD[f]));
+	Frows = mxCreateDoubleScalar(frameV[0]->rows);
+	Fcols = mxCreateDoubleScalar(frameV[0]->cols);
+	
+	// Place MATLAB variables into the MATLAB workspace
+	engPutVariable(ep, Frows_name, Frows);
+	engPutVariable(ep, Fcols_name, Fcols);
+	char charAux[1024];
+	for (int f = 0; f < frames; ++f) {
+		engPutVariable(ep, F_name[f], F[f]);
+		// manage the shape of F
+		sprintf(charAux, "%s = [reshape(%s, %s, %s)]';", F_name[f], F_name[f], Fcols_name, Frows_name);
+		engEvalString(ep, charAux);
+	}
+	
+	// Fill the X axis
+	if (row >= 0) {
+		sprintf(charAux, "%s = 0:%d;", X_name, frameV[0]->cols - 1);
+		engEvalString_andStoreInMATLAB(ep, charAux, strStorer);
+	} else {
+		sprintf(charAux, "%s = 0:%d;", X_name, frameV[0]->rows - 1);
+		engEvalString_andStoreInMATLAB(ep, charAux, strStorer);
+	}
+	// Fill the corresponding values of the row/col
+	if (avg) {
+		if (row >= 0) {	// row, avg
+			for (int f = 0; f < frames; ++f) {
+				sprintf(charAux, "%s = mean(%s,1);", V_name[f], F_name[f]);
+				engEvalString_andStoreInMATLAB(ep, charAux, strStorer);
+			}
+		} else {		// col, avg
+			for (int f = 0; f < frames; ++f) {
+				sprintf(charAux, "%s = mean(%s,2)';", V_name[f], F_name[f]);
+				engEvalString_andStoreInMATLAB(ep, charAux, strStorer);
+			}
+
+	}	} else {
+		if (row >= 0) {	// row, non-avg
+			for (int f = 0; f < frames; ++f) {
+				sprintf(charAux, "%s = %s(%d+1,:);", V_name[f], F_name[f], row);
+				engEvalString_andStoreInMATLAB(ep, charAux, strStorer);
+			}
+			
+		} else {		// col, non-avg
+			for (int f = 0; f < frames; ++f) {
+				sprintf(charAux, "%s = %s(:,%d+1)';", V_name[f], F_name[f], col);
+				engEvalString_andStoreInMATLAB(ep, charAux, strStorer);
+			}
+	}	}
+	
+	// Plot the results of the figure 1 (00)
+	engEvalString_andStoreInMATLAB(ep, "clf;", strStorer);
+	engEvalString_andStoreInMATLAB(ep, "fig = figure(1);", strStorer);
+	engEvalString_andStoreInMATLAB(ep, "set(fig, 'position', [320, 240, 800, 600]);", strStorer);
+	engEvalString_andStoreInMATLAB(ep, "hold on;", strStorer);
+	for (int f = 0; f < frames; ++f) {
+		sprintf(charAux, "plot(%s, %s, 'color', [%f, %f, %f], 'lineWidth', %f);", X_name, V_name[f], colorV[3*f+0], colorV[3*f+1], colorV[3*f+2], lineWidth);
+		engEvalString_andStoreInMATLAB(ep, charAux, strStorer);
+	}
+	
+	char xTxt[1024];
+	char titleTxt[1024];
+	char titleTxtAppend[1024];
+	if (!legend) {
+		int titleTxtAppendFirstChar = 0;
+		for (int f = 0; f < frames-1; ++f)
+			titleTxtAppendFirstChar += sprintf(titleTxtAppend + titleTxtAppendFirstChar, "%s, ", textV[f]);
+		titleTxtAppendFirstChar += sprintf(titleTxtAppend + titleTxtAppendFirstChar, "%s", textV[frames-1]);
+	} else {
+		sprintf(titleTxtAppend, "%s", "");
+	}
+	if (avg) {
+		if (row >= 0) {
+			sprintf(titleTxt,"title('Pixel values of the averaged rows. %s');", titleTxtAppend);
+			sprintf(xTxt,"xlabel('cols of the averaged rows');");
+		} else {
+			sprintf(titleTxt,"title('Pixel values of the averaged cols. %s');", titleTxtAppend);
+			sprintf(xTxt,"xlabel('rows of the averaged cols');");
+	}	} else {
+		if (row >= 0) {
+			sprintf(titleTxt,"title('Pixel values of each col of the row #%d. %s');", row, titleTxtAppend);
+			sprintf(xTxt,"xlabel('cols of the row #%d');", row);
+		} else {
+			sprintf(titleTxt,"title('Pixel values of each row of the col #%d. %s');", col, titleTxtAppend);
+			sprintf(xTxt,"xlabel('rows of the col #%d');", col);
+	}	}
+	
+	engEvalString_andStoreInMATLAB(ep, titleTxt, strStorer);
+	engEvalString_andStoreInMATLAB(ep, xTxt, strStorer);
+	engEvalString_andStoreInMATLAB(ep, "ylabel('Pixel values');", strStorer);
+	char xlimTxt[1024];
+	sprintf(xlimTxt, "xlim([0, %d]);", sizeX-1);
+	engEvalString_andStoreInMATLAB(ep, xlimTxt, strStorer);
+	engEvalString_andStoreInMATLAB(ep, "grid on;", strStorer);
+
+	if (legend) {	//if (!epExtUsing)
+		int legendFirstChar = 0;
+		char legendTxt[1024] = "";
+		legendFirstChar += sprintf(legendTxt + legendFirstChar, "legend(");
+		for (int f = 0; f < frames-1; ++f)
+			legendFirstChar += sprintf(legendTxt + legendFirstChar, "'%s',", textV[f]);
+		legendFirstChar += sprintf(legendTxt + legendFirstChar, "'%s');", textV[frames-1]);
+		engEvalString_andStoreInMATLAB(ep, legendTxt, strStorer);		// the legend blinks iterating through an external ep
+	}
+	engEvalString_andStoreInMATLAB(ep, "hold off;", strStorer);
+	
+	// use std::cin freeze the plot
+	if (freezePlot) {	// if (!epExtUsing) {
+		std::cout << "\nWrite any std::string and click ENTER to continue\n";
+		std::string answer;
+		std::cin >> answer;
+	}
+	
+	// Free memory, close MATLAB figure.
+	mxDestroyArray(Frows);
+	mxDestroyArray(Fcols);
+	for (int f = 0; f < frames; ++f)
+		mxDestroyArray(F[f]);
+	if (!epExtUsing) {
+		engEvalString_andStoreInMATLAB(ep, "close;", strStorer);
+		engClose(ep);
+		epExtStarted = false;
+	} else {
+		epExtStarted = true;
+	}
+	for (int f = 0; f < frames; ++f) {
+		delete [] F_name[f];
+		delete [] V_name[f];
+	}
+
+	// OLD IMPLEMENTATION
+	/*
+	// MATLAB variables
+	Engine *ep;
 	mxArray *X = NULL;
 	const int frames =  frameV.size();
 	std::vector<mxArray*> V(frames, NULL);
@@ -2100,6 +2283,7 @@ void plot_rowcolV(std::vector<Frame*> & frameV, std::vector<char*> & textV, std:
 		delete [] VM[f];
 		delete [] plotTxtV[f];
 	}
+	*/
 }
 
 // This stores all the function executed in a MATLAB variable strStore. This is like exectuting both:
