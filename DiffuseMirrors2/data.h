@@ -206,7 +206,7 @@ public:
 	// External Parameters (Info)
 	Info* info;		// Pointer to the info object
 
-	// Calibration Matrix Parameters
+	// Calibration Matrix Parameters	
 	// C ordereing: for(freq){ for(dist){ for(phas){ for(r){ for(c){ //here...}}}}} // r,c Matrix-like, 0-idx
 	// inside each frame, C stores all cols, then next row and so on, from top to down, like Frame and any Matrix
 	float* C;					// independent of PixStoring, the accessing depends on it

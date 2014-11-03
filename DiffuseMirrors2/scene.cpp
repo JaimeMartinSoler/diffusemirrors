@@ -1769,7 +1769,7 @@ void Object3D::updatePixelPatches_Sinusoid(Scene & scene, Frame & frame00, Frame
 		colorV[3] = 1.0; colorV[4] = 0.4; colorV[5] = 0.4;
 		colorV[6] = 0.0; colorV[7] = 0.0; colorV[8] = 0.0;
 		//colorV[6] = 1.0; colorV[7] = 1.0; colorV[8] = 1.0;
-	float lineWidth = 1.0f;
+	float lineWidth = 2.0f;
 	int rowPlot = 40; //frame00.rows/3;
 	int colPlot = -1;
 	bool avgPlot = false;
