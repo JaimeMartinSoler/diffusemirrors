@@ -19,7 +19,7 @@ char* title = "Master Thesis";
 float rotate_x = 0.0f;
 float rotate_y = 0.0f;
 float rotate_z = 0.0f;
-float rotate_incr = 5.0f;
+float rotate_incr = 0.1f;
 float rotate_x_mouse_diff = 0.0f;
 float rotate_y_mouse_diff = 0.0f;
 bool mouseDown = false;
@@ -97,19 +97,22 @@ void render_Scene(Scene & scene) {
 	for (std::size_t i = 0; i < scene.o.size(); i++) {
 		switch (i) {
 			case CAMERA			: render_Object3D(scene.o[i], true, lineWidth, 0.0f);	break;
-			case LASER			: render_Object3D(scene.o[i], true, lineWidth, centerPointSize);	break;
+			//case LASER			: render_Object3D(scene.o[i], true, lineWidth, centerPointSize);	break;
 			case WALL			: render_Object3D(scene.o[i], true, lineWidth, 0.0f);	break;
-			case OCCLUDER		: render_Object3D(scene.o[i], true, lineWidth, 0.0f);	break;
+			//case OCCLUDER		: render_Object3D(scene.o[i], true, lineWidth, 0.0f);	break;	// comment out
 			case FLOOR			: render_Object3D(scene.o[i], true, lineWidth, 0.0f);	break;
-			case VOLUME			: render_Object3D(scene.o[i], true, lineWidth, 0.0f);	break;
-			case WALL_PATCHES	: render_Object3D(scene.o[i], false, lineWidth * 0.0f, 0.0f);	break;
-			case CAMERA_FOV		: render_Object3D(scene.o[i], true, lineWidth * 1.5f, 0.0f);	break;
-			case LASER_RAY		: render_Object3D(scene.o[i], true, lineWidth * 1.5f, 0.0f);	break;
-			case VOLUME_PATCHES	: render_Object3D(scene.o[i], true, lineWidth * 1.5f, 0.0f);	break;
-			case PIXEL_PATCHES	: render_Object3D(scene.o[i], true, lineWidth, 0.0f);	break;
-			case UNKOWN_OBT		: render_Object3D(scene.o[i], true, lineWidth, centerPointSize);	break;
+			//case VOLUME			: render_Object3D(scene.o[i], true, lineWidth, 0.0f);	break;
+			//case WALL_PATCHES	: render_Object3D(scene.o[i], true, lineWidth * 0.0f, 0.0f);	break;
+			//case CAMERA_FOV		: render_Object3D(scene.o[i], true, lineWidth * 1.5f, 0.0f);	break;
+			//case LASER_RAY		: render_Object3D(scene.o[i], true, lineWidth * 1.5f, 0.0f);	break;
+			//case VOLUME_PATCHES	: render_Object3D(scene.o[i], true, lineWidth * 1.5f, 0.0f);	break;
+			case PIXEL_PATCHES	: render_Object3D(scene.o[i], true, lineWidth * 1.0f, 0.0f);	break;
+			case UNKOWN_OBT		: render_Object3D(scene.o[i], true, lineWidth * 0.0f, 0.0f);	break;
 		}
 	}
+	// render the occluder in last place to take care of transparency
+	if (scene.o.size() > OCCLUDER);
+		//render_Object3D(scene.o[OCCLUDER], true, lineWidth, 0.0f);	
 }
 
 // It renders all the Shapes of an object3D
@@ -400,7 +403,7 @@ void mouseMotion(int x, int y) {
 int render(int argc, char** argv) {
 	glutInit(&argc, argv);            // Initialize GLUT
 	glutInitDisplayMode(GLUT_DOUBLE); // Enable double buffered mode
-	glutInitWindowSize(640, 480);	  // Set the window's initial width & height
+	glutInitWindowSize(800, 600);	  // Set the window's initial width & height
 	glutInitWindowPosition(50, 50);   // Position the window's initial top-left corner
 	glutCreateWindow(title);          // Create window with the given title
 	glutDisplayFunc(display);       // Register callback handler for window re-paint event

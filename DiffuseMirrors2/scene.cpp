@@ -1383,18 +1383,18 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 
 	// set the initial parameters (p). Implemented to let the user choose which parameters are we going to use. Just modify the pAll[iAll] and the  pUse[iAll]
 	// pAll[]
-	const int pAll_size = 7;			// x, y, z, phi[-PI,+PI], theta[-PI/2,+PI/2], roll[-PI,+PI], kTS
+	const int pAll_size = 7;				// x, y, z, phi[-PI,+PI], theta[-PI/2,+PI/2], roll[-PI,+PI], kTS
 	float* pAll = new float[pAll_size];		// p[0],p[1],p[2],p[3],p[4],p[5],p[6] = x,y,z,phi,theta,roll,kTS
-	pAll[0] = 1.40f;				// initial parameters estimate (x,y,z) (p[0] = 1.00f; p[1] = 0.85f; p[2] = -0.28f;)
-	pAll[1] = 0.4f;
-	pAll[2] = -0.7f;				
+	pAll[0] = 1.10f;				// initial parameters estimate (x,y,z) (p[0] = 1.00f; p[1] = 0.85f; p[2] = -0.28f;)
+	pAll[1] = 0.85f;
+	pAll[2] = -0.5f;				
 	//p[0] = (scene.o[CAMERA].s[0].c.x + scene.o[LASER].s[0].c.x) / 2.0f;	// for testing...
 	//p[1] = (scene.o[CAMERA].s[0].c.y + scene.o[LASER].s[0].c.y) / 2.0f;
 	//p[2] = (scene.o[CAMERA].s[0].c.z + scene.o[LASER].s[0].c.z) / 2.0f + 3.0f;
-	pAll[3] = 0.0f * PI / 180.0f;	// initial parameters estimate (phi,theta,roll) (in radians)
-	pAll[4] = 0.0f;
-	pAll[5] = 0.0f;	
-	pAll[6] = 0.63f;				// initial parameters estimate kTS
+	pAll[3] = 35.0f * PI / 180.0f;	// initial parameters estimate (phi,theta,roll) (in radians) (p[3] = 0.00f; p[4] = 0.0f; p[5] = 0.0f;)
+	pAll[4] = 0.0f * PI / 180.0f;
+	pAll[5] = 0.0f * PI / 180.0f;	
+	pAll[6] = 0.63f;				// initial parameters estimate kTS pAll[6] = 0.63f
 	// pUse[]
 	bool* pUse = new bool[pAll_size];		// pUse[iAll] = true: pAll[iAll] will be used in p[i].
 	pUse[0] = true;		// x
@@ -1481,7 +1481,7 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	float* work = NULL;
 	float* covar = NULL;
 	// invoke the optimization function (returns the number of iterations, -1 if failed)
-	int maxIters = 5000;
+	int maxIters = 0;	// 5000
 	int numIters = 0;
 	int numCaptures = 0;
 	
@@ -1520,6 +1520,17 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	clock_t begin_time, end_time;
 	float ms_time, fps_time;
 
+	// For rendering, a copy of wall patches, with +0.001 in Z, to avoid texture overlapping
+	const float wallPatchesCopy_z_offset = 1E-04f;
+	Object3D wallPatchesCopy(scene.o[WALL_PATCHES]);
+	wallPatchesCopy.ot = UNKOWN_OBT;
+	scene.add(wallPatchesCopy);
+	for (size_t si = 0; si < scene.o[UNKOWN_OBT].s.size(); ++si) {
+		for (size_t pi = 0; pi < scene.o[UNKOWN_OBT].s[si].p.size(); ++pi)
+			scene.o[UNKOWN_OBT].s[si].p[pi].z += wallPatchesCopy_z_offset;
+		scene.o[UNKOWN_OBT].s[si].c.z += wallPatchesCopy_z_offset;
+	}
+
 	// --- LOOP ------------------------------------------------------------------------------------------------
 	bool first_iter = true;
 	while (loop || first_iter) {
@@ -1548,10 +1559,11 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 		frameSim00.plot(1, false, "S00", scale);
 		frameSim90.plot(1, false, "S90", scale);
 		// plotting rows values. This takes around 30ms
-		plot_rowcol4(frame00, frameSim00, frame90, frameSim90, "Real00", "Sim00", "Real90", "Sim90", 0, -1, true, epExtStarted, epExtUsing, epExt);
+		//plot_rowcol4(frame00, frameSim00, frame90, frameSim90, "Real00", "Sim00", "Real90", "Sim90", 0, -1, true, epExtStarted, epExtUsing, epExt);
 			//plot_rowcol2(frame00, frameSim00, "Real", "Sim", 8, -1, false, epExtStarted, epExtUsing, epExt);
 			//plot_rowcol(frame00, "Real Frame", frame00.rows/2, -1, epExtStarted, epExtUsing, epExt);
 			//plot_rowcol(frameSim00, "Simulated Frame", frameSim00.rows/2, -1, epExtStarted, epExtUsing, epExt);
+		scene.o[UNKOWN_OBT].updatePatchesColor(frame00);
 
 		// Syncronization	//std::cout << ",    UPDATED_NEW_SCENE\n";
 		UPDATED_NEW_FRAME = false;
@@ -1692,6 +1704,24 @@ void updateVolumePatches_Occlusion_OLD_antiBugThread(Info & info, Scene & scene,
 	scene.o[VOLUME_PATCHES].updateVolumePatches_Occlusion_OLD(info, scene, frame00, frame90, loop, ps_, pSim_);
 }
 // Setter, Updater Pixel Patches (10)
+void Object3D::updatePatchesColor(Frame & frame) {
+	
+	// get value for the normalization (min, max, rangeInv)
+	const float minValue = min(frame.data);
+	const float maxValue = max(frame.data);
+	const float rangeInv = 1.0f / (maxValue - minValue);
+
+	// Fill the Pixel Patches normalizing the frameMod (B&W color from 0.0f to 1.0f)
+	for (size_t si = 0; si < s.size(); ++si) {
+		s[si].R = (frame.data[si] - minValue) * rangeInv;
+		s[si].G = s[si].R;
+		s[si].B = s[si].R;
+	}
+}
+void Object3D::updatePatchesColor(Frame & frame00, Frame & frame90) {
+	Frame frameMod(frame00, frame90, true);
+	updatePatchesColor(frameMod);
+}
 void Object3D::setPixelPatches(Scene & scene, float distDefault, PixStoring ps_, bool pSim_) {
 
 	// Set the Object3D
@@ -1784,18 +1814,18 @@ void Object3D::updatePixelPatches_Sinusoid(Scene & scene, Frame & frame00, Frame
 	while (loop || first_iter) {
 
 		//const clock_t begin_time = clock();
-
+		
 		if (!PMD_LOOP_ENABLE && !first_iter)
 			break;
-
+		
 		// Syncronization
 		locker_frame_object.lock();		// Lock mutex_frame_object, any thread which used mutex_frame_object can NOT continue until unlock()
 		while (!UPDATED_NEW_FRAME)	//std::cout << "Waiting in Object to finish the UPDATED_NEW_Frame. This is OK!\n";
 			cv_frame_object.wait(locker_frame_object);
-
+		
 		// Setting Depth Map from the FRAMES captured
 		setDepthMap(depthMap, frame00, frame90);
-
+		
 		// Update pixel patches
 		for (int i = 0; i < s.size(); i++) {
 			s[i].p[0].set(scene.o[CAMERA].s[0].c + screenFoVmeasN.s[i].p[0] * depthMap[i]);
@@ -1809,15 +1839,16 @@ void Object3D::updatePixelPatches_Sinusoid(Scene & scene, Frame & frame00, Frame
 		//plot_rowcol2(frame00, frame90, "R00", "R90", frame00.rows/2, -1, false, epExtStarted, epExtUsing, epExt);
 		//plot_rowcol4(frame00, frame90, frame00, frame90, "Ra00", "Ra90", "Rb00", "Rb90", rowPlot, colPlot, avgPlot, epExtStarted, epExtUsing, epExt);
 		frameMod.set(frame00, frame90, first_iter);
+		updatePatchesColor(frameMod);
 		plot_rowcolV(frameV, textV, colorV, lineWidth, rowPlot, colPlot, avgPlot, legend, freezePlot,epExtStarted, epExtUsing, epExt);
-
+		
 		// Syncronization
 		//std::cout << ",    UPDATED_NEW_SCENE\n";
 		UPDATED_NEW_FRAME = false;
 		UPDATED_NEW_SCENE = true;
 		cv_frame_object.notify_all();	// Notify all cv_frame_object. All threads waiting for cv_frame_object will break the wait after waking up
 		locker_frame_object.unlock();	// Unlock mutex_frame_object, now threads which used mutex_frame_object can continue
-
+		
 		//const clock_t end_time = clock();
 		//float ms_time = 1000.0f * float(end_time - begin_time) / (float)CLOCKS_PER_SEC;
 		//float fps_time = 1000.0f / ms_time;
@@ -1826,6 +1857,8 @@ void Object3D::updatePixelPatches_Sinusoid(Scene & scene, Frame & frame00, Frame
 		first_iter = false;
 	}
 	// --- END OF LOOP -----------------------------------------------------------------------------------------
+
+	std::cout << "\nupdatePixelPatches_Sinusoid() ended.";
 }
 void updatePixelPatches_Sinusoid_antiBugThread(Scene & scene, Frame & frame00, Frame & frame90, bool loop, PixStoring ps_, bool pSim_) {
 	scene.o[PIXEL_PATCHES].updatePixelPatches_Sinusoid(scene, frame00, frame90, loop, ps_, pSim_);
@@ -2367,34 +2400,10 @@ void Scene::setScene_DirectVision(PixStoring ps, bool pSim_) {
 	}	}
 	o[LASER].setLaser(lasPosC, lasDegPhi, lasDegTheta, lasDegRoll, lasS, lasC_relToP0, lasAlbedoVV, lasRVV, lasGVV, lasBVV, lasAVV);
 
-	// WALL (2)
-	/*
-	Point walPosC(0.375f,0.95f, -5.0f);
-	Point walS(2.0f, 1.5f, 0.05f);
-	Point walAxisN(0.0f, 1.0f, 0.0f);
-	float walDeg = 0.0f;
-	Point walC_relToP0(walS.x / 2.0f, walS.y / 2.0f, 0.0f);
-	//std::vector<float> walAlbedoV(0), walRVV(0), walGV(0), walBV(0), walAV(0);
-	int wal_s_per_box = 6;
-	std::vector<float> walAlbedoV(wal_s_per_box);
-	std::vector<float> walRV(wal_s_per_box);
-	std::vector<float> walGV(wal_s_per_box);
-	std::vector<float> walBV(wal_s_per_box);
-	std::vector<float> walAV(wal_s_per_box);
-	walRV[FRONT] = 0.85f;  walRV[RIGHT] = 0.3f;  walRV[BACK] = 0.5f;  walRV[LEFT] = 0.8f;  walRV[BOTTOM] = 0.25f;  walRV[TOP] = 0.65f;
-	walGV[FRONT] = 0.85f;  walGV[RIGHT] = 0.3f;  walGV[BACK] = 0.5f;  walGV[LEFT] = 0.8f;  walGV[BOTTOM] = 0.25f;  walGV[TOP] = 0.65f;
-	walBV[FRONT] = 0.85f;  walBV[RIGHT] = 0.3f;  walBV[BACK] = 0.5f;  walBV[LEFT] = 0.8f;  walBV[BOTTOM] = 0.25f;  walBV[TOP] = 0.65f;
-	for (int s = FRONT; s <= TOP; s++) {
-		walAlbedoV[s] = 1.0f;
-		walAV[s] = 1.0f;
-	}
-	o[WALL].setBox(walPosC, walAxisN, walDeg, walS, walC_relToP0, walAlbedoV, walRV, walGV, walBV, walAV);
-	o[WALL].ot = WALL;
-	*/
 
 	// FLOOR (4)
-	Point floPosC(-1.625f, 0.0f, 0.7f);
-	Point floS(4.0f, 6.0f, 0.2f);
+	Point floS(2.5f, 2.18f, 0.1f);
+	Point floPosC((camPosC.x + lasPosC.x) / 2.0f - floS.x / 2.0f, 0.0f, 0.5f);
 	Point floAxisN(1.0f, 0.0f, 0.0f);
 	float floDeg = -90.0f;
 	Point floC_relToP0(0.0f, 0.0f, 0.0f);
@@ -2415,8 +2424,31 @@ void Scene::setScene_DirectVision(PixStoring ps, bool pSim_) {
 	o[FLOOR].setBox(floPosC, floAxisN, floDeg, floS, floC_relToP0, floAlbedoV, floRV, floGV, floBV, floAV);
 	o[FLOOR].ot = FLOOR;
 	
+	// WALL (2)
+	Point walS(floS.x, 1.5f, 0.1f);
+	Point walPosC(floPosC.x, 0.0f, -floS.y + floPosC.z + walS.z);
+	Point walAxisN(0.0f, 1.0f, 0.0f);
+	float walDeg = 0.0f;
+	Point walC_relToP0(0.0f, 0.0f, 0.0f);
+	//std::vector<float> walAlbedoV(0), walRVV(0), walGV(0), walBV(0), walAV(0);
+	int wal_s_per_box = 6;
+	std::vector<float> walAlbedoV(wal_s_per_box);
+	std::vector<float> walRV(wal_s_per_box);
+	std::vector<float> walGV(wal_s_per_box);
+	std::vector<float> walBV(wal_s_per_box);
+	std::vector<float> walAV(wal_s_per_box);
+	walRV[FRONT] = 0.1f;/*walRV[FRONT] = 0.85f;*/  walRV[RIGHT] = 0.3f;  walRV[BACK] = 0.5f;  walRV[LEFT] = 0.8f;  walRV[BOTTOM] = 0.25f;  walRV[TOP] = 0.65f;
+	walGV[FRONT] = 0.1f;/*walGV[FRONT] = 0.85f;*/  walGV[RIGHT] = 0.3f;  walGV[BACK] = 0.5f;  walGV[LEFT] = 0.8f;  walGV[BOTTOM] = 0.25f;  walGV[TOP] = 0.65f;
+	walBV[FRONT] = 0.1f;/*walBV[FRONT] = 0.85f;*/  walBV[RIGHT] = 0.3f;  walBV[BACK] = 0.5f;  walBV[LEFT] = 0.8f;  walBV[BOTTOM] = 0.25f;  walBV[TOP] = 0.65f;
+	for (int s = FRONT; s <= TOP; s++) {
+		walAlbedoV[s] = 1.0f;
+		walAV[s] = 1.0f;
+	}
+	o[WALL].setBox(walPosC, walAxisN, walDeg, walS, walC_relToP0, walAlbedoV, walRV, walGV, walBV, walAV);
+	o[WALL].ot = WALL;
+
 	// CAMERA_FOV (7)
-	float cafR = 0.0f, cafG = 0.0f, cafB = 1.0f, cafA = 1.0f, cafDist = 5.0f;
+	float cafR = 0.5f, cafG = 0.5f, cafB = 1.0f, cafA = 1.0f, cafDist = -walPosC.z;
 	o[CAMERA_FOV].setCameraFoV(*this, cafR, cafG, cafB, cafA, ps, cafDist);
 
 	// PIXEL_PATCHES (10)
@@ -2551,7 +2583,7 @@ void Scene::setScene_Occlusion(std::vector<int> & rowsPerFaceV, std::vector<int>
 	occBV[FRONT] = 0.5f;  occBV[RIGHT] = 0.8f;  occBV[BACK] = 0.6f;  occBV[LEFT] = 0.3f;  occBV[BOTTOM] = 0.25f;  occBV[TOP] = 0.65f;
 	for (int s = FRONT; s <= TOP; s++) {
 		occAlbedoV[s] = 1.0f;
-		occAV[s] = 1.0f;
+		occAV[s] = 0.5f;
 	}
 	o[OCCLUDER].setBox(occPosC, occAxisN, occDeg, occS, occC_relToP0, occAlbedoV, occRV, occGV, occBV, occAV);
 	o[OCCLUDER].ot = OCCLUDER;
@@ -2583,7 +2615,7 @@ void Scene::setScene_Occlusion(std::vector<int> & rowsPerFaceV, std::vector<int>
 	o[WALL_PATCHES].setWallPatches(*this, ps, pSim_);
 
 	// CAMERA_FOV (7)
-	float cafR = 0.0f, cafG = 0.0f, cafB = 1.0f, cafA = 1.0f;
+	float cafR = 0.15f, cafG = 0.15f, cafB = 1.0f, cafA = 1.0f;
 	o[CAMERA_FOV].setCameraFoV(*this, cafR, cafG, cafB, cafA, ps);
 
 	// LASER_RAY (8)
