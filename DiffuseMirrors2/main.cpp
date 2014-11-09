@@ -60,7 +60,7 @@ int main_DirectVision_Sinusoid() {
 	//int* opt = NULL;
 	int opt[2];
 	opt[0] = 10;		// avg_size: output frame is the average of the last avg_size frames
-	opt[1] = 10;			// update_size: output frame is updated each update_size frames
+	opt[1] = 10;		// update_size: output frame is updated each update_size frames
 	std::thread thread_PMD_params_to_Frame(PMD_params_to_Frame_anti_bug_thread, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), frequency, distance, shutter, comport, loop, ps, pSim, opt);
 
 	// Set all the object3D of the corresponding scene
@@ -70,7 +70,7 @@ int main_DirectVision_Sinusoid() {
 	// Render all the object3D of the scene
 	int argcStub = 0;
 	char** argvStub = NULL;
-	//std::thread thread_render(render_anti_bug_thread, argcStub, argvStub);
+	std::thread thread_render(render_anti_bug_thread, argcStub, argvStub);
 	std::cout << "\n\nDo NOT close the openGL window while the PMD loop is runnung.\n(it wouldn't be the end of the world, but it's better not to)\n\n";
 
 	// pause in main to allow control when the loops will finish
@@ -79,7 +79,9 @@ int main_DirectVision_Sinusoid() {
 	// joins
 	thread_PMD_params_to_Frame.join();
 	thread_updatePixelPatches_Sinusoid.join();
-	//thread_render.join();
+	thread_render.join();
+	
+	std::cout << "\nmain_DirectVision_Sinusoid() ended.";
 
 	return 0;
 }
@@ -458,7 +460,8 @@ int main(int argc, char** argv) {
 		case TEST:							 main_Test (dir_name, file_name);							break;
 		case TEST_TEST:						 test(dir_name, file_name);									break;
 	}
-
+	
+	std::cout << "\n\n";
 	system("pause");
 	return 0;
 }

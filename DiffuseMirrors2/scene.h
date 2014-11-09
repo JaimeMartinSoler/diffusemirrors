@@ -324,6 +324,8 @@ public:
 	void Object3D::setVolumePatches_OLD();
 	void Object3D::updateVolumePatches_Occlusion_OLD(Info & info, Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	// Setter, Updater Pixel Patches (10)
+	void Object3D::updatePatchesColor(Frame & frameMod);
+	void Object3D::updatePatchesColor(Frame & frame00, Frame & frame90);
 	void Object3D::setPixelPatches(Scene & scene, float distDefault = 2.0f, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	void Object3D::setPixelPatches(Scene & scene, Frame & frame00, Frame & frame90, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);
 	void Object3D::updatePixelPatches_Sinusoid(Scene & scene, Frame & frame00, Frame & frame90, bool loop = true, PixStoring ps_ = PIXELS_STORING_GLOBAL, bool pSim_ = false);

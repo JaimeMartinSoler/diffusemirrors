@@ -1389,12 +1389,19 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_
 	}
 	// --- END OF CAPTURE LOOP -------------------------------------------------------------------------------
 
+	// unlock threads "again", in case we close PMD_LOOP_ENABLE before updateCount >= update_size (that likely will happen)
+	UPDATED_NEW_FRAME = true;
+	UPDATED_NEW_SCENE = false;
+	cv_frame_object.notify_all();
+	locker_frame_object.unlock();
 	// closing, deleting, the aftermath
 	delete shutV[0].second;
 	pmdClose (hnd);
 	if (CV_WHILE_CAPTURING)
 		cvDestroyWindow(WindowNameCVCAP);
 	cv::destroyAllWindows();
+	
+	std::cout << "\nPMD_params_toFrame() ended.";
 
 	return 0;
 }
