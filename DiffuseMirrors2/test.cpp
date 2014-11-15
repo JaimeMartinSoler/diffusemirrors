@@ -53,8 +53,13 @@
 
 // test function for testing
 void test(char* dir_name, char* file_name) {
+	
+	Info info(dir_name, file_name);
+	CalibrationMatrix cmx(info);
+	//cmx.set(info);
+	cmx.print();
 
-	testDiffSPGExt(dir_name, file_name);
+	//testDiffSPGExt(dir_name, file_name);
 	
 	std::cout << "\n\nTest done...\n\n";
 }

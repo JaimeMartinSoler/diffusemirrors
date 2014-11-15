@@ -540,8 +540,8 @@ CalibrationMatrix::CalibrationMatrix(CalibrationMatrix & cmx) {
 	set (cmx);
 }
 // Constructor. It creates a CalibrationMatrix object from the Info and the averaging region bounds
-CalibrationMatrix::CalibrationMatrix(Info & info_, int avgRowMin_, int avgRowMax_, int avgColMin_, int avgColMax_) { // by default: pixels_storing_ = PIXELS_VALID
-	set (info_, avgRowMin_, avgRowMax_, avgColMin_, avgColMax_);
+CalibrationMatrix::CalibrationMatrix(Info & info_, int avgRowMinus_, int avgRowPlus_, int avgColMinus_, int avgColPlus_) { 
+	set (info_, avgRowMinus_, avgRowPlus_, avgColMinus_, avgColPlus_);
 }
 // Destructor
 CalibrationMatrix::~CalibrationMatrix() {
@@ -562,6 +562,8 @@ void CalibrationMatrix::set () {
 	C_size = 0;
 
 	// Averaging region
+	avgRowCentre = 0;
+	avgColCentre = 0;
 	avgRowMin = 0;
 	avgRowMax = 0;
 	avgColMin = 0;
@@ -596,6 +598,8 @@ void CalibrationMatrix::set (CalibrationMatrix & cmx) {
 	C_size = cmx.C_size;
 
 	// Averaging region
+	avgRowCentre = cmx.avgRowCentre;
+	avgColCentre = cmx.avgColCentre;
 	avgRowMin = cmx.avgRowMin;
 	avgRowMax = cmx.avgRowMax;
 	avgColMin = cmx.avgColMin;
@@ -620,7 +624,7 @@ void CalibrationMatrix::set (CalibrationMatrix & cmx) {
 	error_code = cmx.error_code;
 }
 // Setter. It creates a CalibrationMatrix object from the Info and the averaging region bounds
-void CalibrationMatrix::set (Info & info_, int avgRowMin_, int avgRowMax_, int avgColMin_, int avgColMax_) { 
+void CalibrationMatrix::set (Info & info_, int avgRowMinus_, int avgRowPlus_, int avgColMinus_, int avgColPlus_) { 
 	
 	// External Parameters (Info)
 	info = &info_;
@@ -631,33 +635,30 @@ void CalibrationMatrix::set (Info & info_, int avgRowMin_, int avgRowMax_, int a
 	PixStoring rawData_ps = PIXELS_TOTAL;
 	bool rawData_pSim = false;
 	
-	// Averaging region
-	avgRowMin = avgRowMin_;
-	avgRowMax = avgRowMax_;
-	avgColMin = avgColMin_;
-	avgColMax = avgColMax_;
-	avgPixels = (avgRowMax - avgRowMin + 1) * (avgColMax - avgColMin + 1);
-	 
-	// C_size, C
-	C_size = info->freqV.size() * info->distV.size() * info->phasV.size();
-	C = new float[C_size];
-	// filling C
-	for (size_t fi = 0; fi < info->freqV.size(); ++fi) {
-		for (size_t di = 0; di < info->distV.size(); ++di) {
-			for (size_t pi = 0; pi < info->phasV.size(); ++pi) {
-				C[C_idx(fi, di, pi)] = 0.0f;
-				for (int r = avgRowMin; r <= avgRowMax; ++r) {
-					for (int c = avgColMin; c <= avgColMax; ++c) {
-						C[C_idx(fi, di, pi)] += rawData.atF(fi, di, si, pi, r,c, rawData_ps, rawData_pSim);
-				}	}
-				C[C_idx(fi, di, pi)] /= (float)avgPixels;
-	}	}	}
-
-
 	// Scene
 	Scene scene;
 	scene.clear();
 	scene.setScene_CalibrationMatrix(info_.laser_to_cam_offset_x, info_.laser_to_cam_offset_y, info_.laser_to_cam_offset_z, info_.dist_wall_cam, rawData_ps, rawData_pSim);
+
+	// Averaging region (minimizing phasErrorMax)
+	float pathDistCmin_ = FLT_MAX;
+	float pathDistCnow = 0.0f;
+	int idxWP = 0;
+	for (int r = 0; r < rows(rawData_ps, rawData_pSim); ++r) {
+		for (int c = 0; c < cols(rawData_ps, rawData_pSim); ++c) {
+			idxWP = r * cols(rawData_ps, rawData_pSim) + c;
+			pathDistCnow = distPath3(scene.o[LASER].s[0].c, scene.o[WALL_PATCHES].s[idxWP].c, scene.o[CAMERA].s[0].c);
+			if (pathDistCnow < pathDistCmin_) {
+				pathDistCmin_ = pathDistCnow;
+				avgRowCentre = r;
+				avgColCentre = c;
+			}
+	}	}
+	avgRowMin = avgRowCentre - avgRowMinus_;
+	avgRowMax = avgRowCentre + avgRowPlus_;
+	avgColMin = avgColCentre - avgColMinus_;
+	avgColMax = avgColCentre + avgColPlus_;
+	avgPixels = (avgRowMinus_ + avgRowPlus_ + 1) * (avgColMinus_ + avgColPlus_ + 1);
 
 	// pathDist
 	Point avgRegionCenter = (scene.o[WALL_PATCHES].s[avgRowMin * cols(rawData_ps, rawData_pSim) + avgColMin].c +
@@ -671,10 +672,11 @@ void CalibrationMatrix::set (Info & info_, int avgRowMin_, int avgRowMax_, int a
 	}
 	// pathDistCmin/max/error
 	std::vector<float> pathDistCall(avgPixels);
+	int idxPDC = 0;
 	for (int r = avgRowMin; r <= avgRowMax; ++r) {
 		for (int c = avgColMin; c <= avgColMax; ++c) {
-			int idx = r * cols(rawData_ps, rawData_pSim) + c;
-			pathDistCall[idx] = distPath3(scene.o[LASER].s[0].c, scene.o[WALL_PATCHES].s[idx].c, scene.o[CAMERA].s[0].c);
+			idxWP = r * cols(rawData_ps, rawData_pSim) + c;
+			pathDistCall[idxPDC++] = distPath3(scene.o[LASER].s[0].c, scene.o[WALL_PATCHES].s[idxWP].c, scene.o[CAMERA].s[0].c);
 	}	}
 	pathDistCmin = min(pathDistCall);
 	pathDistCmax = max(pathDistCall);
@@ -683,12 +685,33 @@ void CalibrationMatrix::set (Info & info_, int avgRowMin_, int avgRowMax_, int a
 	distRes = info->distV[1] - info->distV[0];
 	distResInv = 1.0f / distRes;
 
+	// C_size, C
+	C_size = info->freqV.size() * info->distV.size() * info->phasV.size();
+	C = new float[C_size];
+	// filling C
+	for (size_t fi = 0; fi < info->freqV.size(); ++fi) {
+		for (size_t di = 0; di < info->distV.size(); ++di) {
+			for (size_t pi = 0; pi < info->phasV.size(); ++pi) {
+				C[C_idx(fi, di, pi)] = 0.0f;
+				for (int r = avgRowMin; r <= avgRowMax; ++r) {
+					for (int c = avgColMin; c <= avgColMax; ++c) {
+						C[C_idx(fi, di, pi)] += rawData.atF(fi, di, si, pi, r, c, rawData_ps, rawData_pSim);
+				}	}
+				C[C_idx(fi, di, pi)] /= (float)avgPixels;
+	}	}	}
+
 	// saturation
 	hAbsMax = 0.0f;
-	for (int i = 0; i < rawData.data_size; ++i) {
-		if (abs(rawData.data[i]) > hAbsMax) {
-			hAbsMax = abs(rawData.data[i]);
-	}	}
+	float hAbsNow = 0.0f;
+	for (size_t fi = 0; fi < info->freqV.size(); ++fi) {
+		for (size_t di = 0; di < info->distV.size(); ++di) {
+			for (size_t pi = 0; pi < info->phasV.size(); ++pi) {
+				for (int r = avgRowMin; r <= avgRowMax; ++r) {
+					for (int c = avgColMin; c <= avgColMax; ++c) {
+						hAbsNow = abs(rawData.atF(fi, di, si, pi, r, c, rawData_ps, rawData_pSim));
+						if (hAbsNow > hAbsMax)
+							hAbsMax = hAbsNow;
+	}	}	}	}	}
 	hSatRatio = hAbsMax / 32768.0f;
 	saturation = false;
 	if (hSatRatio > H_SAT_RATIO_MAX)
@@ -772,6 +795,14 @@ void CalibrationMatrix::C_atX_allPhas (int freqIdx, float pathDist, float & Cx_0
 	Cx_90 = (pathDist_scale_floor * C[Cx_90_floorIdx]) + (pathDist_scale_ceil * C[Cx_90_ceilIdx]);
 }
 
+// print parameters
+void CalibrationMatrix::print() {
+	std::cout << "\n\n\nCALIBRATION MATRIX PARAMETERS:";
+	std::cout << "\n  C_size = " << C_size;
+	std::cout << "\n  avgRegion : Centre: (" << avgRowCentre << ", " << avgColCentre << "), (" << avgRowMin << ", " << avgColMin << ") to (" << avgRowMax << ", " << avgColMax << "). Npix = " << avgPixels;
+	std::cout << "\n  pathDistC = " << pathDistC << ".  (min, max, error) = (" << pathDistCmin << ", " << pathDistCmax << ", " << phasErrorMax << ")";
+	std::cout << "\n  saturation = " << saturation << ". (hAbsMax, hSatRatio) = (" << hAbsMax << ", " << hSatRatio << ")\n\n";
+}
 
 
 
