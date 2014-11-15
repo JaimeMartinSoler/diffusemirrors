@@ -306,8 +306,8 @@ void set_DirectVision_Simulation_Frame(CalibrationMatrix & cmx, Scene & sceneCop
 	for (int r = 0; r < rows(ps_, pSim_); r++) {
 		for (int c = 0; c < cols(ps_, pSim_); c++) {
 			sIdx = rc2idx(r, c, ps_, pSim_);
-			DirectVision_Simulation00[sIdx] = cmx.S_DirectVision(freq_idx, 0, r, c, sceneCopy.o[LASER].s[0].c, sceneCopy.o[PIXEL_PATCHES].s[sIdx].c, sceneCopy.o[CAMERA].s[0].c, sceneCopy.o[PIXEL_PATCHES].s[sIdx].albedo, ps_, pSim_);
-			DirectVision_Simulation90[sIdx] = cmx.S_DirectVision(freq_idx, 1, r, c, sceneCopy.o[LASER].s[0].c, sceneCopy.o[PIXEL_PATCHES].s[sIdx].c, sceneCopy.o[CAMERA].s[0].c, sceneCopy.o[PIXEL_PATCHES].s[sIdx].albedo, ps_, pSim_);
+//			DirectVision_Simulation00[sIdx] = cmx.S_DirectVision(freq_idx, 0, r, c, sceneCopy.o[LASER].s[0].c, sceneCopy.o[PIXEL_PATCHES].s[sIdx].c, sceneCopy.o[CAMERA].s[0].c, sceneCopy.o[PIXEL_PATCHES].s[sIdx].albedo, ps_, pSim_);
+//			DirectVision_Simulation90[sIdx] = cmx.S_DirectVision(freq_idx, 1, r, c, sceneCopy.o[LASER].s[0].c, sceneCopy.o[PIXEL_PATCHES].s[sIdx].c, sceneCopy.o[CAMERA].s[0].c, sceneCopy.o[PIXEL_PATCHES].s[sIdx].albedo, ps_, pSim_);
 	}	}
 	frameSim00.set(DirectVision_Simulation00, rows(ps_, pSim_), cols(ps_, pSim_), cmx.info->freqV[freq_idx], 0.0f, cmx.info->shutV[cmx.info->shutV.size() - 1], cmx.info->phasV[0], ps_, pSim_);
 	frameSim90.set(DirectVision_Simulation90, rows(ps_, pSim_), cols(ps_, pSim_), cmx.info->freqV[freq_idx], 0.0f, cmx.info->shutV[cmx.info->shutV.size() - 1], cmx.info->phasV[cmx.info->phasV.size() - 1], ps_, pSim_);
@@ -344,6 +344,8 @@ float distHS(Frame & H00, Frame & H90, Frame & S00, Frame & S90) {
 	return sum(H_S);
 	*/
 }
+
+
 
 
 
@@ -594,21 +596,22 @@ void set_FrameSim(float* p, struct OCCLUSION_ADATA* ad) {
 
 	// Go pixel by pixel
 	int pix = 0;
-	for (int r = 0; r < ad->frameSim00->rows; ++r) {
-		for (int c = 0; c < ad->frameSim00->cols; ++c) {
-			// Fill with the values of the Transient Pixel
-			ad->frameSim00->data[pix] = 0.0f;
-			ad->frameSim90->data[pix] = 0.0f;
-			for (int i = 0; i < (*ad->transientImagePix_size)[pix]; ++i) {
-				ad->frameSim00->data[pix] += (*ad->transientImageAttTerm)[pix][i] * ad->cmx->C_atX(ad->freq_idx, (*ad->transientImageDist)[pix][i], 0, r, c, ad->ps_, ad->pSim_);
-				ad->frameSim90->data[pix] += (*ad->transientImageAttTerm)[pix][i] * ad->cmx->C_atX(ad->freq_idx, (*ad->transientImageDist)[pix][i], 1, r, c, ad->ps_, ad->pSim_);
-			}
-			ad->frameSim00->data[pix] *= 0.01 * getPiAll(6, p, ad);	//  getPiAll(6, p, ad) = kTS
-			ad->frameSim90->data[pix] *= 0.01 * getPiAll(6, p, ad);
-			pix++;
-
-	}	}
+	float Cx_00, Cx_90;
+	for (size_t pix = 0; pix < ad->frameSim00->data.size(); ++pix) {
+		ad->frameSim00->data[pix] = 0.0f;
+		ad->frameSim90->data[pix] = 0.0f;
+		// Fill with the values of the Transient Pixel
+		for (int i = 0; i < (*ad->transientImagePix_size)[pix]; ++i) {
+			ad->cmx->C_atX_allPhas (ad->freq_idx, (*ad->transientImageDist)[pix][i], Cx_00, Cx_90);
+			ad->frameSim00->data[pix] += (*ad->transientImageAttTerm)[pix][i] * Cx_00;
+			ad->frameSim90->data[pix] += (*ad->transientImageAttTerm)[pix][i] * Cx_90;
+		}
+		ad->frameSim00->data[pix] *= getPiAll(6, p, ad);	//  getPiAll(6, p, ad) = kTS
+		ad->frameSim90->data[pix] *= getPiAll(6, p, ad);
+		pix++;
+	}
 }
+
 
 
 /*

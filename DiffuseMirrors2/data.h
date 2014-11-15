@@ -206,78 +206,73 @@ public:
 	// External Parameters (Info)
 	Info* info;		// Pointer to the info object
 
-	// Calibration Matrix Parameters	
-	// C ordereing: for(freq){ for(dist){ for(phas){ for(r){ for(c){ //here...}}}}} // r,c Matrix-like, 0-idx
-	// inside each frame, C stores all cols, then next row and so on, from top to down, like Frame and any Matrix
-	float* C;					// independent of PixStoring, the accessing depends on it
-	int C_size;		
-	std::vector<float> pathDist0;	// independent of PixStoring, the accessing depends on it. Ordering: for(r){ for(c){ // here... }}}} // r,c Matrix-like, 0-idx
-	int error_code;	// 0=no_error, !=0:error
+	// Calibration Matrix Parameters. C ordereing: for(freq){ for(dist){ for(phas){ //here...}}} 
+	float* C;		// Calibration matrix, it contains all the c terms
+	int C_size;		// size of the Calibration matrix, number of elements (freqs * dists * phass)
 
-	// Simulation Parameters
-	float* C_sim_PT;
-	float* C_sim_PV;
-	int C_sim_size;
-	int C_sim_rows;
-	int C_sim_cols;
-	std::vector<float> pathDist0_sim_PT;
-	std::vector<float> pathDist0_sim_PV;
+	// Averaging Region: rectangle from (avgRowMin, avgColMin) to (avgRowMax, avgColMax)
+	int avgRowMin;
+	int avgRowMax;
+	int avgColMin;
+	int avgColMax;
+	int avgPixels;					// number of pixels in the averaging region
+
+	// pathDist
+	std::vector<float> pathDistV;	// pathDistV[i] = info->distV[i] - pathDistC; 
+	float pathDistC;				// distPath3(laser,wall(center of avg region),camera);
+	float pathDistCmin;				// distPath3(laser,wall(closer of avg region),camera);
+	float pathDistCmax;				// distPath3(laser,wall(further of avg region),camera);
+	float phasErrorMax;				// max error in phase = (pathDistCmax - pathDistCmin) / (cLight/fMax); 
+	float distRes;					// distRes = info->distV[1] - info->distV[0]; 
+	float distResInv;				// distResInv = 1.0f / distRes;
+
+	// saturation
+	bool saturation;				// true: RawData is saturated, false: RawData is OK
+	float hAbsMax;					// hAbsMax: RawData maximum value
+	float hSatRatio;				// hAbsMax: RawData maximum ratio over the saturation
+
+	// errors
+	int error_code;					// 0=no_error, !=0:error
 
 
 	// ----- CONSTRUCTORS ---------------------------- // Note that each Constructor just contains its corresponding Setter
 	
 	// Constructor Default
 	CalibrationMatrix::CalibrationMatrix();
-	// Constructor Copy
-	// pointers are copied "as are", the C pointed is not duplicated. For this use .clone(...) (if implemented)
+	// Constructor Copy. pointers are copied "as are", the C pointer is not duplicated. For this use .clone(...) (if implemented)
 	CalibrationMatrix::CalibrationMatrix(CalibrationMatrix & cmx);
-	// Constructor All parameters
-	CalibrationMatrix::CalibrationMatrix(Info & info_, float* C_, int C_size_, std::vector<float> & pathDist0_, int error_code_,
-		float* C_sim_PT_, float* C_sim_PV_, int C_sim_size_, int C_sim_rows_, int C_sim_cols_, std::vector<float> & pathDist0_sim_PT_, std::vector<float> & pathDist0_sim_PV_);
-	// Constructor. It creates a CalibrationMatrix object from the .cmx file noted in the info object
- 	CalibrationMatrix::CalibrationMatrix(Info & info_);
+	// Constructor. It creates a CalibrationMatrix object from the Info and the averaging region bounds
+ 	CalibrationMatrix::CalibrationMatrix(Info & info_, int avgRowMin_ = AVG_ROW_MIN_DEF, int avgRowMax_ = AVG_ROW_MAX_DEF, int avgColMin_ = AVG_COL_MIN_DEF, int avgColMax_ = AVG_COL_MAX_DEF);
 	// Destructor
 	CalibrationMatrix::~CalibrationMatrix();
-	
+
 	
 	// ----- SETTERS --------------------------------- // Note that each Constructor just contains its corresponding Setter
 
-	// Constructor Default
+	// Setter Default
 	void CalibrationMatrix::set ();
-	// Constructor Copy
-	// pointers are copied "as are", the C pointed is not duplicated. For this use .clone(...) (if implemented)
+	// Setter Copy. pointers are copied "as are", the C pointer is not duplicated. For this use .clone(...) (if implemented)
 	void CalibrationMatrix::set (CalibrationMatrix & cmx);
-	// Constructor All parameters
-	void CalibrationMatrix::set (Info & info_, float* C_, int C_size_, std::vector<float> & pathDist0_, int error_code_,
-		float* C_sim_PT_, float* C_sim_PV_, int C_sim_size_, int C_sim_rows_, int C_sim_cols_, std::vector<float> & pathDist0_sim_PT_, std::vector<float> & pathDist0_sim_PV_);
-	// Constructor. It creates a CalibrationMatrix object from the .cmx file noted in the info object
- 	void CalibrationMatrix::set (Info & info_);
+	// Setter. It creates a CalibrationMatrix object from the .cmx file noted in the info object
+ 	void CalibrationMatrix::set (Info & info_, int avgRowMin_ = AVG_ROW_MIN_DEF, int avgRowMax_ = AVG_ROW_MAX_DEF, int avgColMin_ = AVG_COL_MIN_DEF, int avgColMax_ = AVG_COL_MAX_DEF);
 	
-
 
 	// ----- FUNCTIONS -------------------------------
 
-	// Returns the index in C[], corresponding to the parameter indices.
-	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
-	int CalibrationMatrix::C_idx (int freq_idx, int dist_idx, int phas_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
+	// Returns the index in C[], corresponding to the parameter indices. 
+	int CalibrationMatrix::C_idx (int freqIdx, int patdDistIdx, int phasIdx);
+	// Returns the index in C[], corresponding to the parameter indices for all the phases (0,90). 
+	void CalibrationMatrix::C_idx_allPhas (int freqIdx, int patdDistIdx, int & C_idx_00, int & C_idx_90);
+	
 	// Returns C[C.C_idx(...)], the value from the Calibration Matrix C corresponding to the parameters
-	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
-	float CalibrationMatrix::C_at (int freq_idx, int dist_idx, int phas_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
-	// Returns the C[...] interpolating with the closest path distances. Path distances have to be equidistant in vector
-	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
-	float CalibrationMatrix::C_atX (int freq_idx, float pathDist, int phas_idx, int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
-	
-	// Returns the index in pathDist0, corresponding to the parameter indices.
-	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
-	int CalibrationMatrix::pathDist0_idx (int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
-	// Returns the value from the pathDist0 corresponding to the parameter indices = pathDist0[pathDist0_idx]
-	// input r,c are considered like Matrix from 0 indexation. It also takes care on PixStoring
-	float CalibrationMatrix::pathDist0_at (int r, int c, PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
-	
-	// This is the Simulation term for the direct vision problem: S_{i\;\omega}^{r,c}(\tau^{r,c}) in the Master Thesis document
-	// Returns the value of the Simulation from the Calibration Matrix C at any path distance interpolating with the closest path distances. Path distances have to be equidistant in vector
-	// Uses C_atX(...) for interpolating path distances
-	float CalibrationMatrix::S_DirectVision (int freq_idx, int phas_idx, int r, int c, Point & r_src, Point & r_x,  Point & r_cam, float relative_albedo = 1.0f, PixStoring ps = PIXELS_STORING_GLOBAL, bool pSim = false);
+	float CalibrationMatrix::C_at (int freqIdx, int patdDistIdx, int phasIdx);
+	// Returns C[C.C_idx(...)], the value from the Calibration Matrix C corresponding to the parameters for all the phases (0,90). 
+	void CalibrationMatrix::C_at_allPhas (int freqIdx, int patdDistIdx, float & C_00, float & C_90);
+
+	// Returns the C[...] interpolating with the closest patdDist's
+	float CalibrationMatrix::C_atX (int freqIdx, float pathDist, int phasIdx);
+	// Returns the C[...] interpolating with the closest patdDist's for all the phases (0,90). 
+	void CalibrationMatrix::C_atX_allPhas (int freqIdx, float pathDist, float & Cx_00, float & Cx_90);
 };
 
 
