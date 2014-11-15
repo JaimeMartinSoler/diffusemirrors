@@ -211,6 +211,8 @@ public:
 	int C_size;		// size of the Calibration matrix, number of elements (freqs * dists * phass)
 
 	// Averaging Region: rectangle from (avgRowMin, avgColMin) to (avgRowMax, avgColMax)
+	int avgRowCentre;
+	int avgColCentre;
 	int avgRowMin;
 	int avgRowMax;
 	int avgColMin;
@@ -242,7 +244,7 @@ public:
 	// Constructor Copy. pointers are copied "as are", the C pointer is not duplicated. For this use .clone(...) (if implemented)
 	CalibrationMatrix::CalibrationMatrix(CalibrationMatrix & cmx);
 	// Constructor. It creates a CalibrationMatrix object from the Info and the averaging region bounds
- 	CalibrationMatrix::CalibrationMatrix(Info & info_, int avgRowMin_ = AVG_ROW_MIN_DEF, int avgRowMax_ = AVG_ROW_MAX_DEF, int avgColMin_ = AVG_COL_MIN_DEF, int avgColMax_ = AVG_COL_MAX_DEF);
+ 	CalibrationMatrix::CalibrationMatrix(Info & info_, int avgRowMinus_ = AVG_ROW_MINUS_DEF, int avgRowPlus_ = AVG_ROW_PLUS_DEF, int avgColMinus_ = AVG_COL_MINUS_DEF, int avgColPlus_ = AVG_COL_PLUS_DEF);
 	// Destructor
 	CalibrationMatrix::~CalibrationMatrix();
 
@@ -254,7 +256,7 @@ public:
 	// Setter Copy. pointers are copied "as are", the C pointer is not duplicated. For this use .clone(...) (if implemented)
 	void CalibrationMatrix::set (CalibrationMatrix & cmx);
 	// Setter. It creates a CalibrationMatrix object from the .cmx file noted in the info object
- 	void CalibrationMatrix::set (Info & info_, int avgRowMin_ = AVG_ROW_MIN_DEF, int avgRowMax_ = AVG_ROW_MAX_DEF, int avgColMin_ = AVG_COL_MIN_DEF, int avgColMax_ = AVG_COL_MAX_DEF);
+ 	void CalibrationMatrix::set (Info & info_, int avgRowMinus_ = AVG_ROW_MINUS_DEF, int avgRowPlus_ = AVG_ROW_PLUS_DEF, int avgColMinus_ = AVG_COL_MINUS_DEF, int avgColPlus_ = AVG_COL_PLUS_DEF);
 	
 
 	// ----- FUNCTIONS -------------------------------
@@ -273,6 +275,9 @@ public:
 	float CalibrationMatrix::C_atX (int freqIdx, float pathDist, int phasIdx);
 	// Returns the C[...] interpolating with the closest patdDist's for all the phases (0,90). 
 	void CalibrationMatrix::C_atX_allPhas (int freqIdx, float pathDist, float & Cx_00, float & Cx_90);
+
+	// print parameters
+	void CalibrationMatrix::print();
 };
 
 

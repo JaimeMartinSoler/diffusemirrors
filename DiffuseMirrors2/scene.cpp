@@ -1259,6 +1259,7 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 
 	// OCCLUSION_ADATA constant parameters
 	CalibrationMatrix cmx(info);
+	cmx.print();
 	Object3D volPatchesRef(scene.o[VOLUME_PATCHES]);
 	int numFaces = (int)rowsPerFaceV.size();
 	int numShapes = scene.o[VOLUME_PATCHES].s.size();
@@ -1388,21 +1389,21 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	pAll[0] = 1.10f;				// initial parameters estimate (x,y,z) (p[0] = 1.00f; p[1] = 0.85f; p[2] = -0.28f;)
 	pAll[1] = 0.85f;
 	pAll[2] = -0.5f;				
-	//p[0] = (scene.o[CAMERA].s[0].c.x + scene.o[LASER].s[0].c.x) / 2.0f;	// for testing...
-	//p[1] = (scene.o[CAMERA].s[0].c.y + scene.o[LASER].s[0].c.y) / 2.0f;
-	//p[2] = (scene.o[CAMERA].s[0].c.z + scene.o[LASER].s[0].c.z) / 2.0f + 3.0f;
-	pAll[3] = 35.0f * PI / 180.0f;	// initial parameters estimate (phi,theta,roll) (in radians) (p[3] = 0.00f; p[4] = 0.0f; p[5] = 0.0f;)
+	//pAll[0] = (scene.o[CAMERA].s[0].c.x + scene.o[LASER].s[0].c.x) / 2.0f;	// for testing...
+	//pAll[1] = (scene.o[CAMERA].s[0].c.y + scene.o[LASER].s[0].c.y) / 2.0f;
+	//pAll[2] = (scene.o[CAMERA].s[0].c.z + scene.o[LASER].s[0].c.z) / 2.0f + 0.0f;
+	pAll[3] = 0.0f * PI / 180.0f;	// initial parameters estimate (phi,theta,roll) (in radians) (p[3] = 0.00f; p[4] = 0.0f; p[5] = 0.0f;)
 	pAll[4] = 0.0f * PI / 180.0f;
 	pAll[5] = 0.0f * PI / 180.0f;	
-	pAll[6] = 0.63f;				// initial parameters estimate kTS pAll[6] = 0.63f
+	pAll[6] = 0.01f;				// initial parameters estimate kTS pAll[6] = 0.63f
 	// pUse[]
 	bool* pUse = new bool[pAll_size];		// pUse[iAll] = true: pAll[iAll] will be used in p[i].
 	pUse[0] = true;		// x
 	pUse[1] = true;		// y
 	pUse[2] = true;		// z
-	pUse[3] = true;		// phi
-	pUse[4] = true;		// theta
-	pUse[5] = true;		// roll
+	pUse[3] = false;		// phi
+	pUse[4] = false;		// theta
+	pUse[5] = false;		// roll
 	pUse[6] = true;		// kTS
 	// pAllL[], pAllU[] (pAll bounds)
 	const float aso = 1.01f;		// angle scale offset to the angular limits, to avoid problems around the bounds of these limits
@@ -1481,7 +1482,7 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	float* work = NULL;
 	float* covar = NULL;
 	// invoke the optimization function (returns the number of iterations, -1 if failed)
-	int maxIters = 0;	// 5000
+	int maxIters = 5000;	// 5000
 	int numIters = 0;
 	int numCaptures = 0;
 	
@@ -1533,7 +1534,16 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 
 	// --- LOOP ------------------------------------------------------------------------------------------------
 	bool first_iter = true;
+	//float pK = -1.0f;
+	//float pKincr = 0.1f;
 	while (loop || first_iter) {
+
+		/*
+		pK += pKincr;
+		if (abs(pK) >= 1.0f)
+			pKincr *= -1.0f;
+		p[1] = pK;
+		*/
 
 		// External control
 		if (!PMD_LOOP_ENABLE && !first_iter)
@@ -1559,7 +1569,7 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 		frameSim00.plot(1, false, "S00", scale);
 		frameSim90.plot(1, false, "S90", scale);
 		// plotting rows values. This takes around 30ms
-		//plot_rowcol4(frame00, frameSim00, frame90, frameSim90, "Real00", "Sim00", "Real90", "Sim90", 0, -1, true, epExtStarted, epExtUsing, epExt);
+		plot_rowcol4(frame00, frameSim00, frame90, frameSim90, "Real00", "Sim00", "Real90", "Sim90", 0, -1, true, epExtStarted, epExtUsing, epExt);
 			//plot_rowcol2(frame00, frameSim00, "Real", "Sim", 8, -1, false, epExtStarted, epExtUsing, epExt);
 			//plot_rowcol(frame00, "Real Frame", frame00.rows/2, -1, epExtStarted, epExtUsing, epExt);
 			//plot_rowcol(frameSim00, "Simulated Frame", frameSim00.rows/2, -1, epExtStarted, epExtUsing, epExt);
@@ -2522,11 +2532,11 @@ void Scene::setScene_Occlusion(std::vector<int> & rowsPerFaceV, std::vector<int>
 	
 	// LASER (1)	// after WALL, because LASER lasAxisN, lasDeg are WALL-dependent
 	Point lasPosCrelToCam(0.405f, 0.0f, -0.05f);				// manual measurement
-	//Point lasPosCrelToCam(0.2f, 0.0f, 0.0f);					// for testing...
+	//Point lasPosCrelToCam(0.0f, 0.0f, 0.0f);					// for testing...
 	Point lasPosC = camPosC + lasPosCrelToCam;
 	// measurements WALL-dependent for lasAxisN, lasDeg
 	Point lasPosWLrelTowalCamFloor(0.763f, 0.797f, 0.0f);		// manual measurement (0.763f, 0.797f, 0.0f), relative position of WL from the projection of the base of the camera into the wall
-	//Point lasPosWLrelTowalCamFloor(0.0f, camPosC.y, 0.0f);		// for testing...
+	//Point lasPosWLrelTowalCamFloor(0.0f, camPosC.y, 0.0f);	// for testing...
 	Point lasPosWL = walCamFloor + lasPosWLrelTowalCamFloor;	// WL position of the projection of the normal of the laser into the wall
 	Point lasV = lasPosWL - lasPosC;
 	float lasDegPhi = degP(lasV);

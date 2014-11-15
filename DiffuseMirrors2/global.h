@@ -166,10 +166,10 @@ const float VOLUME_GRID_Y_ANGLE_STEP = 10.0f;
 
 // Calibration Matrix
 const float H_SAT_RATIO_MAX = 0.8f;		// Calibration Matrix saturation limit
-const float AVG_ROW_MIN_DEF = (PMD_HEIGTH / 2) - 10;
-const float AVG_ROW_MAX_DEF = (PMD_HEIGTH / 2) + 10;
-const float AVG_COL_MIN_DEF = (PMD_WIDTH / 2) - 10;
-const float AVG_COL_MAX_DEF = (PMD_WIDTH / 2) + 10;
+const float AVG_ROW_MINUS_DEF = 10;
+const float AVG_ROW_PLUS_DEF = 10;
+const float AVG_COL_MINUS_DEF = 10;
+const float AVG_COL_PLUS_DEF = 10;
 
 // Image Formation Model
 const float L_E = 1.0f;	// Le(l) in the paper. Radiance from the light point in the wall from the laser

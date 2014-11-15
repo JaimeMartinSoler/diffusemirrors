@@ -461,19 +461,13 @@ void updateSceneOcclusion(float* p, struct OCCLUSION_ADATA* ad) {
 	ad->traV->set(getPiAll(0, p, ad), getPiAll(1, p, ad), getPiAll(2, p, ad));
 	// rotX parameters (Theta)
 	float cosX = cos(getPiAll(4, p, ad));
-	float sinX = sqrt(1.0f-cosX*cosX);
-	if (getPiAll(4, p, ad) > 0.0f)
-		sinX = -sinX;	// Theta > 0.0f means a negative rotation around X
+	float sinX = sin(getPiAll(4, p, ad));
 	// rotY parameters (Phi)
 	float cosY = cos(getPiAll(3, p, ad)); 
-	float sinY = sqrt(1.0f-cosY*cosY);
-	if (getPiAll(3, p, ad) < 0.0f)
-		sinY = -sinY;	// Phi < 0.0f means a negative rotation around Y
+	float sinY = sin(getPiAll(3, p, ad));
 	// rotZ parameters (Roll)
 	float cosZ = cos(getPiAll(5, p, ad)); 
-	float sinZ = sqrt(1.0f-cosZ*cosZ);
-	if (getPiAll(5, p, ad) < 0.0f)
-		sinZ = -sinZ;	// Roll < 0.0f means a negative rotation around Z
+	float sinZ = sin(getPiAll(5, p, ad)); 
 
 	// apply transformations from the reference object
 	for (int si = 0; si < ad->numShapes; ++si) {
@@ -608,7 +602,6 @@ void set_FrameSim(float* p, struct OCCLUSION_ADATA* ad) {
 		}
 		ad->frameSim00->data[pix] *= getPiAll(6, p, ad);	//  getPiAll(6, p, ad) = kTS
 		ad->frameSim90->data[pix] *= getPiAll(6, p, ad);
-		pix++;
 	}
 }
 

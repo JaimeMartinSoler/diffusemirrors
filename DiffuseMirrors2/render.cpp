@@ -97,22 +97,22 @@ void render_Scene(Scene & scene) {
 	for (std::size_t i = 0; i < scene.o.size(); i++) {
 		switch (i) {
 			case CAMERA			: render_Object3D(scene.o[i], true, lineWidth, 0.0f);	break;
-			//case LASER			: render_Object3D(scene.o[i], true, lineWidth, centerPointSize);	break;
+			case LASER			: render_Object3D(scene.o[i], true, lineWidth, centerPointSize);	break;
 			case WALL			: render_Object3D(scene.o[i], true, lineWidth, 0.0f);	break;
 			//case OCCLUDER		: render_Object3D(scene.o[i], true, lineWidth, 0.0f);	break;	// comment out
 			case FLOOR			: render_Object3D(scene.o[i], true, lineWidth, 0.0f);	break;
-			//case VOLUME			: render_Object3D(scene.o[i], true, lineWidth, 0.0f);	break;
-			//case WALL_PATCHES	: render_Object3D(scene.o[i], true, lineWidth * 0.0f, 0.0f);	break;
-			//case CAMERA_FOV		: render_Object3D(scene.o[i], true, lineWidth * 1.5f, 0.0f);	break;
-			//case LASER_RAY		: render_Object3D(scene.o[i], true, lineWidth * 1.5f, 0.0f);	break;
-			//case VOLUME_PATCHES	: render_Object3D(scene.o[i], true, lineWidth * 1.5f, 0.0f);	break;
+			case VOLUME			: render_Object3D(scene.o[i], true, lineWidth, 0.0f);	break;
+			case WALL_PATCHES	: render_Object3D(scene.o[i], false, lineWidth * 0.0f, 0.0f);	break;
+			case CAMERA_FOV		: render_Object3D(scene.o[i], true, lineWidth * 1.5f, 0.0f);	break;
+			case LASER_RAY		: render_Object3D(scene.o[i], true, lineWidth * 1.5f, 0.0f);	break;
+			case VOLUME_PATCHES	: render_Object3D(scene.o[i], true, lineWidth * 1.5f, 0.0f);	break;
 			case PIXEL_PATCHES	: render_Object3D(scene.o[i], true, lineWidth * 1.0f, 0.0f);	break;
 			case UNKOWN_OBT		: render_Object3D(scene.o[i], true, lineWidth * 0.0f, 0.0f);	break;
 		}
 	}
 	// render the occluder in last place to take care of transparency
 	if (scene.o.size() > OCCLUDER);
-		//render_Object3D(scene.o[OCCLUDER], true, lineWidth, 0.0f);	
+		render_Object3D(scene.o[OCCLUDER], true, lineWidth, 0.0f);	
 }
 
 // It renders all the Shapes of an object3D
