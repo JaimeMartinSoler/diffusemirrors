@@ -458,7 +458,7 @@ void test_optimization() {
 
 // test_toPixSim(...)
 void test_toPixSim(char* dir_name, char* file_name) {
-
+	/*
 	// create Frames
 	Info info(dir_name, file_name);
 	RawData rawData(info);
@@ -531,7 +531,7 @@ void test_toPixSim(char* dir_name, char* file_name) {
 	}
 	frameRealDifUpPT.plot(plotDelayMs, destroyWindow, "Frame Real-Up PT");
 	frameRealDifUpPV.plot(plotDelayMs, destroyWindow, "Frame Real-Up PV");
-
+	*/
 }
 
 // test_numbers()
@@ -736,120 +736,120 @@ void test_distHS(Info & info, float pathWallOffset, float ERROR_ON_PURPOSE_DIST_
 // test_CMX_var(). approximation considering camPos = lasPos
 void test_CMX_var(Info & info, float pathWallOffset, float ERROR_ON_PURPOSE_DIST_WALL_OFFSET, int pixClearTimes) {
 
-	// RawData, CalibrationMatrix
-	RawData rawData(info);
-	CalibrationMatrix cmx(info);
+	//// RawData, CalibrationMatrix
+	//RawData rawData(info);
+	//CalibrationMatrix cmx(info);
 
-	// void Frame::Frame (RawData_src_, freq_idx_, dist_idx_, shut_idx_, phas_idx_, ps_ = PIXELS_STORING_GLOBAL);
-	int freq_idx = info.freqV.size()-1;
-	// THIS IS THE VARIABLE (1of2) WE HAVE TO CHANGE FOR LABBOOK PAGE 15
-	//float pathWallOffset = 0.0f;	// pathWallDist = info.dist_wall_cam + distWallOffset. 0.0f means we will choose the distance of the Calibration Matrix wall distance
-	int dist_idx = get_dist_idx(*(cmx.info), pathWallOffset);	// returns -1 if no idx correspondance was found
-	if (dist_idx < 0) {
-		std::cout << "\nWarning: Distance Offset = " << pathWallOffset << " is not a dist in .cmx distV = ";
-		print(cmx.info->distV);
-		return;
-	}
-	PixStoring ps = PIXELS_VALID;
-	Frame frame_H (rawData, freq_idx, dist_idx, info.shutV.size()-1, 0, ps);
-	Frame frame_H_90 (rawData, freq_idx, dist_idx, info.shutV.size()-1, 1, ps);
-	Frame frame_cmx (rawData, freq_idx, dist_idx, info.shutV.size()-1, 0, ps);
-	Frame frame_cmx_div_H (frame_H);
-	Frame frame_H_dif_S (frame_H);
-	Frame frame_H_div_S (frame_H);
+	//// void Frame::Frame (RawData_src_, freq_idx_, dist_idx_, shut_idx_, phas_idx_, ps_ = PIXELS_STORING_GLOBAL);
+	//int freq_idx = info.freqV.size()-1;
+	//// THIS IS THE VARIABLE (1of2) WE HAVE TO CHANGE FOR LABBOOK PAGE 15
+	////float pathWallOffset = 0.0f;	// pathWallDist = info.dist_wall_cam + distWallOffset. 0.0f means we will choose the distance of the Calibration Matrix wall distance
+	//int dist_idx = get_dist_idx(*(cmx.info), pathWallOffset);	// returns -1 if no idx correspondance was found
+	//if (dist_idx < 0) {
+	//	std::cout << "\nWarning: Distance Offset = " << pathWallOffset << " is not a dist in .cmx distV = ";
+	//	print(cmx.info->distV);
+	//	return;
+	//}
+	//PixStoring ps = PIXELS_VALID;
+	//Frame frame_H (rawData, freq_idx, dist_idx, info.shutV.size()-1, 0, ps);
+	//Frame frame_H_90 (rawData, freq_idx, dist_idx, info.shutV.size()-1, 1, ps);
+	//Frame frame_cmx (rawData, freq_idx, dist_idx, info.shutV.size()-1, 0, ps);
+	//Frame frame_cmx_div_H (frame_H);
+	//Frame frame_H_dif_S (frame_H);
+	//Frame frame_H_div_S (frame_H);
 
-	// Creating Simulation
-	int renderTime_ms_lastFrame = 0;
-	// THIS IS THE VARIABLE (2of2) WE HAVE TO CHANGE FOR LABBOOK PAGE 15
-	//float ERROR_ON_PURPOSE_DIST_WALL_OFFSET = 0.0f;
-	float dist_wall_cam = info.dist_wall_cam + (pathWallOffset / 2.0f) + ERROR_ON_PURPOSE_DIST_WALL_OFFSET;	// path/2.0f approximation considering camPos = lasPos
-	Frame frame_S00, frame_S90;
-	/*
-	Frame frame_sim_21;
-	Frame frame_sim_2375;
-	Frame frame_sim_275;
-	Frame frame_sim_3125;
-	Frame frame_sim_35;
-	Frame frame_sim_50;
-	*/
-	test_FrameSimFromWallDist (frame_S00, frame_S90, info, dist_wall_cam, freq_idx, 0, ps);
-	/*
-	test_FrameSimFromWallDist (frame_sim_21, info, 2.1f, freq_idx, 0, ps);
-	test_FrameSimFromWallDist (frame_sim_2375, info, 2.375f, freq_idx, 0, ps);
-	test_FrameSimFromWallDist (frame_sim_275, info, 2.75f, freq_idx, 0, ps);
-	test_FrameSimFromWallDist (frame_sim_3125, info, 3.125f, freq_idx, 0, ps);
-	test_FrameSimFromWallDist (frame_sim_35, info, 3.5f, freq_idx, 0, ps);
-	test_FrameSimFromWallDist (frame_sim_50, info, 5.0f, ps, renderTime_ms_lastFrame);
-	*/
-	
-	// Fill the Frame.data with the Calibration Matrix data;
-	for(int r = 0; r < frame_cmx.rows; r++) { 
-		for(int c = 0; c < frame_cmx.cols; c++) {
-			frame_cmx.data[rc2idx(r,c,ps)] = cmx.C_at(freq_idx, dist_idx, r, c, ps);
-			frame_cmx_div_H.data[rc2idx(r,c,ps)] = frame_cmx.data[rc2idx(r,c,ps)] / frame_H.data[rc2idx(r,c,ps)];
-			frame_H_dif_S.data[rc2idx(r,c,ps)] = frame_H.data[rc2idx(r,c,ps)] - frame_S00.data[rc2idx(r,c,ps)];
-			frame_H_div_S.data[rc2idx(r,c,ps)] = frame_H.data[rc2idx(r,c,ps)] / frame_S00.data[rc2idx(r,c,ps)];
-	}	}
-	float min_H_div_S  = min(frame_H_div_S.data);
-	float max_H_div_S  = max(frame_H_div_S.data);
-	float mean_H_div_S = mean(frame_H_div_S.data);
-	float var_H_div_S  = var(frame_H_div_S.data);
+	//// Creating Simulation
+	//int renderTime_ms_lastFrame = 0;
+	//// THIS IS THE VARIABLE (2of2) WE HAVE TO CHANGE FOR LABBOOK PAGE 15
+	////float ERROR_ON_PURPOSE_DIST_WALL_OFFSET = 0.0f;
+	//float dist_wall_cam = info.dist_wall_cam + (pathWallOffset / 2.0f) + ERROR_ON_PURPOSE_DIST_WALL_OFFSET;	// path/2.0f approximation considering camPos = lasPos
+	//Frame frame_S00, frame_S90;
+	///*
+	//Frame frame_sim_21;
+	//Frame frame_sim_2375;
+	//Frame frame_sim_275;
+	//Frame frame_sim_3125;
+	//Frame frame_sim_35;
+	//Frame frame_sim_50;
+	//*/
+	//test_FrameSimFromWallDist (frame_S00, frame_S90, info, dist_wall_cam, freq_idx, 0, ps);
+	///*
+	//test_FrameSimFromWallDist (frame_sim_21, info, 2.1f, freq_idx, 0, ps);
+	//test_FrameSimFromWallDist (frame_sim_2375, info, 2.375f, freq_idx, 0, ps);
+	//test_FrameSimFromWallDist (frame_sim_275, info, 2.75f, freq_idx, 0, ps);
+	//test_FrameSimFromWallDist (frame_sim_3125, info, 3.125f, freq_idx, 0, ps);
+	//test_FrameSimFromWallDist (frame_sim_35, info, 3.5f, freq_idx, 0, ps);
+	//test_FrameSimFromWallDist (frame_sim_50, info, 5.0f, ps, renderTime_ms_lastFrame);
+	//*/
+	//
+	//// Fill the Frame.data with the Calibration Matrix data;
+	//for(int r = 0; r < frame_cmx.rows; r++) { 
+	//	for(int c = 0; c < frame_cmx.cols; c++) {
+	//		frame_cmx.data[rc2idx(r,c,ps)] = cmx.C_at(freq_idx, dist_idx, r, c, ps);
+	//		frame_cmx_div_H.data[rc2idx(r,c,ps)] = frame_cmx.data[rc2idx(r,c,ps)] / frame_H.data[rc2idx(r,c,ps)];
+	//		frame_H_dif_S.data[rc2idx(r,c,ps)] = frame_H.data[rc2idx(r,c,ps)] - frame_S00.data[rc2idx(r,c,ps)];
+	//		frame_H_div_S.data[rc2idx(r,c,ps)] = frame_H.data[rc2idx(r,c,ps)] / frame_S00.data[rc2idx(r,c,ps)];
+	//}	}
+	//float min_H_div_S  = min(frame_H_div_S.data);
+	//float max_H_div_S  = max(frame_H_div_S.data);
+	//float mean_H_div_S = mean(frame_H_div_S.data);
+	//float var_H_div_S  = var(frame_H_div_S.data);
 
-	// print variables
-	std::cout << "\n\n\n\n--------------------------------------------------------------";
-	std::cout << "\nH_WallDist  = " << info.dist_wall_cam + (pathWallOffset / 2.0f);
-	std::cout << "\nS_WallDist  = " << dist_wall_cam;
-	std::cout << "\n  (H/S)min  = " << min_H_div_S  << " = " << min_H_div_S  * 100.0f << " %";
-	std::cout << "\n  (H/S)max  = " << max_H_div_S  << " = " << max_H_div_S  * 100.0f << " %";
-	std::cout << "\n  (H/S)mean = " << mean_H_div_S << " = " << mean_H_div_S * 100.0f << " %";
-	std::cout << std::scientific;
-	std::cout << "\n  (H/S)var  = " << var_H_div_S;
-	std::cout << std::defaultfloat;
+	//// print variables
+	//std::cout << "\n\n\n\n--------------------------------------------------------------";
+	//std::cout << "\nH_WallDist  = " << info.dist_wall_cam + (pathWallOffset / 2.0f);
+	//std::cout << "\nS_WallDist  = " << dist_wall_cam;
+	//std::cout << "\n  (H/S)min  = " << min_H_div_S  << " = " << min_H_div_S  * 100.0f << " %";
+	//std::cout << "\n  (H/S)max  = " << max_H_div_S  << " = " << max_H_div_S  * 100.0f << " %";
+	//std::cout << "\n  (H/S)mean = " << mean_H_div_S << " = " << mean_H_div_S * 100.0f << " %";
+	//std::cout << std::scientific;
+	//std::cout << "\n  (H/S)var  = " << var_H_div_S;
+	//std::cout << std::defaultfloat;
 
-	// clear max and min
-	if (pixClearTimes > 0) {
-		int min_idx, max_idx;
-		for (int i = 0; i < pixClearTimes; i++) {
-			min(frame_H_div_S.data, min_idx); 
-			frame_H_div_S.data[min_idx] = mean_H_div_S;
-			//frame_H_div_S.data.erase(frame_H_div_S.data.begin() + min_idx);	// erase is complexity: O(1 + elemnts_after)
-			max(frame_H_div_S.data, max_idx);
-			frame_H_div_S.data[max_idx] = mean_H_div_S;
-			//frame_H_div_S.data.erase(frame_H_div_S.data.begin() + max_idx);	// erase is complexity: O(1 + elemnts_after)
-		}
-		min_H_div_S  = min(frame_H_div_S.data);
-		max_H_div_S  = max(frame_H_div_S.data);
-		mean_H_div_S = mean(frame_H_div_S.data);
-		float var_H_div_S_new  = var(frame_H_div_S.data);
-		std::cout << "\n\nH_WallDist  = " << info.dist_wall_cam + (pathWallOffset / 2.0f);
-		std::cout <<   "\nS_WallDist  = " << dist_wall_cam;
-		std::cout << "\n  (H/S)min  = " << min_H_div_S  << " = " << min_H_div_S  * 100.0f << " %";
-		std::cout << "\n  (H/S)max  = " << max_H_div_S  << " = " << max_H_div_S  * 100.0f << " %";
-		std::cout << "\n  (H/S)mean = " << mean_H_div_S << " = " << mean_H_div_S * 100.0f << " %";
-		std::cout << std::scientific;
-		std::cout << "\n  (H/S)var  = " << var_H_div_S_new;
-		std::cout << "\n  (H/S)varD = " << (var_H_div_S_new * var_H_div_S_new) / var_H_div_S;
-		std::cout << std::defaultfloat;
-	}
+	//// clear max and min
+	//if (pixClearTimes > 0) {
+	//	int min_idx, max_idx;
+	//	for (int i = 0; i < pixClearTimes; i++) {
+	//		min(frame_H_div_S.data, min_idx); 
+	//		frame_H_div_S.data[min_idx] = mean_H_div_S;
+	//		//frame_H_div_S.data.erase(frame_H_div_S.data.begin() + min_idx);	// erase is complexity: O(1 + elemnts_after)
+	//		max(frame_H_div_S.data, max_idx);
+	//		frame_H_div_S.data[max_idx] = mean_H_div_S;
+	//		//frame_H_div_S.data.erase(frame_H_div_S.data.begin() + max_idx);	// erase is complexity: O(1 + elemnts_after)
+	//	}
+	//	min_H_div_S  = min(frame_H_div_S.data);
+	//	max_H_div_S  = max(frame_H_div_S.data);
+	//	mean_H_div_S = mean(frame_H_div_S.data);
+	//	float var_H_div_S_new  = var(frame_H_div_S.data);
+	//	std::cout << "\n\nH_WallDist  = " << info.dist_wall_cam + (pathWallOffset / 2.0f);
+	//	std::cout <<   "\nS_WallDist  = " << dist_wall_cam;
+	//	std::cout << "\n  (H/S)min  = " << min_H_div_S  << " = " << min_H_div_S  * 100.0f << " %";
+	//	std::cout << "\n  (H/S)max  = " << max_H_div_S  << " = " << max_H_div_S  * 100.0f << " %";
+	//	std::cout << "\n  (H/S)mean = " << mean_H_div_S << " = " << mean_H_div_S * 100.0f << " %";
+	//	std::cout << std::scientific;
+	//	std::cout << "\n  (H/S)var  = " << var_H_div_S_new;
+	//	std::cout << "\n  (H/S)varD = " << (var_H_div_S_new * var_H_div_S_new) / var_H_div_S;
+	//	std::cout << std::defaultfloat;
+	//}
 
-	// Plotting Frames
-	int plotTime_ms = 1;
-	bool destroyWindow_ = false;
-	frame_H.plot(plotTime_ms, destroyWindow_, "Frame H");
-	frame_H_90.plot(plotTime_ms, destroyWindow_, "Frame H_90");
-	frame_cmx.plot(plotTime_ms, destroyWindow_, "Frame cmx");
-	frame_cmx_div_H.plot(plotTime_ms, destroyWindow_, "Frame cmx/H");
-	frame_S00.plot(plotTime_ms, destroyWindow_, "Frame S00");
-	frame_H_dif_S.plot(plotTime_ms, destroyWindow_, "Frame H-S");
-	frame_H_div_S.plot(plotTime_ms, destroyWindow_, "Frame H/S");
-	/*
-	frame_sim_21.plot(plotTime_ms, destroyWindow_, "Frame sim 2.1");
-	frame_sim_2375.plot(plotTime_ms, destroyWindow_, "Frame sim 2.375");
-	frame_sim_275.plot(plotTime_ms, destroyWindow_, "Frame sim 2.75");
-	frame_sim_3125.plot(plotTime_ms, destroyWindow_, "Frame sim 3.125");
-	frame_sim_35.plot(plotTime_ms, destroyWindow_, "Frame sim 3.5");
-	frame_sim_50.plot(plotTime_ms, destroyWindow_, "Frame sim 5.0");
-	*/
+	//// Plotting Frames
+	//int plotTime_ms = 1;
+	//bool destroyWindow_ = false;
+	//frame_H.plot(plotTime_ms, destroyWindow_, "Frame H");
+	//frame_H_90.plot(plotTime_ms, destroyWindow_, "Frame H_90");
+	//frame_cmx.plot(plotTime_ms, destroyWindow_, "Frame cmx");
+	//frame_cmx_div_H.plot(plotTime_ms, destroyWindow_, "Frame cmx/H");
+	//frame_S00.plot(plotTime_ms, destroyWindow_, "Frame S00");
+	//frame_H_dif_S.plot(plotTime_ms, destroyWindow_, "Frame H-S");
+	//frame_H_div_S.plot(plotTime_ms, destroyWindow_, "Frame H/S");
+
+	////frame_sim_21.plot(plotTime_ms, destroyWindow_, "Frame sim 2.1");
+	////frame_sim_2375.plot(plotTime_ms, destroyWindow_, "Frame sim 2.375");
+	////frame_sim_275.plot(plotTime_ms, destroyWindow_, "Frame sim 2.75");
+	////frame_sim_3125.plot(plotTime_ms, destroyWindow_, "Frame sim 3.125");
+	////frame_sim_35.plot(plotTime_ms, destroyWindow_, "Frame sim 3.5");
+	////frame_sim_50.plot(plotTime_ms, destroyWindow_, "Frame sim 5.0");
+
 }
 
 // Sets a Simulated Frame from a given dist_wall_cam. Used in test_CMX()
@@ -915,22 +915,22 @@ void test_create_raw_from_raw_takes() {
 // test_calibration_matrix()
 void test_calibration_matrix() {
 
-	char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\test_01";
-	char file_name[1024] = "PMD_Calibration_Matrix";
-	Info info = Info(dir_name, file_name);
+	//char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\test_01";
+	//char file_name[1024] = "PMD_Calibration_Matrix";
+	//Info info = Info(dir_name, file_name);
 
-	CalibrationMatrix cm(info);
-	
-	std::cout << "\ndata_size        = " << cm.C_size;
-	std::cout << "\nerror_code       = " << cm.error_code;
-	std::cout << "\npathDist0_at(0,0) = " << cm.pathDist0_at(0,0);
-	std::cout << "\npathDist0(cen) = " << cm.pathDist0_at(info.rows/2,info.cols/2);
-	std::cout << "\npathDist0(cor) = " << cm.pathDist0_at(info.rows-1,info.cols-1);
-	
-	int di_floor = 8;
-	float path_dist = info.distV[di_floor] + 0.6f * (info.distV[di_floor+1] - info.distV[di_floor]);
-	std::cout << "\npath_dist = " << path_dist;
-	std::cout << "\nc(fi_max, " << path_dist << ", cen) = " << cm.C_atX(info.freqV.size()-1, path_dist, 0, info.rows/2, info.cols/2);
+	//CalibrationMatrix cm(info);
+	//
+	//std::cout << "\ndata_size        = " << cm.C_size;
+	//std::cout << "\nerror_code       = " << cm.error_code;
+	//std::cout << "\npathDist0_at(0,0) = " << cm.pathDist0_at(0,0);
+	//std::cout << "\npathDist0(cen) = " << cm.pathDist0_at(info.rows/2,info.cols/2);
+	//std::cout << "\npathDist0(cor) = " << cm.pathDist0_at(info.rows-1,info.cols-1);
+	//
+	//int di_floor = 8;
+	//float path_dist = info.distV[di_floor] + 0.6f * (info.distV[di_floor+1] - info.distV[di_floor]);
+	//std::cout << "\npath_dist = " << path_dist;
+	//std::cout << "\nc(fi_max, " << path_dist << ", cen) = " << cm.C_atX(info.freqV.size()-1, path_dist, 0, info.rows/2, info.cols/2);
 
 }
 
