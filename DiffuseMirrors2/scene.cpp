@@ -1569,7 +1569,7 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 		frameSim00.plot(1, false, "S00", scale);
 		frameSim90.plot(1, false, "S90", scale);
 		// plotting rows values. This takes around 30ms
-		plot_rowcol4(frame00, frameSim00, frame90, frameSim90, "Real00", "Sim00", "Real90", "Sim90", 0, -1, true, epExtStarted, epExtUsing, epExt);
+		//plot_rowcol4(frame00, frameSim00, frame90, frameSim90, "Real00", "Sim00", "Real90", "Sim90", 0, -1, true, epExtStarted, epExtUsing, epExt);
 			//plot_rowcol2(frame00, frameSim00, "Real", "Sim", 8, -1, false, epExtStarted, epExtUsing, epExt);
 			//plot_rowcol(frame00, "Real Frame", frame00.rows/2, -1, epExtStarted, epExtUsing, epExt);
 			//plot_rowcol(frameSim00, "Simulated Frame", frameSim00.rows/2, -1, epExtStarted, epExtUsing, epExt);
