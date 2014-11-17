@@ -1386,13 +1386,13 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	// pAll[]
 	const int pAll_size = 7;				// x, y, z, phi[-PI,+PI], theta[-PI/2,+PI/2], roll[-PI,+PI], kTS
 	float* pAll = new float[pAll_size];		// p[0],p[1],p[2],p[3],p[4],p[5],p[6] = x,y,z,phi,theta,roll,kTS
-	pAll[0] = 1.10f;				// initial parameters estimate (x,y,z) (p[0] = 1.00f; p[1] = 0.85f; p[2] = -0.28f;)
+	pAll[0] = 1.25f;				// initial parameters estimate (x,y,z) (p[0] = 1.00f; p[1] = 0.85f; p[2] = -0.28f;)
 	pAll[1] = 0.85f;
-	pAll[2] = -0.5f;				
+	pAll[2] = -0.4f;				
 	//pAll[0] = (scene.o[CAMERA].s[0].c.x + scene.o[LASER].s[0].c.x) / 2.0f;	// for testing...
 	//pAll[1] = (scene.o[CAMERA].s[0].c.y + scene.o[LASER].s[0].c.y) / 2.0f;
 	//pAll[2] = (scene.o[CAMERA].s[0].c.z + scene.o[LASER].s[0].c.z) / 2.0f + 0.0f;
-	pAll[3] = 0.0f * PI / 180.0f;	// initial parameters estimate (phi,theta,roll) (in radians) (p[3] = 0.00f; p[4] = 0.0f; p[5] = 0.0f;)
+	pAll[3] = 215.0f * PI / 180.0f;	// initial parameters estimate (phi,theta,roll) (in radians) (p[3] = 0.00f; p[4] = 0.0f; p[5] = 0.0f;)
 	pAll[4] = 0.0f * PI / 180.0f;
 	pAll[5] = 0.0f * PI / 180.0f;	
 	pAll[6] = 0.01f;				// initial parameters estimate kTS pAll[6] = 0.63f
@@ -1482,7 +1482,7 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 	float* work = NULL;
 	float* covar = NULL;
 	// invoke the optimization function (returns the number of iterations, -1 if failed)
-	int maxIters = 5000;	// 5000
+	int maxIters = 0;	// 5000
 	int numIters = 0;
 	int numCaptures = 0;
 	
@@ -1607,6 +1607,8 @@ void Object3D::updateVolumePatches_Occlusion(Info & info, Scene & scene, Frame &
 			for (int i = 0; i < p_size; i++)
 				p[i] = p0[idxOfpAllInp[i]];
 		}
+
+		Sleep(4294967294);
 	}
 	// --- END OF LOOP -----------------------------------------------------------------------------------------
 	
@@ -2636,7 +2638,7 @@ void Scene::setScene_Occlusion(std::vector<int> & rowsPerFaceV, std::vector<int>
 	Point vopPosC(3.0f, 1.0f, 0.0f);	// doesn't matter (it's centered to (0,0,0) in updateVolumePatches(...))
 	Point vopAxisN(0.0f, 1.0f, 0.0f);	// doesn't matter (new assignation in updateVolumePatches(...))
 	float vopDeg = 0.0f;				// must be 0.0f (this are the reference degrees used along all updateVolumePatches(...))
-	Point vopS(0.584f, 0.505f, 0.399f);	// manual measurement
+	Point vopS(1.0f, 1.0f, 0.0f);	// manual measurement, Box: (0.584f, 0.505f, 0.399f), Table: (1.0f, 1.0f, 0.0f);
 	// albedo, R, G, B, A
 	int const vop_faces = rowsPerFaceV.size();
 	std::vector<std::vector<float>> vopAlbedoVV(vop_faces);
