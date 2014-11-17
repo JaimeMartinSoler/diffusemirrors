@@ -184,20 +184,21 @@ int main_Occlusion(char* dir_name_, char* file_name_) {
 	FRAME_00_CAPTURE.set(info, ps, pSim, 0, 0, frequency, distance, shutter, 0.0f);
 	FRAME_90_CAPTURE.set(info, ps, pSim, 0, 0, frequency, distance, shutter, 90.0f);
 	int opt[2];
-	opt[0] = 1;	// avg_size: output frame is the average of the last avg_size frames
-	opt[1] = 1;	// update_size: output frame is updated each update_size frames
+	opt[0] = 10;	// avg_size: output frame is the average of the last avg_size frames
+	opt[1] = 10;	// update_size: output frame is updated each update_size frames
 	std::thread thread_PMD_params_to_Frame(PMD_params_to_Frame_anti_bug_thread, std::ref(FRAME_00_CAPTURE), std::ref(FRAME_90_CAPTURE), frequency, distance, shutter, comport, loop, ps, pSim, opt);
 
 	// Set all the corresponding scene and start updating
 	// faces
-	const int vop_faces = 6;	// 1:Plane, 6:Box
+	const int vop_faces = 1;	// 1:Plane, 6:Box
 	std::vector<int> rowsPerFaceV(vop_faces);
 	std::vector<int> colsPerFaceV(vop_faces);
-	/*for (int f = FRONT; f < vop_faces; ++f) {
-		rowsPerFaceV[f] = 4;
-		colsPerFaceV[f] = 4;
-	}*/
+	for (int f = FRONT; f < vop_faces; ++f) {
+		rowsPerFaceV[f] = 10;
+		colsPerFaceV[f] = 10;
+	}
 	// Point vopS(0.584f, 0.505f, 0.399f);	// manual measurement
+	/*
 	int mul = 1;
 	rowsPerFaceV[FRONT]  = 5 * mul;	colsPerFaceV[FRONT]  = 6 * mul;
 	rowsPerFaceV[BACK]   = 5 * mul;	colsPerFaceV[BACK]   = 6 * mul;
@@ -205,6 +206,7 @@ int main_Occlusion(char* dir_name_, char* file_name_) {
 	rowsPerFaceV[LEFT]   = 5 * mul;	colsPerFaceV[LEFT]   = 4 * mul;
 	rowsPerFaceV[BOTTOM] = 4 * mul;	colsPerFaceV[BOTTOM] = 6 * mul;
 	rowsPerFaceV[TOP]    = 4 * mul;	colsPerFaceV[TOP]    = 6 * mul;
+	*/
 	/*
 	rowsPerFaceV[FRONT]  = mul;	colsPerFaceV[FRONT]  = mul;
 	rowsPerFaceV[BACK]   = mul;	colsPerFaceV[BACK]   = mul;
