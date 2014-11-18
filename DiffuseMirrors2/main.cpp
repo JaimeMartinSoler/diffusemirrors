@@ -190,15 +190,16 @@ int main_Occlusion(char* dir_name_, char* file_name_) {
 
 	// Set all the corresponding scene and start updating
 	// faces
-	const int vop_faces = 1;	// 1:Plane, 6:Box
+	const int vop_faces = 6;	// 1:Plane, 6:Box
 	std::vector<int> rowsPerFaceV(vop_faces);
 	std::vector<int> colsPerFaceV(vop_faces);
-	for (int f = FRONT; f < vop_faces; ++f) {
-		rowsPerFaceV[f] = 10;
-		colsPerFaceV[f] = 10;
-	}
-	// Point vopS(0.584f, 0.505f, 0.399f);	// manual measurement
 	/*
+	for (int f = FRONT; f < vop_faces; ++f) {
+		rowsPerFaceV[f] = 100;
+		colsPerFaceV[f] = 100;
+	}
+	*/
+	// Point vopS(0.584f, 0.505f, 0.399f);	// manual measurement
 	int mul = 1;
 	rowsPerFaceV[FRONT]  = 5 * mul;	colsPerFaceV[FRONT]  = 6 * mul;
 	rowsPerFaceV[BACK]   = 5 * mul;	colsPerFaceV[BACK]   = 6 * mul;
@@ -206,7 +207,6 @@ int main_Occlusion(char* dir_name_, char* file_name_) {
 	rowsPerFaceV[LEFT]   = 5 * mul;	colsPerFaceV[LEFT]   = 4 * mul;
 	rowsPerFaceV[BOTTOM] = 4 * mul;	colsPerFaceV[BOTTOM] = 6 * mul;
 	rowsPerFaceV[TOP]    = 4 * mul;	colsPerFaceV[TOP]    = 6 * mul;
-	*/
 	/*
 	rowsPerFaceV[FRONT]  = mul;	colsPerFaceV[FRONT]  = mul;
 	rowsPerFaceV[BACK]   = mul;	colsPerFaceV[BACK]   = mul;

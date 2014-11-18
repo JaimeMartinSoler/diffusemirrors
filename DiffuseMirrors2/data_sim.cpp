@@ -363,7 +363,7 @@ void set_Occlusion_Simulation_Frame_Optim(float* p, float* x, int p_size, int x_
 	// Check convergence
 	if (!pInBounds(p, x, p_size, x_size, ad)) {
 		//std::cout << "\nOut of bounds, p = [" << p[0] << ", " << p[1] << ", " << p[2] << ", " << p[3] << ", " << p[4] << ", " << p[5] << ", " << p[6] << "]";
-		//return;
+		return;
 	}
 
 	// Update Scene 
@@ -417,10 +417,12 @@ void set_Occlusion_Simulation_Frame_Optim(float* p, float* x, int p_size, int x_
 	*/
 
 	// Plot a transient pixel with MATLAB Engine, from TransientImage (MATLAB Engine takes too much time to start) comment out next lines unless you need to debugg
+	/*
 	int pixRow = ad->frameSim00->rows / 2; // ad->frameSim00->rows / 2;
 	int pixCol = ad->frameSim00->cols / 2; // ad->frameSim00->cols / 2;
 	int pixIdx = rc2idx(pixRow, pixCol, ad->ps_, ad->pSim_);
 	plot_transientPixel((*ad->transientImageDist)[pixIdx], (*ad->transientImageAttTerm)[pixIdx], (*ad->transientImagePix_size)[pixIdx]);
+	*/
 	
 }
 
