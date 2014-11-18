@@ -1316,7 +1316,7 @@ int PMD_params_to_Frame (Frame & Frame_00_cap, Frame & Frame_90_cap, float freq_
 		// PMD CAPTURE
 				//const clock_t begin_time_pmd_capture = clock();
 		pmd_capture(hnd, port, shutV[0].first, freq_, dist_, shutV[0].second, colsPT, rowsPT, numframes);
-		//dist_ += 0.04;
+		dist_ += (1.0f / 64.0f) * ((C_LIGHT_AIR * 1E-06) / freq_);
 				//const clock_t end_time_pmd_capture = clock();
 				//float ms_time_pmd_capture = 1000.0f * float(end_time_pmd_capture - begin_time_pmd_capture) / (float)CLOCKS_PER_SEC;
 				//std::cout << "pmd_capture    : time = " << ms_time_pmd_capture << " ms\n";
