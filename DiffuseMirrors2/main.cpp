@@ -50,13 +50,13 @@ void control_loop_pause() {
 int main_DirectVision_Sinusoid() {
 
 	// capture data directly from PMD to Frame (FRAME_00_CAPTURE, FRAME_90_CAPTURE)
-	float frequency = 75.0f;
+	float frequency = 20.0f;
 	float distance = 0.0f;
-	float shutter = 1920.0f;
+	float shutter = 1920.0f/2.0f;
 	char comport[128] = "COM6";
 	bool loop = true;
 	PixStoring ps = PIXELS_STORING_GLOBAL;
-	bool pSim = false;
+	bool pSim = true;
 	//int* opt = NULL;
 	int opt[2];
 	opt[0] = 100;		// avg_size: output frame is the average of the last avg_size frames
@@ -451,7 +451,7 @@ int main_CalibrationMatrix (char* dir_name_, char* file_name_) {
 int main(int argc, char** argv) {
 	
 	// Set RAW_DATA
-	SceneType sceneType = DIRECT_VISION_SINUSOID;
+	SceneType sceneType = OCCLUSION;
 	SCENEMAIN.set(sceneType);
 	//char dir_name[1024] = "C:\\Users\\Natalia\\Documents\\Visual Studio 2013\\Projects\\DiffuseMirrors2\\CalibrationMatrix\\cmx_01";
 	char dir_name[1024] = "F:\\Jaime\\CalibrationMatrix\\cmx_04";
