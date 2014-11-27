@@ -2921,7 +2921,7 @@ void setDepthMap(std::vector<float> & depthMap, Frame & frame00, Frame & frame90
 
 	// There exists an additional delay between the laser and the camera. This delay is freq-dependent (not const in rad or meters),
 	// but it does not depend on a constant delay time, so it sould be calibrated for each frequency.
-	float delay_m_100MHz = 2.0f;	// delay @ 100 MHz = 2.0m
+	float delay_m_100MHz = - 7.0f;	// delay @ 100 MHz = 2.0m
 
 	float pathDist = 0.0f;
 	//std::cout << "\nFrame_00_cap.rows, cols = " << Frame_00_cap.rows << ", " << Frame_00_cap.cols;
