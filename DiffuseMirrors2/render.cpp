@@ -110,7 +110,7 @@ void render_Scene(Scene & scene) {
 			case UNKOWN_OBT		: render_Object3D(scene.o[i], true, lineWidth * 0.0f, 0.0f);	break;
 		}
 	}
-	// render the occluder in last place to take care of transparency
+	// render the occluder in last place to deal with transparency
 	if (scene.o.size() > OCCLUDER);
 		render_Object3D(scene.o[OCCLUDER], true, lineWidth, 0.0f);	
 }

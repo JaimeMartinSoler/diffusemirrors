@@ -2535,7 +2535,7 @@ void Scene::setScene_Occlusion(std::vector<int> & rowsPerFaceV, std::vector<int>
 	//Point lasPosCrelToCam(0.0f, 0.0f, 0.0f);					// for testing...
 	Point lasPosC = camPosC + lasPosCrelToCam;
 	// measurements WALL-dependent for lasAxisN, lasDeg
-	Point lasPosWLrelTowalCamFloor(0.763f, 0.797f, 0.0f);		// manual measurement (0.763f, 0.797f, 0.0f), relative position of WL from the projection of the base of the camera into the wall
+	Point lasPosWLrelTowalCamFloor(0.840f, 0.865f, 0.0f);		// manual measurement (0.763f, 0.797f, 0.0f), relative position of WL from the projection of the base of the camera into the wall
 	//Point lasPosWLrelTowalCamFloor(0.0f, camPosC.y, 0.0f);	// for testing...
 	Point lasPosWL = walCamFloor + lasPosWLrelTowalCamFloor;	// WL position of the projection of the normal of the laser into the wall
 	Point lasV = lasPosWL - lasPosC;
